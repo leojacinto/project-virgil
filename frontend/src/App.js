@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Database, FileText, Search, Settings, Loader2 } from 'lucide-react';
-import ConnectionPanel from './components/ConnectionPanel';
+import SetupWizard from './components/SetupWizard';
 import DocumentUpload from './components/DocumentUpload';
 import QueryInterface from './components/QueryInterface';
 import ResultsDisplay from './components/ResultsDisplay';
@@ -8,49 +8,60 @@ import InstanceInfo from './components/InstanceInfo';
 import axios from 'axios';
 
 function App() {
-  const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('query');
   const [connectionInfo, setConnectionInfo] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
   useEffect(() => {
-    checkConnectionStatus();
+    checkStatus();
   }, []);
 
-  const checkConnectionStatus = async () => {
+  const checkStatus = async () => {
     try {
-      const response = await axios.get('/api/connection/status');
-      setConnected(response.data.connected);
-      if (response.data.connected) {
-        setConnectionInfo({ instance: response.data.instance });
+      const [llmStatus, connectionStatus] = await Promise.all([
+        axios.get('/api/llm/status'),
+        axios.get('/api/connection/status')
+      ]);
+      
+      const isSetup = llmStatus.data.configured && connectionStatus.data.connected;
+      setSetupComplete(isSetup);
+      
+      if (connectionStatus.data.connected) {
+        setConnectionInfo({ instance: connectionStatus.data.instance });
       }
     } catch (error) {
-      console.error('Error checking connection:', error);
-    }
-  };
-
-  const handleConnect = async (config) => {
-    setLoading(true);
-    try {
-      const response = await axios.post('/api/connect', config);
-      setConnected(true);
-      setConnectionInfo({ instance: config.instance });
-      return { success: true, message: response.data.message };
-    } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.detail || 'Connection failed' 
-      };
+      console.error('Error checking status:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSetupComplete = (config) => {
+    setSetupComplete(true);
+    setConnectionInfo({ instance: config.servicenow.instance });
   };
 
   const handleAnalysis = (result) => {
     setAnalysisResult(result);
     setActiveTab('results');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 text-primary-600 animate-spin mx-auto mb-4" />
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!setupComplete) {
+    return <SetupWizard onComplete={handleSetupComplete} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -71,7 +82,7 @@ function App() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              {connected && connectionInfo && (
+              {connectionInfo && (
                 <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
                   <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-sm font-medium text-green-700">
@@ -85,11 +96,7 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!connected ? (
-          <div className="max-w-2xl mx-auto">
-            <ConnectionPanel onConnect={handleConnect} loading={loading} />
-          </div>
-        ) : (
+        {setupComplete && (
           <div className="space-y-6">
             <div className="bg-white rounded-lg shadow-sm border border-slate-200">
               <div className="border-b border-slate-200">

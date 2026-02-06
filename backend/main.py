@@ -31,6 +31,11 @@ llm_service = LLMService()
 diagram_generator = DiagramGenerator()
 web_search_service = WebSearchService()
 
+class LLMConfig(BaseModel):
+    provider: str
+    api_key: str
+    model: Optional[str] = None
+
 class ConnectionConfig(BaseModel):
     instance: str
     username: str
@@ -52,6 +57,35 @@ class AnalysisResponse(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "ServiceNow Architecture Diagram Generator API", "status": "running"}
+
+@app.post("/api/llm/configure")
+async def configure_llm(config: LLMConfig):
+    global llm_service
+    try:
+        llm_service = LLMService()
+        llm_service.configure(
+            provider=config.provider,
+            api_key=config.api_key,
+            model=config.model
+        )
+        
+        if llm_service.is_configured():
+            return {
+                "status": "configured",
+                "message": f"Successfully configured {config.provider}",
+                "provider": config.provider
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to configure LLM")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Configuration error: {str(e)}")
+
+@app.get("/api/llm/status")
+async def get_llm_status():
+    return {
+        "configured": llm_service.is_configured(),
+        "provider": llm_service.get_provider() if llm_service.is_configured() else None
+    }
 
 @app.post("/api/connect")
 async def connect_servicenow(config: ConnectionConfig):

@@ -15,35 +15,84 @@ logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
-        self.openai_model = None
-        self.anthropic_model = None
+        self.active_model = None
+        self.provider = None
+        self.model_name = None
         
         if settings.openai_api_key:
             try:
-                self.openai_model = ChatOpenAI(
-                    model="gpt-4-turbo-preview",
-                    temperature=0.7,
-                    api_key=settings.openai_api_key
-                )
-                logger.info("OpenAI model initialized")
+                self.configure("openai", settings.openai_api_key)
             except Exception as e:
-                logger.warning(f"Could not initialize OpenAI: {str(e)}")
+                logger.warning(f"Could not initialize OpenAI from config: {str(e)}")
         
-        if settings.anthropic_api_key:
+        if settings.anthropic_api_key and not self.active_model:
             try:
-                self.anthropic_model = ChatAnthropic(
-                    model="claude-3-opus-20240229",
-                    temperature=0.7,
-                    api_key=settings.anthropic_api_key
-                )
-                logger.info("Anthropic model initialized")
+                self.configure("anthropic", settings.anthropic_api_key)
             except Exception as e:
-                logger.warning(f"Could not initialize Anthropic: {str(e)}")
+                logger.warning(f"Could not initialize Anthropic from config: {str(e)}")
+    
+    def configure(self, provider: str, api_key: str, model: Optional[str] = None):
+        provider_lower = provider.lower()
         
-        self.active_model = self.openai_model or self.anthropic_model
+        try:
+            if provider_lower == "openai":
+                model_name = model or "gpt-4-turbo-preview"
+                self.active_model = ChatOpenAI(
+                    model=model_name,
+                    temperature=0.7,
+                    api_key=api_key
+                )
+                self.provider = "openai"
+                self.model_name = model_name
+                logger.info(f"OpenAI model configured: {model_name}")
+                
+            elif provider_lower == "anthropic":
+                model_name = model or "claude-3-5-sonnet-20241022"
+                self.active_model = ChatAnthropic(
+                    model=model_name,
+                    temperature=0.7,
+                    api_key=api_key
+                )
+                self.provider = "anthropic"
+                self.model_name = model_name
+                logger.info(f"Anthropic model configured: {model_name}")
+                
+            elif provider_lower == "google":
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                model_name = model or "gemini-pro"
+                self.active_model = ChatGoogleGenerativeAI(
+                    model=model_name,
+                    temperature=0.7,
+                    google_api_key=api_key
+                )
+                self.provider = "google"
+                self.model_name = model_name
+                logger.info(f"Google model configured: {model_name}")
+                
+            elif provider_lower == "azure":
+                from langchain_openai import AzureChatOpenAI
+                model_name = model or "gpt-4"
+                self.active_model = AzureChatOpenAI(
+                    azure_deployment=model_name,
+                    temperature=0.7,
+                    api_key=api_key
+                )
+                self.provider = "azure"
+                self.model_name = model_name
+                logger.info(f"Azure OpenAI model configured: {model_name}")
+                
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
+                
+        except Exception as e:
+            logger.error(f"Error configuring {provider}: {str(e)}")
+            raise
     
     def is_configured(self) -> bool:
         return self.active_model is not None
+    
+    def get_provider(self) -> Optional[str]:
+        return self.provider
     
     def analyze_architecture(
         self,

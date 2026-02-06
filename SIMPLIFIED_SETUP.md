@@ -1,0 +1,93 @@
+# Simplified Setup Guide
+
+No more config file drama! Everything is configured through the web interface.
+
+## What You Need
+
+1. **ServiceNow JDBC Driver** - Place the JAR file in `backend/jdbc/`
+2. **An LLM API Key** - From OpenAI, Anthropic, Google, or Azure
+
+That's it!
+
+## Setup Steps
+
+### 1. Place JDBC Driver
+
+```bash
+mkdir -p backend/jdbc
+cp /path/to/servicenow-jdbc.jar backend/jdbc/
+```
+
+### 2. Start Backend
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+### 3. Start Frontend (New Terminal)
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+### 4. Open Browser
+
+Go to: **http://localhost:3000**
+
+You'll see a setup wizard with 2 steps:
+
+#### Step 1: Configure AI Model
+- Choose your LLM provider (OpenAI, Anthropic, Google Gemini, or Azure)
+- Enter your API key
+- Optionally select a specific model
+- Click Continue
+
+#### Step 2: Connect to ServiceNow
+- Enter your instance name (e.g., "dev12345")
+- Enter your username
+- Enter your password
+- Optionally specify JDBC path
+- Click Connect
+
+Done! The app will load and you're ready to generate architectures.
+
+## Supported LLM Providers
+
+### OpenAI
+- **Models**: GPT-4 Turbo, GPT-4, GPT-3.5 Turbo
+- **API Key**: Get from https://platform.openai.com/api-keys
+
+### Anthropic Claude
+- **Models**: Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Sonnet
+- **API Key**: Get from https://console.anthropic.com/
+
+### Google Gemini
+- **Models**: Gemini Pro, Gemini 1.5 Pro
+- **API Key**: Get from https://makersuite.google.com/app/apikey
+
+### Azure OpenAI
+- **Models**: GPT-4, GPT-3.5 Turbo
+- **API Key**: From your Azure OpenAI resource
+
+## No Config Files Needed!
+
+Everything is entered through the UI:
+- ✅ LLM credentials
+- ✅ ServiceNow credentials
+- ✅ All configuration
+
+The only file you need is the JDBC driver JAR.
+
+## Switching Providers
+
+Want to try a different LLM? Just refresh the page and go through the wizard again with different credentials.
+
+## That's It!
+
+Two terminals, one browser, zero config files to edit.
