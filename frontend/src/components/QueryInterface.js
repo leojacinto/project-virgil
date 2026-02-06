@@ -1,0 +1,152 @@
+import React, { useState } from 'react';
+import { Send, Loader2, Search, Globe, FileText } from 'lucide-react';
+import axios from 'axios';
+
+function QueryInterface({ onAnalysisComplete }) {
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [options, setOptions] = useState({
+    include_web_search: true,
+    include_pricing: true,
+    diagram_format: 'png'
+  });
+
+  const exampleQueries = [
+    "How do I address a customer service workflow requirement?",
+    "Architect a master data management solution that writes to SAP",
+    "Design an ITSM solution with incident and change management",
+    "Create an integration architecture for Salesforce and ServiceNow",
+    "Build a knowledge management system with AI-powered search"
+  ];
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+
+    setLoading(true);
+    try {
+      const response = await axios.post('/api/analyze', {
+        query: query.trim(),
+        include_web_search: options.include_web_search,
+        include_pricing: options.include_pricing,
+        diagram_format: options.diagram_format
+      });
+
+      onAnalysisComplete(response.data);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      alert(error.response?.data?.detail || 'Analysis failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExampleClick = (example) => {
+    setQuery(example);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-4">
+          Describe Your Architecture Requirements
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <textarea
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="E.g., 'How do I address a customer service workflow requirement?' or 'Architect a master data management solution that writes to SAP for me.'"
+              rows={6}
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all resize-none"
+              disabled={loading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label className="flex items-center space-x-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={options.include_web_search}
+                onChange={(e) => setOptions({ ...options, include_web_search: e.target.checked })}
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
+              />
+              <div className="flex items-center space-x-2">
+                <Globe className="h-4 w-4 text-slate-600" />
+                <span className="text-sm font-medium text-slate-700">Web Search</span>
+              </div>
+            </label>
+
+            <label className="flex items-center space-x-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={options.include_pricing}
+                onChange={(e) => setOptions({ ...options, include_pricing: e.target.checked })}
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-slate-300 rounded"
+              />
+              <div className="flex items-center space-x-2">
+                <FileText className="h-4 w-4 text-slate-600" />
+                <span className="text-sm font-medium text-slate-700">Use Documents</span>
+              </div>
+            </label>
+
+            <div className="p-4 border border-slate-200 rounded-lg">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Diagram Format
+              </label>
+              <select
+                value={options.diagram_format}
+                onChange={(e) => setOptions({ ...options, diagram_format: e.target.value })}
+                className="w-full px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-sm"
+              >
+                <option value="png">PNG</option>
+                <option value="svg">SVG</option>
+                <option value="pdf">PDF</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !query.trim()}
+            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span>Analyzing Architecture...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-5 w-5" />
+                <span>Generate Architecture</span>
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center space-x-2">
+          <Search className="h-4 w-4" />
+          <span>Example Queries</span>
+        </h4>
+        <div className="grid grid-cols-1 gap-2">
+          {exampleQueries.map((example, index) => (
+            <button
+              key={index}
+              onClick={() => handleExampleClick(example)}
+              disabled={loading}
+              className="text-left px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default QueryInterface;
