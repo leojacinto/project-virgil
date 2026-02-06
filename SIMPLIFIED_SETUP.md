@@ -18,27 +18,37 @@ mkdir -p backend/jdbc
 cp /path/to/servicenow-jdbc.jar backend/jdbc/
 ```
 
-### 2. Start Backend
+### 2. Start the Application
 
+**Option A: Single Command (Recommended)**
 ```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+./start.sh
 ```
 
-### 3. Start Frontend (New Terminal)
+This starts both backend and frontend in one terminal!
 
+**Option B: Separate Terminals**
+
+Terminal 1 - Backend:
 ```bash
-cd frontend
-npm install
-npm start
+./start_backend.sh
 ```
 
-### 4. Open Browser
+Terminal 2 - Frontend:
+```bash
+./start_frontend.sh
+```
+
+### 3. Open Browser
 
 Go to: **http://localhost:3000**
+
+The startup scripts automatically:
+- ✅ Upgrade pip
+- ✅ Install all dependencies
+- ✅ Handle slow connections with retries
+- ✅ Check for JDBC driver
+- ✅ Start both servers
 
 You'll see a setup wizard with 2 steps:
 
