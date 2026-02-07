@@ -20,19 +20,27 @@ function App() {
 
   const checkStatus = async () => {
     try {
-      const [llmStatus, connectionStatus] = await Promise.all([
-        axios.get('/api/llm/status'),
-        axios.get('/api/connection/status')
-      ]);
+      // First check if backend is healthy
+      const healthCheck = await axios.get('/api/health');
       
-      const isSetup = llmStatus.data.configured && connectionStatus.data.connected;
-      setSetupComplete(isSetup);
-      
-      if (connectionStatus.data.connected) {
-        setConnectionInfo({ instance: connectionStatus.data.instance });
+      if (healthCheck.data.status === 'healthy') {
+        const [llmStatus, connectionStatus] = await Promise.all([
+          axios.get('/api/llm/status'),
+          axios.get('/api/connection/status')
+        ]);
+        
+        const isSetup = llmStatus.data.configured && connectionStatus.data.connected;
+        setSetupComplete(isSetup);
+        
+        if (connectionStatus.data.connected) {
+          setConnectionInfo({ instance: connectionStatus.data.instance });
+        }
       }
     } catch (error) {
-      console.error('Error checking status:', error);
+      console.error('Backend not ready yet:', error);
+      // Retry after a delay if backend isn't ready
+      setTimeout(checkStatus, 2000);
+      return;
     } finally {
       setLoading(false);
     }
@@ -53,7 +61,8 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-primary-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading...</p>
+          <p className="text-slate-600 font-medium">Waiting for backend server...</p>
+          <p className="text-slate-500 text-sm mt-2">Installing dependencies if needed</p>
         </div>
       </div>
     );

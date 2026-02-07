@@ -26,8 +26,24 @@ echo "----------------------------"
 ./start_backend.sh &
 BACKEND_PID=$!
 
-# Wait a bit for backend to start
-sleep 3
+# Wait for backend to be ready
+echo ""
+echo "⏳ Waiting for backend to be ready..."
+RETRY_COUNT=0
+MAX_RETRIES=60
+
+until curl -s http://localhost:8000/api/health > /dev/null 2>&1; do
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+        echo "❌ Backend failed to start after ${MAX_RETRIES} seconds"
+        kill $BACKEND_PID 2>/dev/null
+        exit 1
+    fi
+    echo "   Still installing dependencies... ($RETRY_COUNT/${MAX_RETRIES}s)"
+    sleep 1
+done
+
+echo "✅ Backend is ready!"
 
 echo ""
 echo "🎨 Starting Frontend Server..."
