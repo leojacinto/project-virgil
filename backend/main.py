@@ -162,6 +162,43 @@ async def get_components():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching components: {str(e)}")
 
+@app.get("/api/servicenow/instance-summary")
+async def get_instance_summary():
+    """Get comprehensive instance data using SN Utils REST API"""
+    if not servicenow_connector or not servicenow_connector.is_connected():
+        raise HTTPException(status_code=400, detail="Not connected to ServiceNow")
+    
+    try:
+        from services.sn_utils_service import SNUtilsService
+        
+        # Use SN Utils for comprehensive REST API data
+        sn_utils = SNUtilsService(
+            servicenow_connector.instance,
+            servicenow_connector.username,
+            servicenow_connector.password
+        )
+        
+        instance_summary = sn_utils.get_instance_summary()
+        
+        # Also get JDBC metadata for structural data
+        jdbc_metadata = servicenow_connector.get_instance_metadata()
+        
+        # Combine both data sources
+        return {
+            "instance": instance_summary.get('instance'),
+            "applications": instance_summary.get('applications', []),
+            "key_capabilities": instance_summary.get('key_capabilities', {}),
+            "jdbc_metadata": {
+                "relationships": len(jdbc_metadata.get('relationships', [])),
+                "plugins": len(jdbc_metadata.get('plugins', [])),
+                "usage_stats": jdbc_metadata.get('usage_stats', []),
+                "custom_tables": jdbc_metadata.get('custom_tables', [])
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error fetching instance summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching instance summary: {str(e)}")
+
 @app.post("/api/upload")
 async def upload_document(file: UploadFile = File(...)):
     try:
