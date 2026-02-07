@@ -272,6 +272,9 @@ async def analyze_architecture(request: ArchitectureRequest):
     except HTTPException:
         raise
     except Exception as e:
+        import traceback
+        error_detail = f"{str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        logger.error(f"Analysis failed with error: {error_detail}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Cleanup task tracking

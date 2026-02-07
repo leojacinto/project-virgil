@@ -223,7 +223,9 @@ Format your response as JSON with the following structure:
             
             return result
         except Exception as e:
-            logger.error(f"Error in LLM analysis: {str(e)}")
+            import traceback
+            logger.error(f"Architecture analysis failed: {str(e)}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
     
     def _summarize_servicenow_data(self, data: Dict) -> str:
@@ -287,7 +289,9 @@ Return only a JSON array of question strings."""
 
         try:
             messages = [HumanMessage(content=prompt)]
-            response = self.active_model.invoke(messages)
+            logger.info(f"Sending prompt to {self.provider} ({len(prompt)} chars)")
+            response = self.active_model.invoke(prompt)
+            logger.info(f"Received response from {self.provider} ({len(response.content)} chars)")
             
             response_text = response.content
             if "```json" in response_text:
@@ -295,7 +299,12 @@ Return only a JSON array of question strings."""
                 json_end = response_text.find("```", json_start)
                 response_text = response_text[json_start:json_end].strip()
             
-            questions = json.loads(response_text)
+            try:
+                questions = json.loads(response_text)
+            except json.JSONDecodeError:
+                logger.error(f"Failed to parse JSON response from {self.provider}: {response_text}")
+                questions = []
+            
             return questions if isinstance(questions, list) else []
         except Exception as e:
             logger.error(f"Error generating follow-up questions: {str(e)}")
