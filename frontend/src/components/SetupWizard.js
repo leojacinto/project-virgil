@@ -30,13 +30,14 @@ function SetupWizard({ onComplete }) {
     { 
       id: 'anthropic', 
       name: 'Anthropic Claude', 
-      models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229'],
-      defaultModel: 'claude-3-5-sonnet-20241022'
+      models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
+      defaultModel: 'claude-3-sonnet-20240229'
     },
     { 
       id: 'google', 
       name: 'Google Gemini', 
-      models: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-pro'],
+      models: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-pro', 'gemini-2.5-pro'],
+      defaultModel: 'gemini-2.5-pro'
       defaultModel: 'gemini-2.5-flash'
     },
     { 

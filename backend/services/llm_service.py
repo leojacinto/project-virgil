@@ -10,6 +10,7 @@ from langchain.schema import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
 from config import settings
+from services.servicenow_ontology import ServiceNowOntology
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class LLMService:
         self.active_model = None
         self.provider = None
         self.model_name = None
+        self.ontology = ServiceNowOntology()
         
         if settings.openai_api_key:
             try:
@@ -146,9 +148,6 @@ class LLMService:
         system_prompt = """You are an expert ServiceNow technical architect and solution consultant with deep knowledge of:
 - ServiceNow platform architecture and best practices
 - Integration patterns and data flows
-- Master data management and enterprise architecture
-- Customer service workflows and ITSM processes
-- ServiceNow product capabilities and modules
 
 Your task is to analyze the user's requirements and provide:
 1. A comprehensive architectural analysis
@@ -256,6 +255,36 @@ graph TD
                 }
                 
                 logger.info("Successfully generated structured response")
+                
+                # Validate architecture against ServiceNow domain knowledge
+                if "architecture_components" in result or response.architecture_components:
+                    arch_components = result.get("architecture_components", [])
+                    if hasattr(response, 'architecture_components'):
+                        # Convert Pydantic models if needed
+                        arch_components = [
+                            {
+                                "name": comp.name if hasattr(comp, 'name') else comp.get("name", ""),
+                                "type": comp.type if hasattr(comp, 'type') else comp.get("type", ""),
+                                "connections": comp.connections if hasattr(comp, 'connections') else comp.get("connections", [])
+                            }
+                            for comp in (response.architecture_components if hasattr(response, 'architecture_components') else [])
+                        ]
+                    
+                    validation = self.ontology.validate_architecture(arch_components)
+                    
+                    if not validation["valid"]:
+                        logger.warning(f"Architecture validation found errors: {validation['errors']}")
+                        # Add validation warnings to recommendations
+                        result["recommendations"].insert(0, {
+                            "title": "Architecture Validation Issues",
+                            "description": "The following architectural issues were detected:\n" + 
+                                         "\n".join(f"- {error}" for error in validation["errors"]),
+                            "servicenow_components": [],
+                            "priority": "high"
+                        })
+                    
+                    if validation["warnings"]:
+                        logger.info(f"Architecture validation warnings: {validation['warnings']}")
                 
             except Exception as e:
                 # Fallback to regular response if structured output not supported
