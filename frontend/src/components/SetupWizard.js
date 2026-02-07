@@ -298,7 +298,7 @@ function SetupWizard({ onComplete }) {
                     id="jdbc_path"
                     value={servicenowConfig.jdbc_path}
                     onChange={(e) => setServicenowConfig({ ...servicenowConfig, jdbc_path: e.target.value })}
-                    placeholder="./jdbc/servicenow-jdbc.jar"
+                    placeholder="Leave empty to use built-in driver"
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
                   />
                   <p className="mt-1 text-xs text-slate-500">

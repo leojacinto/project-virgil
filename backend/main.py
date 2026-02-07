@@ -91,7 +91,7 @@ async def get_llm_status():
 async def connect_servicenow(config: ConnectionConfig):
     global servicenow_connector
     try:
-        jdbc_path = config.jdbc_path or settings.servicenow_jdbc_path
+        jdbc_path = config.jdbc_path if config.jdbc_path else settings.servicenow_jdbc_path
         servicenow_connector = ServiceNowConnector(
             instance=config.instance,
             username=config.username,
