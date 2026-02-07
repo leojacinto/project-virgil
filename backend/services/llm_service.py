@@ -319,61 +319,61 @@ Remember:
     D --> C"""
                         result["mermaid_diagram"] = mermaid
                     else:
-                    # Save original Mermaid to file for debugging
-                    mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                    with open(mermaid_file, 'w') as f:
-                        f.write(mermaid)
-                    logger.info(f"Original Mermaid diagram saved to: {mermaid_file}")
-                    logger.info(f"Original Mermaid diagram:\n{mermaid}")
-                    
-                    # Fix common issues
-                    fixed_mermaid = mermaid.strip()
-                    
-                    # Remove any markdown code blocks first
-                    if "```" in fixed_mermaid:
-                        fixed_mermaid = fixed_mermaid.replace("```mermaid", "").replace("```", "").strip()
-                    
-                    # Ensure it starts with graph TD
-                    if not fixed_mermaid.startswith("graph"):
-                        fixed_mermaid = "graph TD\n" + fixed_mermaid
-                    
-                    # Fix common special character issues
-                    lines = fixed_mermaid.split("\n")
-                    cleaned_lines = []
-                    for line in lines:
-                        # Skip empty lines
-                        if not line.strip():
-                            continue
-                        # Remove special chars from labels
-                        if "[" in line and "]" in line:
-                            # Extract label and clean it
-                            parts = line.split("[")
-                            if len(parts) > 1:
-                                label_part = parts[1].split("]")[0]
-                                # Remove problematic characters
-                                cleaned_label = label_part.replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "")
-                                line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
-                        cleaned_lines.append(line)
-                    
-                    fixed_mermaid = "\n".join(cleaned_lines)
-                    
-                    # Validate it has at least one arrow
-                    if "-->" not in fixed_mermaid and "---" not in fixed_mermaid:
-                        logger.error("Fixed Mermaid has no arrows, using fallback")
-                        fixed_mermaid = """graph TD
+                        # Save original Mermaid to file for debugging
+                        mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        with open(mermaid_file, 'w') as f:
+                            f.write(mermaid)
+                        logger.info(f"Original Mermaid diagram saved to: {mermaid_file}")
+                        logger.info(f"Original Mermaid diagram:\n{mermaid}")
+                        
+                        # Fix common issues
+                        fixed_mermaid = mermaid.strip()
+                        
+                        # Remove any markdown code blocks first
+                        if "```" in fixed_mermaid:
+                            fixed_mermaid = fixed_mermaid.replace("```mermaid", "").replace("```", "").strip()
+                        
+                        # Ensure it starts with graph TD
+                        if not fixed_mermaid.startswith("graph"):
+                            fixed_mermaid = "graph TD\n" + fixed_mermaid
+                        
+                        # Fix common special character issues
+                        lines = fixed_mermaid.split("\n")
+                        cleaned_lines = []
+                        for line in lines:
+                            # Skip empty lines
+                            if not line.strip():
+                                continue
+                            # Remove special chars from labels
+                            if "[" in line and "]" in line:
+                                # Extract label and clean it
+                                parts = line.split("[")
+                                if len(parts) > 1:
+                                    label_part = parts[1].split("]")[0]
+                                    # Remove problematic characters
+                                    cleaned_label = label_part.replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "")
+                                    line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
+                            cleaned_lines.append(line)
+                        
+                        fixed_mermaid = "\n".join(cleaned_lines)
+                        
+                        # Validate it has at least one arrow
+                        if "-->" not in fixed_mermaid and "---" not in fixed_mermaid:
+                            logger.error("Fixed Mermaid has no arrows, using fallback")
+                            fixed_mermaid = """graph TD
     A[User Requirements] --> B[ServiceNow Platform]
     B --> C[CMDB]
     B --> D[Applications]
     D --> C"""
-                    
-                    if fixed_mermaid != mermaid:
-                        mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                        with open(mermaid_fixed_file, 'w') as f:
-                            f.write(fixed_mermaid)
-                        logger.info(f"Fixed Mermaid diagram saved to: {mermaid_fixed_file}")
-                        logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
-                    
-                    result["mermaid_diagram"] = fixed_mermaid
+                        
+                        if fixed_mermaid != mermaid:
+                            mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                            with open(mermaid_fixed_file, 'w') as f:
+                                f.write(fixed_mermaid)
+                            logger.info(f"Fixed Mermaid diagram saved to: {mermaid_fixed_file}")
+                            logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
+                        
+                        result["mermaid_diagram"] = fixed_mermaid
                 
                 except Exception as mermaid_error:
                     logger.error(f"Mermaid processing failed: {str(mermaid_error)}")
