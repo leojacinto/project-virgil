@@ -7,8 +7,7 @@ function QueryInterface({ onAnalysisComplete }) {
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState({
     include_web_search: true,
-    include_pricing: true,
-    diagram_format: 'png'
+    include_pricing: true
   });
   const abortControllerRef = useRef(null);
   const taskIdRef = useRef(null);
@@ -33,8 +32,7 @@ function QueryInterface({ onAnalysisComplete }) {
       const response = await axios.post('/api/analyze', {
         query: query.trim(),
         include_web_search: options.include_web_search,
-        include_pricing: options.include_pricing,
-        diagram_format: options.diagram_format
+        include_pricing: options.include_pricing
       }, {
         signal: abortControllerRef.current.signal
       });
@@ -101,7 +99,7 @@ function QueryInterface({ onAnalysisComplete }) {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="flex items-center space-x-3 p-4 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
               <input
                 type="checkbox"
@@ -127,21 +125,6 @@ function QueryInterface({ onAnalysisComplete }) {
                 <span className="text-sm font-medium text-slate-700">Use Documents</span>
               </div>
             </label>
-
-            <div className="p-4 border border-slate-200 rounded-lg">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Diagram Format
-              </label>
-              <select
-                value={options.diagram_format}
-                onChange={(e) => setOptions({ ...options, diagram_format: e.target.value })}
-                className="w-full px-3 py-1.5 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none text-sm"
-              >
-                <option value="png">PNG</option>
-                <option value="svg">SVG</option>
-                <option value="pdf">PDF</option>
-              </select>
-            </div>
           </div>
 
           <div className="flex space-x-3">

@@ -51,12 +51,11 @@ class ArchitectureRequest(BaseModel):
     query: str
     include_web_search: bool = True
     include_pricing: bool = True
-    diagram_format: str = "png"
 
 class AnalysisResponse(BaseModel):
     analysis: str
     recommendations: List[dict]
-    diagram_path: Optional[str] = None
+    mermaid_diagram: Optional[str] = None
     metadata: dict
 
 @app.get("/")
@@ -246,18 +245,10 @@ async def analyze_architecture(request: ArchitectureRequest):
             web_context=web_context
         )
         
-        check_cancelled()
-        diagram_path = None
-        if analysis.get("architecture_components"):
-            diagram_path = diagram_generator.generate_diagram(
-                components=analysis["architecture_components"],
-                format=request.diagram_format
-            )
-        
         return AnalysisResponse(
             analysis=analysis["analysis"],
             recommendations=analysis["recommendations"],
-            diagram_path=diagram_path,
+            mermaid_diagram=analysis.get("mermaid_diagram"),
             metadata={
                 "timestamp": datetime.now().isoformat(),
                 "query": request.query,
