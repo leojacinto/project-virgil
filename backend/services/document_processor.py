@@ -8,7 +8,6 @@ import PyPDF2
 from docx import Document
 import pandas as pd
 import chromadb
-from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
 
 from config import settings
@@ -21,10 +20,7 @@ class DocumentProcessor:
         self.vector_store_path = settings.vector_db_path
         self.upload_dir = settings.upload_dir
         
-        self.chroma_client = chromadb.Client(Settings(
-            chroma_db_impl="duckdb+parquet",
-            persist_directory=self.vector_store_path
-        ))
+        self.chroma_client = chromadb.PersistentClient(path=self.vector_store_path)
         
         try:
             self.collection = self.chroma_client.get_or_create_collection(
