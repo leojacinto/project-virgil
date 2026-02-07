@@ -282,6 +282,7 @@ CRITICAL MERMAID REQUIREMENTS:
 - MUST start with "graph TD" on first line
 - MUST use --> arrows to connect nodes (e.g., A --> B)
 - Node format: ID[Label Text] where ID is a single letter or short identifier
+- Subgraph names MUST NOT be quoted (use "subgraph Users" not "subgraph \"1. Users\"")
 - Example valid diagram:
   graph TD
       A[User Portal] --> B[ServiceNow CSM]
@@ -292,7 +293,7 @@ CRITICAL MERMAID REQUIREMENTS:
 MERMAID DIAGRAM GUIDELINES FOR CLARITY:
 - Focus on primary architectural flows: User → Portal → Application → Platform → Data
 - Prioritize key relationships: "runs on", "creates", "resolves using"
-- Use subgraphs to organize components by layer
+- Use subgraphs to organize components by layer (e.g., "subgraph Users" not "subgraph \"1. Users\"")
 - Keep diagrams readable - avoid excessive connections between every component
 
 Priority levels mean:
