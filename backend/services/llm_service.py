@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from config import settings
 from services.servicenow_ontology import ServiceNowOntology
+from services.architecture_validator import ArchitectureValidator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class LLMService:
         self.provider = None
         self.model_name = None
         self.ontology = ServiceNowOntology()
+        self.validator = ArchitectureValidator(self.ontology)
         
         if settings.openai_api_key:
             try:
@@ -169,6 +171,7 @@ class LLMService:
         
         # Query instance metadata using SN Utils (if credentials available)
         instance_summary = None
+        jdbc_metadata = None
         try:
             from config import settings
             if settings.servicenow_instance and settings.servicenow_username and settings.servicenow_password:
@@ -182,9 +185,29 @@ class LLMService:
                 
                 instance_summary = sn_utils.get_instance_summary()
                 logger.info(f"Instance summary retrieved: {len(instance_summary.get('applications', []))} apps")
+                
+                # Get JDBC metadata if connector is available
+                try:
+                    from services.servicenow_connector import ServiceNowConnector
+                    connector = ServiceNowConnector(
+                        settings.servicenow_instance,
+                        settings.servicenow_username,
+                        settings.servicenow_password,
+                        settings.servicenow_jdbc_path
+                    )
+                    connector.connect()
+                    jdbc_metadata = connector.get_instance_metadata()
+                    connector.close()
+                    logger.info(f"JDBC metadata retrieved: {len(jdbc_metadata.get('relationships', []))} relationships, "
+                               f"{len(jdbc_metadata.get('plugins', []))} plugins, "
+                               f"{len(jdbc_metadata.get('usage_stats', []))} usage stats")
+                except Exception as jdbc_error:
+                    logger.warning(f"Could not retrieve JDBC metadata: {str(jdbc_error)}")
+                    jdbc_metadata = None
         except Exception as e:
             logger.warning(f"Could not retrieve instance summary: {str(e)}")
             instance_summary = None
+            jdbc_metadata = None
         
         # Get instance-aware recommendations
         installed_apps = servicenow_data.get("applications", [])
@@ -225,6 +248,22 @@ CURRENT INSTANCE STATE (from REST API):
 When providing recommendations, consider what's ALREADY INSTALLED vs. what's NEEDED for the proposed architecture.
 Highlight gaps and provide specific migration steps.
 ''' if instance_summary else ''}
+
+{f'''
+INSTANCE STRUCTURAL METADATA (from JDBC):
+- Active Plugins: {len(jdbc_metadata.get('plugins', []))}
+- Table Relationships: {len(jdbc_metadata.get('relationships', []))}
+- Custom Tables: {len(jdbc_metadata.get('custom_tables', []))}
+- Usage Statistics Available: {'Yes' if jdbc_metadata.get('usage_stats') else 'No'}
+
+Key Usage Insights:
+{chr(10).join(f"  * {stat['table_name']}: {stat['row_count']} records" for stat in jdbc_metadata.get('usage_stats', [])[:5]) if jdbc_metadata and jdbc_metadata.get('usage_stats') else '  * No usage data available'}
+
+Customizations Detected:
+{chr(10).join(f"  * {table['name']} ({table.get('label', 'N/A')})" for table in jdbc_metadata.get('custom_tables', [])[:5]) if jdbc_metadata and jdbc_metadata.get('custom_tables') else '  * No custom tables detected'}
+
+Use this structural data to provide specific, instance-aware recommendations.
+''' if jdbc_metadata else ''}
 
 Your task is to analyze the user's requirements and provide:
 1. A comprehensive architectural analysis
@@ -458,13 +497,32 @@ Remember:
                         
                         result["mermaid_diagram"] = fixed_mermaid
                 
-                except Exception as mermaid_error:
-                    logger.error(f"Mermaid processing failed: {str(mermaid_error)}")
-                    # Use simple fallback if processing crashes
-                    result["mermaid_diagram"] = """graph TD
-    A[User Requirements] --> B[ServiceNow Platform]
-    B --> C[CMDB]
-    B --> D[Applications]
+                # Validate the Mermaid diagram against ontology rules
+                try:
+                    is_valid, validation_errors, _ = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                    
+                    if not is_valid:
+                        logger.warning(f"Mermaid validation found {len(validation_errors)} issues")
+                        # Add validation warnings to result
+                        if 'validation_warnings' not in result:
+                            result['validation_warnings'] = []
+                        result['validation_warnings'].extend(validation_errors)
+                    else:
+                        logger.info("Mermaid diagram passed validation")
+                    
+                    # Validate recommendations against instance data
+                    if jdbc_metadata:
+                        rec_warnings = self.validator.validate_recommendations(
+                            result.get('recommendations', []),
+                            jdbc_metadata
+                        )
+                        if rec_warnings:
+                            logger.info(f"Recommendation validation found {len(rec_warnings)} warnings")
+                            if 'validation_warnings' not in result:
+                                result['validation_warnings'] = []
+                            result['validation_warnings'].extend(rec_warnings)
+                except Exception as val_error:
+                    logger.error(f"Validation error: {str(val_error)}")
     D --> C"""
                 
                 # Validate architecture against ServiceNow domain knowledge

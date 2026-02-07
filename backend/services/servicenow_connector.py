@@ -165,6 +165,127 @@ class ServiceNowConnector:
             logger.error(f"Could not fetch schema for table {table_name}: {str(e)}")
             return []
     
+    def get_table_relationships(self) -> List[Dict]:
+        """Query sys_db_relationship for table relationships"""
+        try:
+            # Try cmdb_rel_type as alternative if sys_db_relationship doesn't exist
+            query = """
+                SELECT name, parent_descriptor, child_descriptor
+                FROM cmdb_rel_type
+                WHERE active = 'true'
+                ORDER BY name
+                LIMIT 100
+            """
+            results = self.execute_query(query, max_retries=1)
+            logger.info(f"Retrieved {len(results)} table relationships")
+            return results
+        except Exception as e:
+            logger.warning(f"Could not fetch table relationships: {str(e)}")
+            return []
+    
+    def get_installed_plugins(self) -> List[Dict]:
+        """Query sys_plugins for granular plugin activation"""
+        try:
+            query = """
+                SELECT sys_id, name, source, active, version
+                FROM sys_plugins
+                WHERE active = 'true'
+                ORDER BY name
+                LIMIT 100
+            """
+            results = self.execute_query(query, max_retries=1)
+            logger.info(f"Retrieved {len(results)} active plugins")
+            return results
+        except Exception as e:
+            logger.warning(f"Could not fetch plugins: {str(e)}")
+            return []
+    
+    def get_table_usage_stats(self) -> List[Dict]:
+        """Get table row counts to infer what's actually being used"""
+        try:
+            # Query key tables with row counts
+            tables_to_check = [
+                'incident', 'task', 'change_request', 'problem',
+                'cmdb_ci', 'cmdb_ci_server', 'cmdb_ci_service',
+                'sn_customerservice_case', 'customer_account',
+                'sys_user', 'sys_user_group'
+            ]
+            
+            usage_stats = []
+            for table in tables_to_check:
+                try:
+                    query = f"SELECT COUNT(*) as row_count FROM {table}"
+                    result = self.execute_query(query, max_retries=1)
+                    if result:
+                        usage_stats.append({
+                            'table_name': table,
+                            'row_count': result[0].get('row_count', '0')
+                        })
+                except Exception as e:
+                    logger.debug(f"Could not get row count for {table}: {str(e)}")
+                    continue
+            
+            logger.info(f"Retrieved usage stats for {len(usage_stats)} tables")
+            return usage_stats
+        except Exception as e:
+            logger.warning(f"Could not fetch table usage stats: {str(e)}")
+            return []
+    
+    def get_custom_tables(self) -> List[Dict]:
+        """Detect custom tables (not from global scope)"""
+        try:
+            query = """
+                SELECT name, label, sys_package, super_class
+                FROM sys_db_object
+                WHERE sys_package != 'global'
+                AND name NOT LIKE 'sys_%'
+                ORDER BY name
+                LIMIT 50
+            """
+            results = self.execute_query(query, max_retries=1)
+            logger.info(f"Retrieved {len(results)} custom tables")
+            return results
+        except Exception as e:
+            logger.warning(f"Could not fetch custom tables: {str(e)}")
+            return []
+    
+    def get_instance_metadata(self) -> Dict:
+        """Get comprehensive instance metadata for architectural analysis"""
+        metadata = {
+            'relationships': [],
+            'plugins': [],
+            'usage_stats': [],
+            'custom_tables': [],
+            'applications': []
+        }
+        
+        try:
+            logger.info("Gathering comprehensive instance metadata...")
+            
+            # Get table relationships
+            metadata['relationships'] = self.get_table_relationships()
+            
+            # Get installed plugins
+            metadata['plugins'] = self.get_installed_plugins()
+            
+            # Get table usage statistics
+            metadata['usage_stats'] = self.get_table_usage_stats()
+            
+            # Get custom tables
+            metadata['custom_tables'] = self.get_custom_tables()
+            
+            # Get installed applications
+            metadata['applications'] = self.get_installed_applications()
+            
+            logger.info(f"Metadata summary: {len(metadata['relationships'])} relationships, "
+                       f"{len(metadata['plugins'])} plugins, {len(metadata['usage_stats'])} usage stats, "
+                       f"{len(metadata['custom_tables'])} custom tables")
+            
+            return metadata
+        except Exception as e:
+            logger.error(f"Error gathering instance metadata: {str(e)}")
+            return metadata
+    
     def close(self):
         if self.connection:
             try:
