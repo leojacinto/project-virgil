@@ -306,18 +306,19 @@ Remember:
                     })
                 
                 # Fix common Mermaid syntax errors
-                mermaid = result.get("mermaid_diagram", "")
-                
-                if not mermaid or len(mermaid.strip()) < 10:
-                    # Generate a simple fallback diagram
-                    logger.warning("No valid Mermaid diagram from LLM, generating fallback")
-                    mermaid = """graph TD
+                try:
+                    mermaid = result.get("mermaid_diagram", "")
+                    
+                    if not mermaid or len(mermaid.strip()) < 10:
+                        # Generate a simple fallback diagram
+                        logger.warning("No valid Mermaid diagram from LLM, generating fallback")
+                        mermaid = """graph TD
     A[User Requirements] --> B[ServiceNow Platform]
     B --> C[CMDB]
     B --> D[Applications]
     D --> C"""
-                    result["mermaid_diagram"] = mermaid
-                else:
+                        result["mermaid_diagram"] = mermaid
+                    else:
                     # Save original Mermaid to file for debugging
                     mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                     with open(mermaid_file, 'w') as f:
@@ -373,6 +374,15 @@ Remember:
                         logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
                     
                     result["mermaid_diagram"] = fixed_mermaid
+                
+                except Exception as mermaid_error:
+                    logger.error(f"Mermaid processing failed: {str(mermaid_error)}")
+                    # Use simple fallback if processing crashes
+                    result["mermaid_diagram"] = """graph TD
+    A[User Requirements] --> B[ServiceNow Platform]
+    B --> C[CMDB]
+    B --> D[Applications]
+    D --> C"""
                 
                 # Validate architecture against ServiceNow domain knowledge
                 if "architecture_components" in result or response.architecture_components:
