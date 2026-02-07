@@ -220,6 +220,7 @@ Use ONLY these Mermaid elements:
             response_text = response.content
             
             try:
+                # Extract JSON from markdown code blocks
                 if "```json" in response_text:
                     json_start = response_text.find("```json") + 7
                     json_end = response_text.find("```", json_start)
@@ -229,9 +230,32 @@ Use ONLY these Mermaid elements:
                     json_end = response_text.find("```", json_start)
                     response_text = response_text[json_start:json_end].strip()
                 
+                # Try to find JSON object in response
+                if response_text.strip().startswith('{'):
+                    # Find the matching closing brace
+                    brace_count = 0
+                    json_end_idx = 0
+                    for i, char in enumerate(response_text):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                json_end_idx = i + 1
+                                break
+                    if json_end_idx > 0:
+                        response_text = response_text[:json_end_idx]
+                
                 result = json.loads(response_text)
-            except json.JSONDecodeError:
-                logger.warning("Could not parse JSON response, creating structured response")
+                
+                # Ensure mermaid_diagram is present
+                if "mermaid_diagram" not in result:
+                    result["mermaid_diagram"] = None
+                    logger.warning("No mermaid_diagram in LLM response")
+                    
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON parsing failed: {str(e)}")
+                logger.error(f"Response text (first 500 chars): {response_text[:500]}")
                 result = {
                     "analysis": response_text,
                     "recommendations": [
@@ -243,6 +267,7 @@ Use ONLY these Mermaid elements:
                         }
                     ],
                     "architecture_components": [],
+                    "mermaid_diagram": None,
                     "implementation_notes": "See analysis for details"
                 }
             
