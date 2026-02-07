@@ -182,8 +182,16 @@ Format your response as JSON with the following structure:
             "connections": ["connected_component1", "connected_component2"]
         }}
     ],
+    "mermaid_diagram": "mermaid diagram code showing the architecture flow",
     "implementation_notes": "key implementation considerations"
-}}"""
+}}
+
+Priority levels mean:
+- HIGH: Critical for core functionality, must implement first
+- MEDIUM: Important for complete solution, implement after high priority
+- LOW: Nice-to-have enhancements, implement if time/budget allows
+
+For mermaid_diagram, create a flowchart or graph showing the architecture components and their relationships."""
 
         try:
             messages = [

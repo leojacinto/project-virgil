@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, ExternalLink, ChevronDown, ChevronUp, CheckCircle, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import mermaid from 'mermaid';
 
 function ResultsDisplay({ result }) {
   const [expandedSections, setExpandedSections] = useState({
+    diagram: true,
     analysis: true,
     recommendations: true,
     metadata: false
   });
+
+  useEffect(() => {
+    mermaid.initialize({ 
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true }
+    });
+    mermaid.contentLoaded();
+  }, [result]);
 
   const toggleSection = (section) => {
     setExpandedSections({
@@ -37,27 +49,30 @@ function ResultsDisplay({ result }) {
 
   return (
     <div className="space-y-6">
-      {result.diagram_path && (
-        <div className="bg-white border border-slate-200 rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
+      {result.mermaid_diagram && (
+        <div className="bg-white border border-slate-200 rounded-lg">
+          <button
+            onClick={() => toggleSection('diagram')}
+            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+          >
             <h3 className="text-lg font-semibold text-slate-900">
               Architecture Diagram
             </h3>
-            <button
-              onClick={handleDownloadDiagram}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              <span>Download</span>
-            </button>
-          </div>
-          <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-            <img
-              src={`/api/diagrams/${result.diagram_path}`}
-              alt="Architecture Diagram"
-              className="max-w-full h-auto mx-auto"
-            />
-          </div>
+            {expandedSections.diagram ? (
+              <ChevronUp className="h-5 w-5 text-slate-500" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-slate-500" />
+            )}
+          </button>
+          {expandedSections.diagram && (
+            <div className="px-6 pb-6 border-t border-slate-200">
+              <div className="bg-slate-50 rounded-lg p-6 mt-4 overflow-x-auto">
+                <div className="mermaid">
+                  {result.mermaid_diagram}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -117,6 +132,13 @@ function ResultsDisplay({ result }) {
                           className={`px-2 py-1 text-xs font-medium rounded border ${getPriorityColor(
                             rec.priority
                           )}`}
+                          title={
+                            rec.priority.toLowerCase() === 'high' 
+                              ? 'Critical for core functionality - implement first'
+                              : rec.priority.toLowerCase() === 'medium'
+                              ? 'Important for complete solution - implement after high priority'
+                              : 'Nice-to-have enhancement - implement if time/budget allows'
+                          }
                         >
                           {rec.priority.toUpperCase()}
                         </span>
