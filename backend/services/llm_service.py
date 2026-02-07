@@ -59,8 +59,8 @@ class LLMService:
                 
             elif provider_lower == "google":
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                # Always use gemini-1.5-flash (gemini-pro is deprecated)
-                model_name = "gemini-1.5-flash"
+                # Use gemini-1.5-flash-latest (correct name for v1beta API)
+                model_name = "gemini-1.5-flash-latest"
                 self.active_model = ChatGoogleGenerativeAI(
                     model=model_name,
                     temperature=0.7,
