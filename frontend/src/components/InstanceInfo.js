@@ -16,20 +16,27 @@ function InstanceInfo() {
 
   const loadInstanceData = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      const [tablesRes, appsRes, componentsRes] = await Promise.all([
-        axios.get('/api/servicenow/tables'),
-        axios.get('/api/servicenow/installed-apps'),
-        axios.get('/api/servicenow/components')
-      ]);
+      // Use new comprehensive endpoint that combines SN Utils REST API + JDBC metadata
+      const summaryRes = await axios.get('/api/servicenow/instance-summary');
+      
+      // Also get tables for backward compatibility
+      const tablesRes = await axios.get('/api/servicenow/tables');
+      
+      // Also get components for workflow/business rules data
+      const componentsRes = await axios.get('/api/servicenow/components');
 
       setData({
         tables: tablesRes.data.tables || [],
-        applications: appsRes.data.applications || [],
-        components: componentsRes.data.components || {}
+        applications: summaryRes.data.applications || [],
+        components: componentsRes.data.components || {},
+        capabilities: summaryRes.data.key_capabilities || {},
+        jdbcMetadata: summaryRes.data.jdbc_metadata || {}
       });
-    } catch (error) {
-      console.error('Error loading instance data:', error);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to fetch instance data');
     } finally {
       setLoading(false);
     }

@@ -209,7 +209,7 @@ graph TD
 - **Single interface** for query → analysis → diagram → recommendations
 - **Document context**: Upload pricing docs, RFPs, technical specs
 - **Web search**: Optional external context
-- **Export-ready**: Diagrams in PNG/SVG/PDF for presentations
+- **Mermaid Diagrams**: Interactive, validated diagrams rendered in browser
 
 ### Real-World Use Cases
 
@@ -398,15 +398,14 @@ The frontend will be available at `http://localhost:3000`
 - Configure options:
   - Enable/disable web search
   - Enable/disable document search
-  - Select diagram format (PNG, SVG, PDF)
 - Click "Generate Architecture"
 
 ### 4. Review Results
 
-- View the generated architecture diagram
+- View the generated Mermaid architecture diagram
 - Read the detailed analysis
 - Review recommendations with ServiceNow components
-- Download the diagram for documentation
+- Copy diagram code for documentation
 
 ## Example Queries
 
