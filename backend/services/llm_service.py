@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Optional
 import logging
 import json
+import datetime
 
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
@@ -275,8 +276,6 @@ Remember:
                 logger.info("Successfully generated structured response")
                 
                 # Write full response to debug file
-                import json
-                import datetime
                 debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
                 with open(debug_file, 'w') as f:
                     json.dump(result, f, indent=2)
