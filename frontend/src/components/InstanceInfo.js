@@ -4,6 +4,7 @@ import axios from 'axios';
 
 function InstanceInfo() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [data, setData] = useState({
     tables: [],
     applications: [],
