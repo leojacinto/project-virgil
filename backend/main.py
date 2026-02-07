@@ -7,6 +7,7 @@ from typing import Optional, List
 import os
 import uuid
 from datetime import datetime
+import threading
 
 from config import settings
 from services.servicenow_connector import ServiceNowConnector
@@ -16,6 +17,10 @@ from services.diagram_generator import DiagramGenerator
 from services.web_search import WebSearchService
 
 app = FastAPI(title="ServiceNow Architecture Diagram Generator")
+
+# Task cancellation tracking
+active_tasks = {}
+tasks_lock = threading.Lock()
 
 app.add_middleware(
     CORSMiddleware,
@@ -204,21 +209,36 @@ async def analyze_architecture(request: ArchitectureRequest):
     if not servicenow_connector or not servicenow_connector.is_connected():
         raise HTTPException(status_code=400, detail="Not connected to ServiceNow")
     
+    # Generate task ID for cancellation tracking
+    task_id = str(uuid.uuid4())
+    with tasks_lock:
+        active_tasks[task_id] = {"cancelled": False}
+    
     try:
+        # Check cancellation before each major step
+        def check_cancelled():
+            with tasks_lock:
+                if active_tasks.get(task_id, {}).get("cancelled", False):
+                    raise HTTPException(status_code=499, detail="Analysis cancelled by user")
+        
+        check_cancelled()
         servicenow_data = {
             "tables": servicenow_connector.get_available_tables(),
             "applications": servicenow_connector.get_installed_applications(),
             "components": servicenow_connector.get_components()
         }
         
+        check_cancelled()
         relevant_docs = []
         if request.include_pricing:
             relevant_docs = document_processor.search_documents(request.query, top_k=5)
         
+        check_cancelled()
         web_context = []
         if request.include_web_search:
             web_context = web_search_service.search(request.query)
         
+        check_cancelled()
         analysis = llm_service.analyze_architecture(
             query=request.query,
             servicenow_data=servicenow_data,
@@ -226,6 +246,7 @@ async def analyze_architecture(request: ArchitectureRequest):
             web_context=web_context
         )
         
+        check_cancelled()
         diagram_path = None
         if analysis.get("architecture_components"):
             diagram_path = diagram_generator.generate_diagram(
@@ -244,11 +265,27 @@ async def analyze_architecture(request: ArchitectureRequest):
                 "tables_analyzed": len(servicenow_data["tables"]),
                 "apps_analyzed": len(servicenow_data["applications"]),
                 "documents_used": len(relevant_docs),
-                "web_sources": len(web_context)
+                "web_sources": len(web_context),
+                "task_id": task_id
             }
         )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Cleanup task tracking
+        with tasks_lock:
+            active_tasks.pop(task_id, None)
+
+@app.post("/api/cancel/{task_id}")
+async def cancel_analysis(task_id: str):
+    with tasks_lock:
+        if task_id in active_tasks:
+            active_tasks[task_id]["cancelled"] = True
+            return {"status": "cancelled", "task_id": task_id}
+        else:
+            return {"status": "not_found", "task_id": task_id}
 
 @app.get("/api/diagrams/{diagram_id}")
 async def get_diagram(diagram_id: str):

@@ -11,6 +11,7 @@ function QueryInterface({ onAnalysisComplete }) {
     diagram_format: 'png'
   });
   const abortControllerRef = useRef(null);
+  const taskIdRef = useRef(null);
 
   const exampleQueries = [
     "How do I address a customer service workflow requirement?",
@@ -38,6 +39,11 @@ function QueryInterface({ onAnalysisComplete }) {
         signal: abortControllerRef.current.signal
       });
 
+      // Store task_id if available
+      if (response.data.metadata?.task_id) {
+        taskIdRef.current = response.data.metadata.task_id;
+      }
+
       onAnalysisComplete(response.data);
     } catch (error) {
       if (axios.isCancel(error)) {
@@ -53,11 +59,23 @@ function QueryInterface({ onAnalysisComplete }) {
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    // Cancel the HTTP request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      setLoading(false);
     }
+    
+    // Cancel the backend task if we have a task_id
+    if (taskIdRef.current) {
+      try {
+        await axios.post(`/api/cancel/${taskIdRef.current}`);
+      } catch (error) {
+        console.error('Error cancelling backend task:', error);
+      }
+      taskIdRef.current = null;
+    }
+    
+    setLoading(false);
   };
 
   const handleExampleClick = (example) => {
