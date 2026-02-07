@@ -2,6 +2,64 @@
 
 An AI-powered application that generates architecture diagrams and provides solution recommendations based on ServiceNow instance data, uploaded documents, and LLM analysis.
 
+---
+
+## 🚀 Quick Start with Docker (Recommended)
+
+**The easiest way to run this application is using Docker.** No need to install Python, Node.js, or Java manually!
+
+### Prerequisites
+- **Docker Desktop** ([Download here](https://www.docker.com/products/docker-desktop))
+- An LLM API key (OpenAI, Anthropic, or Google)
+- ServiceNow JDBC driver JAR file
+
+### Run with Docker Compose
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/leojacinto/project-virgil.git
+   cd project-virgil
+   ```
+
+2. **Create environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+   
+3. **Edit `.env` and add your API key:**
+   ```bash
+   # At least one LLM API key required
+   OPENAI_API_KEY=your_openai_api_key_here
+   # OR
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   # OR
+   GOOGLE_API_KEY=your_google_api_key_here
+   ```
+
+4. **Place ServiceNow JDBC driver:**
+   ```bash
+   mkdir -p backend/jdbc
+   cp /path/to/ServiceNowJdbc-*.jar backend/jdbc/
+   ```
+
+5. **Start the application:**
+   ```bash
+   docker-compose up -d
+   ```
+
+6. **Open your browser:**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+
+7. **Stop the application:**
+   ```bash
+   docker-compose down
+   ```
+
+That's it! No Python, Node.js, or Java installation required. Docker handles everything.
+
+---
+
 ## Features
 
 - **ServiceNow RaptorDB Integration**: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
@@ -33,25 +91,24 @@ project-virgil/
 └── README.md
 ```
 
-## Prerequisites
+## Manual Installation (Alternative to Docker)
+
+If you prefer to run without Docker, follow these steps:
+
+### Prerequisites
 
 - **Python 3.12+** (required for JPype compatibility on Apple Silicon)
 - Node.js 16+
-- **Java (OpenJDK 25+)** (for ServiceNow JDBC driver)
+- **Java (OpenJDK 17+)** (for ServiceNow JDBC driver)
   ```bash
-  brew install openjdk
+  brew install openjdk@17
   ```
 - ServiceNow instance with RaptorDB access
 - OpenAI API key or Anthropic API key
 
 **Note:** ServiceNow JDBC driver (v1.0.3) is included in the repository.
 
-### Installing Java (macOS)
-```bash
-brew install openjdk@17
-```
-
-## Installation
+### Installation Steps
 
 ### Backend Setup
 
