@@ -206,34 +206,16 @@ Priority levels mean:
 - MEDIUM: Important for complete solution, implement after high priority
 - LOW: Nice-to-have enhancements, implement if time/budget allows
 
-For mermaid_diagram, you MUST create a simple flowchart using EXACTLY this format:
+For mermaid_diagram, you MUST create an architecture diagram with SEMANTIC RELATIONSHIPS.
 
-graph TD
-    A[Component 1] --> B[Component 2]
-    B --> C[Component 3]
+{self.ontology.get_mermaid_guidance(query_types)}
 
-CRITICAL MERMAID RULES:
-- First line MUST be: graph TD
-- Use ONLY single letters for IDs: A, B, C, D, E, F, G, H
-- Format MUST be: ID[Label] --> ID2[Label2]
-- Maximum 8 nodes total
-- NO special characters in labels (no &, /, \\, quotes)
-- Keep labels SHORT (2-4 words maximum)
-- Each arrow on its own line
-- Use 4 spaces for indentation
-
-CORRECT Example:
-graph TD
-    A[User Portal] --> B[Case Management]
-    B --> C[Knowledge Base]
-    C --> D[CMDB]
-    A --> E[Service Catalog]
-    E --> D
-
-WRONG Examples (DO NOT DO THIS):
-- graph TD A[Portal] --> B[Cases] (no newline after graph TD)
-- A[Portal/Service] --> B (special char /)
-- A[Very Long Component Name Here] --> B (too long)"""
+Remember:
+- Use subgraphs to show layers
+- Label arrows with relationship types (creates, runs on, references, resolves using)
+- CMDB and Platform are FOUNDATIONAL - they go at the bottom
+- NO bidirectional arrows unless peer-to-peer integration
+- NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)"""
 
         try:
             messages = [

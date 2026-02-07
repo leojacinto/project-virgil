@@ -23,6 +23,51 @@ class ServiceNowOntology:
             "Platform", "ServiceNow Platform"
         }
         
+        # Relationship types with semantic meaning
+        self.relationship_types = {
+            "runs_on": "Component runs on/is hosted by another (e.g., CSM runs on Platform)",
+            "consumes": "Component consumes data from another (e.g., Portal consumes Knowledge Base)",
+            "references": "Component references data in another (e.g., Incident references CMDB)",
+            "creates": "Component creates records in another (e.g., Portal creates Cases)",
+            "resolves_using": "Component uses another to resolve issues (e.g., Case resolves using KB)",
+            "authenticates_via": "Component uses another for authentication (e.g., Portal authenticates via User Mgmt)",
+            "segregated_from": "Components should NOT cross-connect (e.g., Public Portal ≠ ITSM)"
+        }
+        
+        # Semantic relationships: (source, target, relationship_type)
+        self.semantic_relationships = [
+            # Platform relationships (runs-on)
+            ("CSM", "Platform", "runs_on"),
+            ("ITSM", "Platform", "runs_on"),
+            ("Service Portal", "Platform", "runs_on"),
+            ("Customer Portal", "Platform", "runs_on"),
+            
+            # CMDB relationships (references - CMDB is lateral/foundational)
+            ("Incident Management", "CMDB", "references"),
+            ("Problem Management", "CMDB", "references"),
+            ("Change Management", "CMDB", "references"),
+            ("Case Management", "CMDB", "references"),
+            ("Asset Management", "CMDB", "references"),
+            
+            # Knowledge Base relationships (consumes)
+            ("Incident Management", "Knowledge Base", "resolves_using"),
+            ("Case Management", "Knowledge Base", "resolves_using"),
+            ("Service Portal", "Knowledge Base", "consumes"),
+            ("Customer Portal", "Knowledge Base", "consumes"),
+            
+            # Portal to App relationships (creates)
+            ("Customer Portal", "CSM", "creates"),
+            ("Service Portal", "ITSM", "creates"),
+            
+            # Authentication relationships
+            ("Customer Portal", "User Management", "authenticates_via"),
+            ("Service Portal", "User Management", "authenticates_via"),
+            
+            # Segregation rules (anti-patterns)
+            ("Customer Portal", "ITSM", "segregated_from"),
+            ("Service Portal", "CSM", "segregated_from"),
+        ]
+        
         # Component dependency rules: component -> list of dependencies
         self.dependencies = {
             "Incident Management": ["CMDB", "User Management", "Assignment Groups"],
@@ -75,6 +120,44 @@ class ServiceNowOntology:
     def get_component_dependencies(self, component: str) -> List[str]:
         """Get required dependencies for a component."""
         return self.dependencies.get(component, [])
+    
+    def get_relationship_type(self, source: str, target: str) -> str:
+        """
+        Get the semantic relationship type between two components.
+        Returns the relationship type or 'connects_to' as default.
+        """
+        # Check semantic relationships
+        for src, tgt, rel_type in self.semantic_relationships:
+            if src.lower() in source.lower() and tgt.lower() in target.lower():
+                return rel_type
+            # Check reverse direction for bidirectional relationships
+            if tgt.lower() in source.lower() and src.lower() in target.lower():
+                if rel_type == "segregated_from":
+                    return rel_type
+        
+        # Check if target is foundational (should be referenced, not consumed)
+        if self.is_foundational(target):
+            return "references"
+        
+        return "connects_to"
+    
+    def should_be_bidirectional(self, source: str, target: str) -> bool:
+        """
+        Check if a relationship should be bidirectional.
+        Most ServiceNow relationships are unidirectional.
+        """
+        # Bidirectional relationships are rare - only for peer-to-peer integrations
+        bidirectional_patterns = [
+            ("Integration Hub", "External System"),
+            ("API", "External System")
+        ]
+        
+        for pattern1, pattern2 in bidirectional_patterns:
+            if (pattern1.lower() in source.lower() and pattern2.lower() in target.lower()) or \
+               (pattern2.lower() in source.lower() and pattern1.lower() in target.lower()):
+                return True
+        
+        return False
     
     def is_foundational(self, component: str) -> bool:
         """Check if a component is foundational (should not depend on others)."""
@@ -260,3 +343,91 @@ class ServiceNowOntology:
             )
         
         return recommendations
+    
+    def get_mermaid_guidance(self, query_types: List[str]) -> str:
+        """
+        Get specialized Mermaid diagram guidance based on query type.
+        Includes relationship semantics and architectural patterns.
+        """
+        guidance = """
+CRITICAL MERMAID DIAGRAM RULES:
+
+1. RELATIONSHIP SEMANTICS - Use labels to show HOW components relate:
+   - Portal -->|creates| CSM (Portal creates cases in CSM)
+   - CSM -->|runs on| Platform (CSM runs on Platform)
+   - Incident -->|references| CMDB (Incident references CMDB data)
+   - Case -->|resolves using| KB (Case resolves using Knowledge Base)
+
+2. FOUNDATIONAL COMPONENTS (CMDB, Platform, User Mgmt):
+   - Place at BOTTOM or as separate layer
+   - Other components point TO them (references)
+   - They do NOT point to other components
+   - Use subgraph to show they're foundational
+
+3. NO BIDIRECTIONAL ARROWS unless it's peer-to-peer integration:
+   - WRONG: Portal <--> CSM
+   - RIGHT: Portal -->|creates| CSM
+
+4. SEGREGATION PATTERNS (CSM vs ITSM):
+   - Public Portal should ONLY connect to CSM
+   - Internal Portal should ONLY connect to ITSM
+   - NO cross-connections between public and internal paths
+
+5. LAYERED ARCHITECTURE:
+   - Layer 1 (Top): Users/Personas
+   - Layer 2: Portals/UI
+   - Layer 3: Applications (CSM, ITSM)
+   - Layer 4: Platform
+   - Layer 5 (Bottom): Foundational Data (CMDB, KB)
+
+CORRECT Example with Semantics:
+graph TD
+    subgraph Users
+        A[Public Customer]
+        B[Internal Employee]
+    end
+    subgraph Portals
+        C[Customer Portal]
+        D[Service Portal]
+    end
+    subgraph Applications
+        E[CSM]
+        F[ITSM]
+    end
+    subgraph Foundation
+        G[Platform]
+        H[CMDB]
+        I[Knowledge Base]
+    end
+    
+    A -->|accesses| C
+    B -->|accesses| D
+    C -->|creates cases| E
+    D -->|creates tickets| F
+    E -->|runs on| G
+    F -->|runs on| G
+    E -->|references| H
+    F -->|references| H
+    E -->|resolves using| I
+    F -->|resolves using| I
+
+WRONG Example (DO NOT DO):
+graph TD
+    A[Portal] <--> B[CSM]  ❌ Bidirectional
+    B --> C[CMDB]  ❌ CMDB at bottom implies it's downstream
+    A --> D[ITSM]  ❌ Public portal connecting to ITSM
+    C --> E[KB]  ❌ CMDB feeding KB (backwards)
+"""
+        
+        # Add query-specific guidance
+        if "csm" in query_types and "itsm" in query_types:
+            guidance += """
+SPECIFIC TO CSM + ITSM ARCHITECTURE:
+- Show TWO SEPARATE PATHS: Public → CSM and Internal → ITSM
+- NO arrows between Customer Portal and ITSM
+- NO arrows between Service Portal and CSM
+- Both CSM and ITSM reference CMDB (not consume it)
+- Use subgraphs to show segregation
+"""
+        
+        return guidance
