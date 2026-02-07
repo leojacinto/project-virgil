@@ -3,6 +3,23 @@
 echo "🚀 Starting ServiceNow Architecture Generator Backend..."
 echo ""
 
+# Check for existing process on port 8000
+EXISTING_PID=$(lsof -ti:8000 2>/dev/null)
+if [ ! -z "$EXISTING_PID" ]; then
+    echo "⚠️  Found existing backend process on port 8000 (PID: $EXISTING_PID)"
+    read -p "   Kill this process? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        kill -9 $EXISTING_PID 2>/dev/null
+        echo "   ✓ Process killed"
+        sleep 1
+    else
+        echo "   ❌ Cannot start backend - port 8000 is in use"
+        exit 1
+    fi
+fi
+echo ""
+
 cd backend
 
 # Create virtual environment if it doesn't exist

@@ -10,6 +10,34 @@ if [ ! -d "backend" ] || [ ! -d "frontend" ]; then
     exit 1
 fi
 
+# Check for existing processes on ports
+check_and_kill_port() {
+    local port=$1
+    local service=$2
+    local pids=$(lsof -ti:$port 2>/dev/null)
+    
+    if [ ! -z "$pids" ]; then
+        echo "⚠️  Found existing process(es) running on port $port ($service)"
+        echo "   PIDs: $pids"
+        read -p "   Kill these processes? (y/n) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "$pids" | xargs kill -9 2>/dev/null
+            echo "   ✓ Processes killed"
+            sleep 1
+        else
+            echo "   ❌ Cannot start $service - port $port is in use"
+            exit 1
+        fi
+    fi
+}
+
+# Check ports before starting
+echo "🔍 Checking for existing processes..."
+check_and_kill_port 8000 "Backend"
+check_and_kill_port 3000 "Frontend"
+echo ""
+
 # Function to cleanup background processes on exit
 cleanup() {
     echo ""
