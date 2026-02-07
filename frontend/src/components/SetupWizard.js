@@ -54,16 +54,23 @@ function SetupWizard({ onComplete }) {
     setError(null);
     
     try {
+      console.log('Sending LLM configuration request...');
       const response = await axios.post('/api/llm/configure', {
         provider: llmConfig.provider,
         api_key: llmConfig.api_key,
         model: llmConfig.model || selectedProvider.defaultModel
       });
       
+      console.log('LLM configuration response:', response.data);
+      
       if (response.data.status === 'configured') {
+        console.log('LLM configured successfully, advancing to step 2');
         setStep(2);
+      } else {
+        console.log('Unexpected response status:', response.data.status);
       }
     } catch (err) {
+      console.error('LLM configuration error:', err);
       setError(err.response?.data?.detail || 'Failed to configure LLM');
     } finally {
       setLoading(false);
