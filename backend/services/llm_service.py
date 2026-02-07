@@ -59,16 +59,37 @@ class LLMService:
                 
             elif provider_lower == "google":
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                # Use gemini-pro which is most widely available with AI Studio keys
+                # Try different model name formats for compatibility
                 model_name = model or "gemini-pro"
-                self.active_model = ChatGoogleGenerativeAI(
-                    model=model_name,
-                    temperature=0.7,
-                    google_api_key=api_key
-                )
-                self.provider = "google"
-                self.model_name = model_name
-                logger.info(f"Google model configured: {model_name}")
+                
+                # If user provided a model name, try it first, otherwise try common variants
+                models_to_try = [model_name] if model else [
+                    "gemini-1.5-pro-latest",
+                    "gemini-1.5-flash-latest", 
+                    "gemini-pro-latest",
+                    "gemini-1.5-pro",
+                    "gemini-pro"
+                ]
+                
+                configured = False
+                for try_model in models_to_try:
+                    try:
+                        self.active_model = ChatGoogleGenerativeAI(
+                            model=try_model,
+                            temperature=0.7,
+                            google_api_key=api_key
+                        )
+                        self.provider = "google"
+                        self.model_name = try_model
+                        configured = True
+                        logger.info(f"Google model configured: {try_model}")
+                        break
+                    except Exception as e:
+                        logger.debug(f"Failed to configure {try_model}: {str(e)[:50]}")
+                        continue
+                
+                if not configured:
+                    raise Exception("Could not configure Google Gemini. Please verify your API key has Gemini API access enabled in Google AI Studio.")
                 
             elif provider_lower == "azure":
                 from langchain_openai import AzureChatOpenAI
