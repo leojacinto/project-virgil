@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Send, Loader2, Search, Globe, FileText } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Send, Loader2, Search, Globe, FileText, X } from 'lucide-react';
 import axios from 'axios';
 
 function QueryInterface({ onAnalysisComplete }) {
@@ -10,6 +10,7 @@ function QueryInterface({ onAnalysisComplete }) {
     include_pricing: true,
     diagram_format: 'png'
   });
+  const abortControllerRef = useRef(null);
 
   const exampleQueries = [
     "How do I address a customer service workflow requirement?",
@@ -23,6 +24,9 @@ function QueryInterface({ onAnalysisComplete }) {
     e.preventDefault();
     if (!query.trim()) return;
 
+    // Create new AbortController for this request
+    abortControllerRef.current = new AbortController();
+    
     setLoading(true);
     try {
       const response = await axios.post('/api/analyze', {
@@ -30,13 +34,28 @@ function QueryInterface({ onAnalysisComplete }) {
         include_web_search: options.include_web_search,
         include_pricing: options.include_pricing,
         diagram_format: options.diagram_format
+      }, {
+        signal: abortControllerRef.current.signal
       });
 
       onAnalysisComplete(response.data);
     } catch (error) {
-      console.error('Analysis error:', error);
-      alert(error.response?.data?.detail || 'Analysis failed. Please try again.');
+      if (axios.isCancel(error)) {
+        console.log('Analysis cancelled by user');
+        alert('Analysis cancelled');
+      } else {
+        console.error('Analysis error:', error);
+        alert(error.response?.data?.detail || 'Analysis failed. Please try again.');
+      }
     } finally {
+      setLoading(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
       setLoading(false);
     }
   };
@@ -107,23 +126,36 @@ function QueryInterface({ onAnalysisComplete }) {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading || !query.trim()}
-            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Analyzing Architecture...</span>
-              </>
-            ) : (
-              <>
-                <Send className="h-5 w-5" />
-                <span>Generate Architecture</span>
-              </>
+          <div className="flex space-x-3">
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="flex-1 bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Analyzing Architecture...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  <span>Generate Architecture</span>
+                </>
+              )}
+            </button>
+            
+            {loading && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-6 bg-red-600 text-white py-3 rounded-lg font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors flex items-center justify-center space-x-2"
+              >
+                <X className="h-5 w-5" />
+                <span>Cancel</span>
+              </button>
             )}
-          </button>
+          </div>
         </form>
       </div>
 
