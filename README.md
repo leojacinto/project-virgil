@@ -263,10 +263,23 @@ The frontend will be available at `http://localhost:3000`
 - Version control for architectures
 - Cost estimation based on pricing documents
 
+## Authors
+
+- **Leo Francia**
+- **Robert Ninness**
+
 ## License
 
-Proprietary - All rights reserved
+**MIT License - Free to Use**
+
+This software is provided free of charge and "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
+
+### Important Notices
+
+**ServiceNow Licensing:** This application connects to ServiceNow instances via RaptorDB. Use of ServiceNow requires appropriate licenses from ServiceNow, Inc. This application does not include or provide ServiceNow licenses. Users are responsible for ensuring they have proper authorization and licensing to access their ServiceNow instances.
+
+**Third-Party Services:** This application integrates with third-party LLM services (OpenAI, Anthropic, Google, Azure). Users are responsible for their own API keys and compliance with the respective service providers' terms of service.
 
 ## Support
 
-For issues or questions, please contact the development team.
+For issues or questions, please open an issue on GitHub or contact the authors.
