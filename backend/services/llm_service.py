@@ -362,10 +362,23 @@ Remember:
                         if not fixed_mermaid.startswith("graph"):
                             fixed_mermaid = "graph TD\n" + fixed_mermaid
                         
-                        # Fix common special character issues
+                        # First pass: join lines that are part of split labels
+                        # This fixes labels like "E[Customer Service Management (\nCSM)]"
+                        fixed_lines = []
+                        i = 0
                         lines = fixed_mermaid.split("\n")
+                        while i < len(lines):
+                            line = lines[i]
+                            # If line has [ but no ], it's a split label - join with next line
+                            while "[" in line and "]" not in line and i + 1 < len(lines):
+                                i += 1
+                                line = line.strip() + " " + lines[i].strip()
+                            fixed_lines.append(line)
+                            i += 1
+                        
+                        # Second pass: clean special characters
                         cleaned_lines = []
-                        for line in lines:
+                        for line in fixed_lines:
                             # Skip empty lines
                             if not line.strip():
                                 continue
@@ -375,8 +388,10 @@ Remember:
                                 parts = line.split("[")
                                 if len(parts) > 1:
                                     label_part = parts[1].split("]")[0]
-                                    # Remove problematic characters
-                                    cleaned_label = label_part.replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "")
+                                    # Remove problematic characters and newlines
+                                    cleaned_label = label_part.replace("\n", " ").replace("\r", " ").replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "")
+                                    # Remove extra spaces
+                                    cleaned_label = " ".join(cleaned_label.split())
                                     line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
                             cleaned_lines.append(line)
                         
