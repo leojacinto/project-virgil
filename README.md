@@ -152,6 +152,8 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 **Key Insight:** The ontology doesn't do 20% of the work—it prevents 80% of the mistakes. Without it, the LLM would generate architecturally incorrect diagrams (Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components).
 
+> **Note:** This system currently uses a custom-built ServiceNow ontology. It is **not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world**. Watch this space for future integration with ServiceNow's native knowledge graph infrastructure!
+
 ### Constraint-Based Architecture
 
 **The system doesn't rely on the LLM being "smart enough"—it constrains the LLM to only generate valid outputs.**
