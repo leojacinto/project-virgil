@@ -167,6 +167,25 @@ class LLMService:
         # Get specialized constraints based on query type
         specialized_constraints = self.ontology.get_specialized_constraints(query_types)
         
+        # Query instance metadata using SN Utils (if credentials available)
+        instance_summary = None
+        try:
+            from config import settings
+            if settings.servicenow_instance and settings.servicenow_username and settings.servicenow_password:
+                from services.sn_utils_service import SNUtilsService
+                
+                sn_utils = SNUtilsService(
+                    settings.servicenow_instance,
+                    settings.servicenow_username,
+                    settings.servicenow_password
+                )
+                
+                instance_summary = sn_utils.get_instance_summary()
+                logger.info(f"Instance summary retrieved: {len(instance_summary.get('applications', []))} apps")
+        except Exception as e:
+            logger.warning(f"Could not retrieve instance summary: {str(e)}")
+            instance_summary = None
+        
         # Get instance-aware recommendations
         installed_apps = servicenow_data.get("applications", [])
         instance_recommendations = self.ontology.get_instance_aware_recommendations(
@@ -191,6 +210,21 @@ INSTANCE CONTEXT:
 The user's ServiceNow instance has these applications installed: {', '.join([app.get('name', '') for app in installed_apps[:10]])}
 
 {chr(10).join('- ' + rec for rec in instance_recommendations) if instance_recommendations else ''}
+
+{f'''
+CURRENT INSTANCE STATE (from REST API):
+- Instance: {instance_summary.get('instance', 'N/A')}
+- Total Applications: {len(instance_summary.get('applications', []))}
+- Key Capabilities Detected:
+  * ITSM: {'Yes' if instance_summary.get('key_capabilities', {}).get('itsm') else 'No'}
+  * CSM: {'Yes' if instance_summary.get('key_capabilities', {}).get('csm') else 'No'}
+  * HRSD: {'Yes' if instance_summary.get('key_capabilities', {}).get('hrsd') else 'No'}
+  * ITOM: {'Yes' if instance_summary.get('key_capabilities', {}).get('itom') else 'No'}
+  * CMDB: {'Yes' if instance_summary.get('key_capabilities', {}).get('cmdb') else 'No'}
+
+When providing recommendations, consider what's ALREADY INSTALLED vs. what's NEEDED for the proposed architecture.
+Highlight gaps and provide specific migration steps.
+''' if instance_summary else ''}
 
 Your task is to analyze the user's requirements and provide:
 1. A comprehensive architectural analysis
