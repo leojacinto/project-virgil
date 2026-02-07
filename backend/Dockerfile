@@ -1,13 +1,13 @@
 FROM python:3.12-slim
 
-# Install Java (required for ServiceNow JDBC)
+# Install Java and build tools (required for ServiceNow JDBC and Python packages)
 RUN apt-get update && \
-    apt-get install -y openjdk-17-jdk wget && \
+    apt-get install -y openjdk-21-jre-headless wget curl build-essential g++ && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Set JAVA_HOME
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+# Set JAVA_HOME (auto-detect architecture)
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 WORKDIR /app
