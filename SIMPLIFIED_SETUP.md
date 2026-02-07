@@ -4,7 +4,12 @@ No more config file drama! Everything is configured through the web interface.
 
 ## What You Need
 
-1. **An LLM API Key** - From OpenAI, Anthropic, Google, or Azure
+1. **Java 17+** - Required for ServiceNow JDBC connection
+   ```bash
+   brew install openjdk@17
+   ```
+
+2. **An LLM API Key** - From OpenAI, Anthropic, Google, or Azure
 
 That's it! The ServiceNow JDBC driver is already included.
 

@@ -32,6 +32,24 @@ fi
 # Activate virtual environment
 source venv/bin/activate
 
+# Set JAVA_HOME for JDBC driver
+if [ -z "$JAVA_HOME" ]; then
+    if [ -d "/opt/homebrew/opt/openjdk@17" ]; then
+        export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
+    elif [ -d "/usr/local/opt/openjdk@17" ]; then
+        export JAVA_HOME="/usr/local/opt/openjdk@17"
+    elif command -v /usr/libexec/java_home &> /dev/null; then
+        export JAVA_HOME=$(/usr/libexec/java_home 2>/dev/null)
+    fi
+    
+    if [ ! -z "$JAVA_HOME" ]; then
+        echo "✓ Java found at: $JAVA_HOME"
+    else
+        echo "⚠️  WARNING: Java not found. ServiceNow connection requires Java."
+        echo "   Install with: brew install openjdk@17"
+    fi
+fi
+
 # Upgrade pip first
 echo ""
 echo "⬆️  Upgrading pip..."

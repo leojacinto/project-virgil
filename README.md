@@ -37,10 +37,16 @@ project-virgil/
 
 - Python 3.9+
 - Node.js 16+
+- **Java 17+** (for ServiceNow JDBC connection)
 - ServiceNow instance with RaptorDB access
 - OpenAI API key or Anthropic API key
 
 **Note:** ServiceNow JDBC driver (v1.0.3) is included in the repository.
+
+### Installing Java (macOS)
+```bash
+brew install openjdk@17
+```
 
 ## Installation
 
