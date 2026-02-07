@@ -59,7 +59,7 @@ class LLMService:
                 
             elif provider_lower == "google":
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                model_name = model or "gemini-pro"
+                model_name = model or "gemini-1.5-flash"
                 self.active_model = ChatGoogleGenerativeAI(
                     model=model_name,
                     temperature=0.7,
