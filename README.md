@@ -112,6 +112,32 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
+## 📦 Latest Release Notes
+
+### v1.2.3 (Frontend) + v1.2.1 (Backend) - February 2026
+
+**Frontend Fixes (v1.2.3):**
+- ✅ Fixed setup wizard navigation - Continue button now properly advances to ServiceNow configuration
+- ✅ Configured axios to use correct backend URL in Docker deployments
+- ✅ Added click prevention to avoid multiple rapid API calls
+- ✅ Resolved browser caching issues with hard refresh recommendations
+
+**Backend Fixes (v1.2.1):**
+- ✅ Fixed Mermaid syntax errors caused by parentheses in node labels
+- ✅ Auto-fix now converts `Platform (FedRAMP/SPP)` to `Platform - FedRAMP/SPP`
+- ✅ Improved diagram rendering reliability across all deployment methods
+
+**Infrastructure:**
+- ✅ ARM64 (Apple Silicon) compatible Docker images
+- ✅ OpenJDK 21 for Debian Trixie compatibility
+- ✅ Both local and Docker deployments fully tested and working
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.2.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.2.3`
+
+---
+
 ## How It Works
 
 **Project Virgil** is an **AI-powered ServiceNow architecture advisor** that combines multiple intelligence layers to provide **semantically correct, instance-aware architectural guidance**. It's not just ChatGPT with ServiceNow data—it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
