@@ -50,29 +50,30 @@ function SetupWizard({ onComplete }) {
   const selectedProvider = llmProviders.find(p => p.id === llmConfig.provider);
 
   const handleLlmSubmit = async () => {
+    if (loading) return; // Prevent multiple clicks
+    
     setLoading(true);
     setError(null);
     
     try {
-      console.log('Sending LLM configuration request...');
       const response = await axios.post('/api/llm/configure', {
         provider: llmConfig.provider,
         api_key: llmConfig.api_key,
         model: llmConfig.model || selectedProvider.defaultModel
       });
       
-      console.log('LLM configuration response:', response.data);
-      
-      if (response.data.status === 'configured') {
-        console.log('LLM configured successfully, advancing to step 2');
-        setStep(2);
+      if (response.data && response.data.status === 'configured') {
+        // Use setTimeout to ensure state update happens
+        setTimeout(() => {
+          setLoading(false);
+          setStep(2);
+        }, 100);
       } else {
-        console.log('Unexpected response status:', response.data.status);
+        setError('Unexpected response from server');
+        setLoading(false);
       }
     } catch (err) {
-      console.error('LLM configuration error:', err);
       setError(err.response?.data?.detail || 'Failed to configure LLM');
-    } finally {
       setLoading(false);
     }
   };

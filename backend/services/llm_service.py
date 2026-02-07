@@ -468,7 +468,8 @@ Remember:
                                 if len(parts) > 1:
                                     label_part = parts[1].split("]")[0]
                                     # Remove problematic characters and newlines
-                                    cleaned_label = label_part.replace("\n", " ").replace("\r", " ").replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "")
+                                    # Parentheses cause Mermaid syntax errors, replace with dashes
+                                    cleaned_label = label_part.replace("\n", " ").replace("\r", " ").replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "").replace("(", "- ").replace(")", "")
                                     # Remove extra spaces
                                     cleaned_label = " ".join(cleaned_label.split())
                                     line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
