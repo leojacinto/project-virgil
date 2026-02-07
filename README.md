@@ -8,12 +8,60 @@ An AI-powered application that generates architecture diagrams and provides solu
 
 **The easiest way to run this application is using Docker.** No need to install Python, Node.js, or Java manually!
 
-### Prerequisites
-- **Docker Desktop** ([Download here](https://www.docker.com/products/docker-desktop))
-- An LLM API key (OpenAI, Anthropic, or Google)
-- ServiceNow JDBC driver JAR file
+### Step 1: Install Docker Desktop
 
-### Run with Docker Compose
+**Docker Desktop is the only prerequisite you need!**
+
+#### Windows
+1. Download [Docker Desktop for Windows](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe)
+2. Run the installer
+3. Follow the installation wizard
+4. Restart your computer when prompted
+5. Launch Docker Desktop from the Start menu
+6. Wait for Docker to start (whale icon in system tray)
+
+**Requirements:** Windows 10 64-bit (Pro, Enterprise, or Education) or Windows 11
+
+#### macOS
+1. Download [Docker Desktop for Mac](https://desktop.docker.com/mac/main/amd64/Docker.dmg)
+   - For Apple Silicon (M1/M2/M3): Use the same link (universal binary)
+   - For Intel Macs: Use the same link
+2. Open the downloaded `.dmg` file
+3. Drag Docker icon to Applications folder
+4. Launch Docker from Applications
+5. Grant permissions when prompted
+6. Wait for Docker to start (whale icon in menu bar)
+
+**Requirements:** macOS 11 or newer
+
+#### Linux
+```bash
+# Ubuntu/Debian
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Verify installation
+docker --version
+docker-compose --version
+```
+
+**Verify Docker is Running:**
+```bash
+docker --version
+# Should output: Docker version 24.x.x or higher
+```
+
+### Step 2: Get Your API Keys
+
+You need at least one LLM API key:
+
+- **OpenAI:** Get API key at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- **Anthropic:** Get API key at [console.anthropic.com](https://console.anthropic.com)
+- **Google Gemini:** Get API key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
+
+### Step 3: Run with Docker Compose
 
 1. **Clone the repository:**
    ```bash
