@@ -14,7 +14,7 @@ def test_connection():
     instance = os.getenv('SERVICENOW_INSTANCE')
     username = os.getenv('SERVICENOW_USERNAME')
     password = os.getenv('SERVICENOW_PASSWORD')
-    jdbc_path = os.getenv('SERVICENOW_JDBC_PATH', './jdbc/servicenow-jdbc.jar')
+    jdbc_path = os.getenv('SERVICENOW_JDBC_PATH', './jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar')
     
     if not all([instance, username, password]):
         print("ERROR: Missing required environment variables")
