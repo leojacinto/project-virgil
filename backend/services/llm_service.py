@@ -7,11 +7,27 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage, SystemMessage
+from pydantic import BaseModel, Field
 
 from config import settings
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Pydantic models for structured output
+class Recommendation(BaseModel):
+    """A single recommendation"""
+    title: str = Field(description="Title of the recommendation")
+    description: str = Field(description="Detailed description")
+    servicenow_components: List[str] = Field(description="List of ServiceNow components")
+    priority: str = Field(description="Priority: high, medium, or low")
+
+class ArchitectureAnalysis(BaseModel):
+    """Complete architecture analysis response"""
+    analysis: str = Field(description="Detailed architecture analysis text")
+    recommendations: List[Recommendation] = Field(description="List of recommendations")
+    mermaid_diagram: str = Field(description="Mermaid diagram code showing architecture flow")
+    implementation_notes: str = Field(description="Key implementation considerations")
 
 class LLMService:
     def __init__(self):
@@ -218,60 +234,60 @@ graph TD
                 HumanMessage(content=user_prompt)
             ]
             
-            response = self.active_model.invoke(messages)
-            response_text = response.content
-            
+            # Use structured output with Pydantic model
             try:
-                # Extract JSON from markdown code blocks
-                if "```json" in response_text:
-                    json_start = response_text.find("```json") + 7
-                    json_end = response_text.find("```", json_start)
-                    response_text = response_text[json_start:json_end].strip()
-                elif "```" in response_text:
-                    json_start = response_text.find("```") + 3
-                    json_end = response_text.find("```", json_start)
-                    response_text = response_text[json_start:json_end].strip()
+                structured_llm = self.active_model.with_structured_output(ArchitectureAnalysis)
+                response = structured_llm.invoke(messages)
                 
-                # Try to find JSON object in response
-                if response_text.strip().startswith('{'):
-                    # Find the matching closing brace
-                    brace_count = 0
-                    json_end_idx = 0
-                    for i, char in enumerate(response_text):
-                        if char == '{':
-                            brace_count += 1
-                        elif char == '}':
-                            brace_count -= 1
-                            if brace_count == 0:
-                                json_end_idx = i + 1
-                                break
-                    if json_end_idx > 0:
-                        response_text = response_text[:json_end_idx]
-                
-                result = json.loads(response_text)
-                
-                # Ensure mermaid_diagram is present
-                if "mermaid_diagram" not in result:
-                    result["mermaid_diagram"] = None
-                    logger.warning("No mermaid_diagram in LLM response")
-                    
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON parsing failed: {str(e)}")
-                logger.error(f"Response text (first 500 chars): {response_text[:500]}")
+                # Convert Pydantic model to dict
                 result = {
-                    "analysis": response_text,
+                    "analysis": response.analysis,
                     "recommendations": [
                         {
-                            "title": "Review Full Analysis",
-                            "description": "Please review the detailed analysis provided",
+                            "title": rec.title,
+                            "description": rec.description,
+                            "servicenow_components": rec.servicenow_components,
+                            "priority": rec.priority
+                        }
+                        for rec in response.recommendations
+                    ],
+                    "mermaid_diagram": response.mermaid_diagram,
+                    "implementation_notes": response.implementation_notes
+                }
+                
+                logger.info("Successfully generated structured response")
+                
+            except Exception as e:
+                # Fallback to regular response if structured output not supported
+                logger.warning(f"Structured output failed, falling back to JSON parsing: {str(e)}")
+                response = self.active_model.invoke(messages)
+                response_text = response.content
+                
+                # Try to parse JSON from response
+                try:
+                    if "```json" in response_text:
+                        json_start = response_text.find("```json") + 7
+                        json_end = response_text.find("```", json_start)
+                        response_text = response_text[json_start:json_end].strip()
+                    
+                    result = json.loads(response_text)
+                    
+                    if "mermaid_diagram" not in result:
+                        result["mermaid_diagram"] = "graph TD\n    A[Analysis] --> B[See Details]"
+                        
+                except json.JSONDecodeError:
+                    logger.error("Both structured output and JSON parsing failed")
+                    result = {
+                        "analysis": response_text,
+                        "recommendations": [{
+                            "title": "Review Analysis",
+                            "description": "See detailed analysis above",
                             "servicenow_components": [],
                             "priority": "high"
-                        }
-                    ],
-                    "architecture_components": [],
-                    "mermaid_diagram": None,
-                    "implementation_notes": "See analysis for details"
-                }
+                        }],
+                        "mermaid_diagram": "graph TD\n    A[Analysis] --> B[See Details]",
+                        "implementation_notes": "See analysis for details"
+                    }
             
             return result
         except Exception as e:
