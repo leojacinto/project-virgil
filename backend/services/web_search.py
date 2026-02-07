@@ -14,10 +14,10 @@ class WebSearchService:
         self.serpapi_key = settings.serpapi_key
     
     def search(self, query: str, num_results: int = 5) -> List[Dict]:
-        if self.serpapi_key:
-            return self._search_with_serpapi(query, num_results)
-        else:
-            return self._search_fallback(query, num_results)
+        # Web search disabled - no API key configured
+        # TODO: Configure real search API (SerpAPI, Google Custom Search, or alternative)
+        logger.info("Web search disabled - no API key configured")
+        return []
     
     def _search_with_serpapi(self, query: str, num_results: int) -> List[Dict]:
         try:
