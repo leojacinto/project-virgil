@@ -59,16 +59,34 @@ class LLMService:
                 
             elif provider_lower == "google":
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                # Use gemini-1.5-flash-latest (correct name for v1beta API)
-                model_name = "gemini-1.5-flash-latest"
-                self.active_model = ChatGoogleGenerativeAI(
-                    model=model_name,
-                    temperature=0.7,
-                    google_api_key=api_key
-                )
-                self.provider = "google"
-                self.model_name = model_name
-                logger.info(f"Google model configured: {model_name}")
+                # Try multiple model names for compatibility with different API key types
+                model_names_to_try = [
+                    "gemini-1.5-flash",
+                    "gemini-1.5-pro", 
+                    "gemini-pro"
+                ]
+                
+                last_error = None
+                for model_name in model_names_to_try:
+                    try:
+                        self.active_model = ChatGoogleGenerativeAI(
+                            model=model_name,
+                            temperature=0.7,
+                            google_api_key=api_key
+                        )
+                        # Test with a simple call
+                        self.active_model.invoke("test")
+                        self.provider = "google"
+                        self.model_name = model_name
+                        logger.info(f"Google model configured: {model_name}")
+                        break
+                    except Exception as e:
+                        last_error = e
+                        logger.warning(f"Failed to configure {model_name}: {str(e)[:100]}")
+                        continue
+                else:
+                    # If all models failed, raise the last error
+                    raise Exception(f"Could not configure any Gemini model. Last error: {last_error}")
                 
             elif provider_lower == "azure":
                 from langchain_openai import AzureChatOpenAI
