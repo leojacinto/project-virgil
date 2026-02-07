@@ -206,26 +206,34 @@ Priority levels mean:
 - MEDIUM: Important for complete solution, implement after high priority
 - LOW: Nice-to-have enhancements, implement if time/budget allows
 
-For mermaid_diagram, you MUST create a simple flowchart. Use this EXACT format:
+For mermaid_diagram, you MUST create a simple flowchart using EXACTLY this format:
+
 graph TD
     A[Component 1] --> B[Component 2]
     B --> C[Component 3]
 
-Rules for Mermaid:
-- Start with: graph TD
-- Use simple IDs: A, B, C, D, etc.
-- Format: ID[Label] --> ID2[Label2]
-- Max 8 nodes
-- No special chars in labels
-- Keep labels short (2-4 words)
+CRITICAL MERMAID RULES:
+- First line MUST be: graph TD
+- Use ONLY single letters for IDs: A, B, C, D, E, F, G, H
+- Format MUST be: ID[Label] --> ID2[Label2]
+- Maximum 8 nodes total
+- NO special characters in labels (no &, /, \\, quotes)
+- Keep labels SHORT (2-4 words maximum)
+- Each arrow on its own line
+- Use 4 spaces for indentation
 
-Example for this query:
+CORRECT Example:
 graph TD
-    A[Public Portal] --> B[CSM Cases]
-    C[Employee Portal] --> D[ITSM Tickets]
-    B --> E[Knowledge Base]
-    D --> E
-    E --> F[CMDB]"""
+    A[User Portal] --> B[Case Management]
+    B --> C[Knowledge Base]
+    C --> D[CMDB]
+    A --> E[Service Catalog]
+    E --> D
+
+WRONG Examples (DO NOT DO THIS):
+- graph TD A[Portal] --> B[Cases] (no newline after graph TD)
+- A[Portal/Service] --> B (special char /)
+- A[Very Long Component Name Here] --> B (too long)"""
 
         try:
             messages = [
@@ -255,6 +263,30 @@ graph TD
                 }
                 
                 logger.info("Successfully generated structured response")
+                
+                # Add visible validation to recommendations
+                validation_warnings = []
+                
+                # Check analysis for foundational components
+                analysis_text = result.get("analysis", "").lower()
+                if "cmdb" not in analysis_text and "configuration" not in analysis_text:
+                    validation_warnings.append("⚠️ CMDB not mentioned - most ServiceNow architectures require CMDB as foundation")
+                
+                # Check Mermaid diagram syntax
+                mermaid = result.get("mermaid_diagram", "")
+                if mermaid and not mermaid.strip().startswith("graph"):
+                    validation_warnings.append("⚠️ Mermaid diagram may have syntax issues - should start with 'graph TD' or 'graph LR'")
+                
+                # Add validation warnings as a high-priority recommendation
+                if validation_warnings:
+                    logger.warning(f"Validation warnings: {validation_warnings}")
+                    result["recommendations"].insert(0, {
+                        "title": "🔍 Architecture Review Notes",
+                        "description": "Please review these architectural considerations:\n\n" + 
+                                     "\n".join(f"• {warning}" for warning in validation_warnings),
+                        "servicenow_components": [],
+                        "priority": "high"
+                    })
                 
                 # Validate architecture against ServiceNow domain knowledge
                 if "architecture_components" in result or response.architecture_components:
