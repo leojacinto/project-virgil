@@ -8,6 +8,10 @@ import os
 import uuid
 from datetime import datetime
 import threading
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from config import settings
 from services.servicenow_connector import ServiceNowConnector
