@@ -2,16 +2,14 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: leofrancia08489/project-virgil-backend:latest
     ports:
       - "8000:8000"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+      - JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
     volumes:
       - ./backend/jdbc:/app/jdbc
       - ./backend/documents:/app/documents
@@ -23,9 +21,7 @@ services:
       retries: 3
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: leofrancia08489/project-virgil-frontend:latest
     ports:
       - "3000:3000"
     depends_on:

@@ -94,6 +94,10 @@ You need at least one LLM API key:
    ```bash
    docker-compose up -d
    ```
+   
+   This will automatically pull the latest images from Docker Hub:
+   - `leofrancia08489/project-virgil-backend:latest`
+   - `leofrancia08489/project-virgil-frontend:latest`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
