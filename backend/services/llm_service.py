@@ -64,6 +64,7 @@ class LLMService:
                 
                 # If user provided a model name, try it first, otherwise try common variants
                 models_to_try = [model_name] if model else [
+                    "gemini-2.5-flash",
                     "gemini-1.5-pro-latest",
                     "gemini-1.5-flash-latest", 
                     "gemini-pro-latest",
