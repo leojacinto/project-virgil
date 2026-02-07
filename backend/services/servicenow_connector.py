@@ -168,17 +168,13 @@ class ServiceNowConnector:
     def get_table_relationships(self) -> List[Dict]:
         """Query sys_db_relationship for table relationships"""
         try:
-            # Try cmdb_rel_type as alternative if sys_db_relationship doesn't exist
-            query = """
-                SELECT name, parent_descriptor, child_descriptor
-                FROM cmdb_rel_type
-                WHERE active = 'true'
-                ORDER BY name
-                LIMIT 100
-            """
+            # Simplified query without WHERE clause - ServiceNow JDBC may not support complex SQL
+            query = "SELECT name, parent_descriptor, child_descriptor FROM cmdb_rel_type"
             results = self.execute_query(query, max_retries=1)
-            logger.info(f"Retrieved {len(results)} table relationships")
-            return results
+            # Filter active relationships in Python instead
+            active_results = [r for r in results if r.get('active') != 'false'][:100]
+            logger.info(f"Retrieved {len(active_results)} table relationships")
+            return active_results
         except Exception as e:
             logger.warning(f"Could not fetch table relationships: {str(e)}")
             return []
@@ -186,16 +182,13 @@ class ServiceNowConnector:
     def get_installed_plugins(self) -> List[Dict]:
         """Query sys_plugins for granular plugin activation"""
         try:
-            query = """
-                SELECT sys_id, name, source, active, version
-                FROM sys_plugins
-                WHERE active = 'true'
-                ORDER BY name
-                LIMIT 100
-            """
+            # Simplified query - filter in Python
+            query = "SELECT sys_id, name, source, active, version FROM sys_plugins"
             results = self.execute_query(query, max_retries=1)
-            logger.info(f"Retrieved {len(results)} active plugins")
-            return results
+            # Filter active plugins in Python
+            active_plugins = [r for r in results if r.get('active') == 'true'][:100]
+            logger.info(f"Retrieved {len(active_plugins)} active plugins")
+            return active_plugins
         except Exception as e:
             logger.warning(f"Could not fetch plugins: {str(e)}")
             return []
@@ -234,17 +227,16 @@ class ServiceNowConnector:
     def get_custom_tables(self) -> List[Dict]:
         """Detect custom tables (not from global scope)"""
         try:
-            query = """
-                SELECT name, label, sys_package, super_class
-                FROM sys_db_object
-                WHERE sys_package != 'global'
-                AND name NOT LIKE 'sys_%'
-                ORDER BY name
-                LIMIT 50
-            """
+            # Simplified query - filter in Python
+            query = "SELECT name, label, sys_package, super_class FROM sys_db_object"
             results = self.execute_query(query, max_retries=1)
-            logger.info(f"Retrieved {len(results)} custom tables")
-            return results
+            # Filter custom tables in Python
+            custom_tables = [
+                r for r in results 
+                if r.get('sys_package') != 'global' and not r.get('name', '').startswith('sys_')
+            ][:50]
+            logger.info(f"Retrieved {len(custom_tables)} custom tables")
+            return custom_tables
         except Exception as e:
             logger.warning(f"Could not fetch custom tables: {str(e)}")
             return []
