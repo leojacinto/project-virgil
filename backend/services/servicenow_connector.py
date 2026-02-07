@@ -49,7 +49,11 @@ class ServiceNowConnector:
             if jpype.isJVMStarted():
                 from java.sql import DriverManager
                 
-                jdbc_url = f"jdbc:servicenow://{self.instance}.service-now.com"
+                # Handle both "instance" and "instance.service-now.com" formats
+                if ".service-now.com" in self.instance:
+                    jdbc_url = f"jdbc:servicenow://{self.instance}"
+                else:
+                    jdbc_url = f"jdbc:servicenow://{self.instance}.service-now.com"
                 
                 properties = jpype.JClass("java.util.Properties")()
                 properties.setProperty("user", self.username)
