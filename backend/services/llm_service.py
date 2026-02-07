@@ -240,9 +240,20 @@ Format your response as JSON with the following structure:
             "connections": ["connected_component1", "connected_component2"]
         }}
     ],
-    "mermaid_diagram": "mermaid diagram code showing the architecture flow",
+    "mermaid_diagram": "REQUIRED: Valid Mermaid flowchart syntax starting with 'graph TD' and using --> arrows between nodes. Example: graph TD\\n    A[Component1] --> B[Component2]\\n    B --> C[Component3]",
     "implementation_notes": "key implementation considerations"
 }}
+
+CRITICAL MERMAID REQUIREMENTS:
+- MUST start with "graph TD" on first line
+- MUST use --> arrows to connect nodes (e.g., A --> B)
+- Node format: ID[Label Text] where ID is a single letter or short identifier
+- Example valid diagram:
+  graph TD
+      A[User Portal] --> B[ServiceNow CSM]
+      B --> C[CMDB]
+      A --> D[ITSM]
+      D --> C
 
 Priority levels mean:
 - HIGH: Critical for core functionality, must implement first
