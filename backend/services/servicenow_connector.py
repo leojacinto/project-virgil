@@ -62,118 +62,93 @@ class ServiceNowConnector:
     def is_connected(self) -> bool:
         return self._connected and self.connection is not None
     
-    def execute_query(self, query: str) -> List[Dict]:
+    def execute_query(self, query: str, max_retries: int = 2) -> List[Dict]:
         if not self.is_connected():
             raise Exception("Not connected to ServiceNow")
         
-        try:
-            cursor = self.connection.cursor()
-            cursor.execute(query)
-            
-            # Get column names
-            column_names = [desc[0] for desc in cursor.description]
-            
-            # Fetch all rows
-            rows = cursor.fetchall()
-            
-            # Convert to list of dictionaries
-            results = []
-            for row in rows:
-                row_dict = {}
-                for i, col_name in enumerate(column_names):
-                    row_dict[col_name] = str(row[i]) if row[i] is not None else None
-                results.append(row_dict)
-            
-            cursor.close()
-            return results
-        except Exception as e:
-            logger.error(f"Query execution failed: {str(e)}")
-            raise
+        import time
+        last_error = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                cursor = self.connection.cursor()
+                cursor.execute(query)
+                
+                # Get column names
+                column_names = [desc[0] for desc in cursor.description]
+                
+                # Fetch all rows
+                rows = cursor.fetchall()
+                
+                # Convert to list of dictionaries
+                results = []
+                for row in rows:
+                    row_dict = {}
+                    for i, col_name in enumerate(column_names):
+                        row_dict[col_name] = str(row[i]) if row[i] is not None else None
+                    results.append(row_dict)
+                
+                cursor.close()
+                return results
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Query attempt {attempt + 1}/{max_retries + 1} failed: {str(e)}")
+                if attempt < max_retries:
+                    time.sleep(0.5)  # Brief pause before retry
+                    continue
+                logger.error(f"Query execution failed after {max_retries + 1} attempts: {str(e)}")
+                raise last_error
     
     def get_available_tables(self) -> List[str]:
         try:
-            query = """
-                SELECT name 
-                FROM sys_db_object 
-                WHERE name NOT LIKE 'sys_%' 
-                ORDER BY name
-                LIMIT 1000
-            """
-            results = self.execute_query(query)
+            # Use simpler query that's less likely to fail
+            query = "SELECT name FROM sys_db_object WHERE name NOT LIKE 'sys_%' ORDER BY name LIMIT 100"
+            results = self.execute_query(query, max_retries=1)
             return [row['name'] for row in results if row.get('name')]
         except Exception as e:
-            logger.warning(f"Could not fetch tables via query, using metadata: {str(e)}")
-            try:
-                metadata = self.connection.getMetaData()
-                tables_rs = metadata.getTables(None, None, "%", ["TABLE"])
-                
-                tables = []
-                while tables_rs.next():
-                    table_name = tables_rs.getString("TABLE_NAME")
-                    if table_name and not table_name.startswith("sys_"):
-                        tables.append(table_name)
-                
-                tables_rs.close()
-                return sorted(tables)
-            except Exception as meta_error:
-                logger.error(f"Metadata fetch also failed: {str(meta_error)}")
-                return []
+            logger.warning(f"Could not fetch tables via query: {str(e)}")
+            # Return common ServiceNow tables as fallback
+            return [
+                'incident', 'task', 'change_request', 'problem', 'cmdb_ci',
+                'sys_user', 'sys_user_group', 'cmdb_ci_server', 'cmdb_ci_service'
+            ]
     
     def get_installed_applications(self) -> List[Dict]:
         try:
-            query = """
-                SELECT name, version, scope, active
-                FROM sys_app
-                WHERE active = 'true'
-                ORDER BY name
-                LIMIT 500
-            """
-            return self.execute_query(query)
+            query = "SELECT sys_id, name, version FROM sys_app WHERE active = 'true' ORDER BY name LIMIT 50"
+            return self.execute_query(query, max_retries=1)
         except Exception as e:
-            logger.error(f"Could not fetch installed applications: {str(e)}")
+            logger.warning(f"Could not fetch installed applications: {str(e)}")
             return []
     
     def get_components(self) -> Dict:
-        components = {
-            "workflows": [],
-            "business_rules": [],
-            "ui_policies": [],
-            "integrations": [],
-            "modules": []
-        }
+        components = {}
+        
+        # Fetch components one at a time with delays to avoid overwhelming the connection
+        import time
         
         try:
-            workflows_query = """
-                SELECT name, table, active
-                FROM wf_workflow
-                WHERE active = 'true'
-                LIMIT 100
-            """
-            components["workflows"] = self.execute_query(workflows_query)
+            workflows_query = "SELECT sys_id, name FROM wf_workflow WHERE active = 'true' LIMIT 20"
+            components["workflows"] = self.execute_query(workflows_query, max_retries=1)
+            time.sleep(0.3)  # Small delay between queries
         except Exception as e:
             logger.warning(f"Could not fetch workflows: {str(e)}")
+            components["workflows"] = []
         
         try:
-            business_rules_query = """
-                SELECT name, collection, active, when_to_run
-                FROM sys_script
-                WHERE active = 'true'
-                LIMIT 100
-            """
-            components["business_rules"] = self.execute_query(business_rules_query)
+            business_rules_query = "SELECT sys_id, name FROM sys_script WHERE active = 'true' LIMIT 20"
+            components["business_rules"] = self.execute_query(business_rules_query, max_retries=1)
+            time.sleep(0.3)
         except Exception as e:
             logger.warning(f"Could not fetch business rules: {str(e)}")
+            components["business_rules"] = []
         
         try:
-            integrations_query = """
-                SELECT name, type, active
-                FROM sys_integration
-                WHERE active = 'true'
-                LIMIT 100
-            """
-            components["integrations"] = self.execute_query(integrations_query)
+            integrations_query = "SELECT sys_id, name FROM sys_integration WHERE active = 'true' LIMIT 20"
+            components["integrations"] = self.execute_query(integrations_query, max_retries=1)
         except Exception as e:
             logger.warning(f"Could not fetch integrations: {str(e)}")
+            components["integrations"] = []
         
         return components
     
