@@ -140,7 +140,7 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 │    ├─ Prevents anti-patterns (Portal→CMDB, KB→Incident)    │
 │    └─ Enforces layering (Users→Portals→Apps→Platform)      │
 ├─────────────────────────────────────────────────────────────┤
-│ 4. LLM Generation (15%)                                    │
+│ 4. LLM Generation (15%)                                     │
 │    ├─ Gemini 2.5 Flash / GPT-4 / Claude                    │
 │    ├─ Content generation within constraints                │
 │    ├─ Natural language analysis                            │
