@@ -143,6 +143,20 @@ class LLMService:
         documents: List[Dict],
         web_context: List[Dict]
     ) -> Dict:
+        # Log request immediately at function entry
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        request_log = f"/tmp/virgil_request_{timestamp}.txt"
+        try:
+            with open(request_log, 'w') as f:
+                f.write(f"=== ANALYSIS REQUEST ===\n")
+                f.write(f"Timestamp: {timestamp}\n")
+                f.write(f"Query: {query}\n")
+                f.write(f"ServiceNow Apps: {len(servicenow_data.get('applications', []))}\n")
+                f.write(f"Documents: {len(documents)}\n")
+            logger.info(f"Request logged to: {request_log}")
+        except Exception as e:
+            logger.error(f"Failed to log request: {e}")
+        
         if not self.is_configured():
             raise Exception("No LLM model configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY")
         
@@ -414,6 +428,17 @@ Remember:
                     if validation["warnings"]:
                         logger.info(f"Architecture validation warnings: {validation['warnings']}")
                 
+                # Log successful completion
+                success_log = f"/tmp/virgil_success_{timestamp}.txt"
+                try:
+                    with open(success_log, 'w') as f:
+                        f.write(f"Analysis completed successfully\n")
+                        f.write(f"Mermaid diagram length: {len(result.get('mermaid_diagram', ''))}\n")
+                        f.write(f"Recommendations: {len(result.get('recommendations', []))}\n")
+                    logger.info(f"Success logged to: {success_log}")
+                except:
+                    pass
+                
             except Exception as e:
                 # Fallback to regular response if structured output not supported
                 logger.warning(f"Structured output failed, falling back to JSON parsing: {str(e)}")
@@ -471,6 +496,14 @@ Remember:
             return result
         except Exception as e:
             import traceback
+            error_log = f"/tmp/virgil_error_{timestamp}.txt"
+            error_details = f"Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            try:
+                with open(error_log, 'w') as f:
+                    f.write(error_details)
+                logger.error(f"Error logged to: {error_log}")
+            except:
+                pass
             logger.error(f"Architecture analysis failed: {str(e)}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
             raise
