@@ -362,19 +362,18 @@ Remember:
                         if not fixed_mermaid.startswith("graph"):
                             fixed_mermaid = "graph TD\n" + fixed_mermaid
                         
-                        # First pass: join lines that are part of split labels
-                        # This fixes labels like "E[Customer Service Management (\nCSM)]"
+                        # First pass: remove ALL newlines from within labels
+                        # Replace literal \n in the string with spaces
+                        fixed_mermaid = fixed_mermaid.replace("\n", " ")
+                        # Now split by double spaces to restore line structure
+                        lines = [line.strip() for line in fixed_mermaid.split("  ") if line.strip()]
+                        
+                        # Reconstruct with proper line breaks between statements
                         fixed_lines = []
-                        i = 0
-                        lines = fixed_mermaid.split("\n")
-                        while i < len(lines):
-                            line = lines[i]
-                            # If line has [ but no ], it's a split label - join with next line
-                            while "[" in line and "]" not in line and i + 1 < len(lines):
-                                i += 1
-                                line = line.strip() + " " + lines[i].strip()
-                            fixed_lines.append(line)
-                            i += 1
+                        for line in lines:
+                            # Each line should be a complete statement
+                            if line:
+                                fixed_lines.append(line)
                         
                         # Second pass: clean special characters
                         cleaned_lines = []
