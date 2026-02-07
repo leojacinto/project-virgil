@@ -274,6 +274,14 @@ Remember:
                 
                 logger.info("Successfully generated structured response")
                 
+                # Write full response to debug file
+                import json
+                import datetime
+                debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                with open(debug_file, 'w') as f:
+                    json.dump(result, f, indent=2)
+                logger.info(f"Full LLM response saved to: {debug_file}")
+                
                 # Add visible validation to recommendations
                 validation_warnings = []
                 
@@ -311,6 +319,11 @@ Remember:
     D --> C"""
                     result["mermaid_diagram"] = mermaid
                 else:
+                    # Save original Mermaid to file for debugging
+                    mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                    with open(mermaid_file, 'w') as f:
+                        f.write(mermaid)
+                    logger.info(f"Original Mermaid diagram saved to: {mermaid_file}")
                     logger.info(f"Original Mermaid diagram:\n{mermaid}")
                     
                     # Fix common issues
@@ -354,6 +367,10 @@ Remember:
     D --> C"""
                     
                     if fixed_mermaid != mermaid:
+                        mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        with open(mermaid_fixed_file, 'w') as f:
+                            f.write(fixed_mermaid)
+                        logger.info(f"Fixed Mermaid diagram saved to: {mermaid_fixed_file}")
                         logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
                     
                     result["mermaid_diagram"] = fixed_mermaid
