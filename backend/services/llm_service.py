@@ -145,9 +145,37 @@ class LLMService:
         if not self.is_configured():
             raise Exception("No LLM model configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY")
         
-        system_prompt = """You are an expert ServiceNow technical architect and solution consultant with deep knowledge of:
+        # Detect query type for specialized handling
+        query_types = self.ontology.detect_query_type(query)
+        logger.info(f"Detected query types: {query_types}")
+        
+        # Get specialized constraints based on query type
+        specialized_constraints = self.ontology.get_specialized_constraints(query_types)
+        
+        # Get instance-aware recommendations
+        installed_apps = servicenow_data.get("applications", [])
+        instance_recommendations = self.ontology.get_instance_aware_recommendations(
+            [app.get("name", "") for app in installed_apps],
+            query_types
+        )
+        
+        system_prompt = f"""You are an expert ServiceNow technical architect and solution consultant with deep knowledge of:
 - ServiceNow platform architecture and best practices
 - Integration patterns and data flows
+
+CRITICAL SERVICENOW ARCHITECTURAL RULES:
+1. CMDB (Configuration Management Database) is ALWAYS foundational - it cannot depend on other components
+2. User Management is ALWAYS foundational - required for all authentication
+3. Knowledge Base is consumed BY other components (Incident, Case, Portal) - it does NOT consume them
+4. Service Portals and Customer Portals sit at the UI layer - they consume services, not provide them
+5. Integration Hub and Flow Designer are orchestration layers - they connect components but are not foundational
+
+{specialized_constraints}
+
+INSTANCE CONTEXT:
+The user's ServiceNow instance has these applications installed: {', '.join([app.get('name', '') for app in installed_apps[:10]])}
+
+{chr(10).join('- ' + rec for rec in instance_recommendations) if instance_recommendations else ''}
 
 Your task is to analyze the user's requirements and provide:
 1. A comprehensive architectural analysis
