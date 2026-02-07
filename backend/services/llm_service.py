@@ -362,18 +362,21 @@ Remember:
                         if not fixed_mermaid.startswith("graph"):
                             fixed_mermaid = "graph TD\n" + fixed_mermaid
                         
-                        # First pass: remove ALL newlines from within labels
-                        # Replace literal \n in the string with spaces
-                        fixed_mermaid = fixed_mermaid.replace("\n", " ")
-                        # Now split by double spaces to restore line structure
-                        lines = [line.strip() for line in fixed_mermaid.split("  ") if line.strip()]
-                        
-                        # Reconstruct with proper line breaks between statements
+                        # First pass: fix newlines within labels only
+                        # Process line by line to preserve structure
+                        lines = fixed_mermaid.split("\n")
                         fixed_lines = []
-                        for line in lines:
-                            # Each line should be a complete statement
-                            if line:
-                                fixed_lines.append(line)
+                        i = 0
+                        while i < len(lines):
+                            line = lines[i]
+                            # Check if this line has an unclosed label ([ without ])
+                            if "[" in line and "]" not in line:
+                                # Join with next lines until we find the closing ]
+                                while i + 1 < len(lines) and "]" not in line:
+                                    i += 1
+                                    line = line.strip() + " " + lines[i].strip()
+                            fixed_lines.append(line)
+                            i += 1
                         
                         # Second pass: clean special characters
                         cleaned_lines = []
