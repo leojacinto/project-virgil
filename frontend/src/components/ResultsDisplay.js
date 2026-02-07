@@ -115,7 +115,24 @@ function ResultsDisplay({ result }) {
         </button>
         {expandedSections.recommendations && (
           <div className="px-6 pb-6 border-t border-slate-200">
-            <div className="space-y-4 mt-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4 mb-4">
+              <p className="text-sm font-medium text-blue-900 mb-2">Priority Levels:</p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded border bg-red-100 text-red-800 border-red-200">HIGH</span>
+                  <span className="text-blue-800">Critical - implement first</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded border bg-yellow-100 text-yellow-800 border-yellow-200">MEDIUM</span>
+                  <span className="text-blue-800">Important - implement second</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="px-2 py-1 text-xs font-medium rounded border bg-green-100 text-green-800 border-green-200">LOW</span>
+                  <span className="text-blue-800">Nice-to-have - if time allows</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
               {result.recommendations && result.recommendations.length > 0 ? (
                 result.recommendations.map((rec, index) => (
                   <div
@@ -132,13 +149,6 @@ function ResultsDisplay({ result }) {
                           className={`px-2 py-1 text-xs font-medium rounded border ${getPriorityColor(
                             rec.priority
                           )}`}
-                          title={
-                            rec.priority.toLowerCase() === 'high' 
-                              ? 'Critical for core functionality - implement first'
-                              : rec.priority.toLowerCase() === 'medium'
-                              ? 'Important for complete solution - implement after high priority'
-                              : 'Nice-to-have enhancement - implement if time/budget allows'
-                          }
                         >
                           {rec.priority.toUpperCase()}
                         </span>

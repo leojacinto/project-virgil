@@ -191,7 +191,24 @@ Priority levels mean:
 - MEDIUM: Important for complete solution, implement after high priority
 - LOW: Nice-to-have enhancements, implement if time/budget allows
 
-For mermaid_diagram, create a flowchart or graph showing the architecture components and their relationships."""
+For mermaid_diagram, create a simple flowchart using this EXACT syntax:
+```
+graph TD
+    A[Public Website] --> B[CSM Service Portal]
+    B --> C[Case Management]
+    C --> D[Knowledge Base]
+    E[Employee Portal] --> F[ITSM Service Portal]
+    F --> G[Incident Management]
+    G --> H[Change Management]
+```
+
+Use ONLY these Mermaid elements:
+- graph TD (top-down) or graph LR (left-right)
+- Node format: ID[Label Text]
+- Connections: --> for arrows
+- Keep it simple - max 10 nodes
+- No special characters in IDs (use A, B, C, etc.)
+- No quotes in labels unless necessary"""
 
         try:
             messages = [
