@@ -23,17 +23,26 @@ class ServiceNowConnector:
         if not jpype.isJVMStarted():
             try:
                 jar_path = os.path.abspath(self.jdbc_path)
+                logger.info(f"Checking JDBC JAR at: {jar_path}")
+                
                 if not os.path.exists(jar_path):
                     raise FileNotFoundError(f"JDBC JAR file not found at: {jar_path}")
                 
+                logger.info(f"JAR file found, size: {os.path.getsize(jar_path)} bytes")
+                
+                jvm_path = jpype.getDefaultJVMPath()
+                logger.info(f"JVM path: {jvm_path}")
+                
+                logger.info("Starting JVM...")
                 jpype.startJVM(
-                    jpype.getDefaultJVMPath(),
+                    jvm_path,
                     f"-Djava.class.path={jar_path}",
-                    "-ea"
+                    "-ea",
+                    convertStrings=False
                 )
                 logger.info("JVM started successfully")
             except Exception as e:
-                logger.error(f"Failed to start JVM: {str(e)}")
+                logger.error(f"Failed to start JVM: {str(e)}", exc_info=True)
                 raise
     
     def test_connection(self) -> bool:
@@ -46,26 +55,35 @@ class ServiceNowConnector:
     
     def connect(self):
         try:
-            if jpype.isJVMStarted():
-                from java.sql import DriverManager
-                
-                # Handle both "instance" and "instance.service-now.com" formats
-                if ".service-now.com" in self.instance:
-                    jdbc_url = f"jdbc:servicenow://{self.instance}"
-                else:
-                    jdbc_url = f"jdbc:servicenow://{self.instance}.service-now.com"
-                
-                properties = jpype.JClass("java.util.Properties")()
-                properties.setProperty("user", self.username)
-                properties.setProperty("password", self.password)
-                
-                self.connection = DriverManager.getConnection(jdbc_url, properties)
-                self._connected = True
-                logger.info(f"Connected to ServiceNow instance: {self.instance}")
-            else:
+            logger.info(f"Attempting to connect to ServiceNow instance: {self.instance}")
+            
+            if not jpype.isJVMStarted():
                 raise Exception("JVM not started")
+            
+            logger.info("JVM is running, importing DriverManager...")
+            from java.sql import DriverManager
+            
+            # Handle both "instance" and "instance.service-now.com" formats
+            if ".service-now.com" in self.instance:
+                jdbc_url = f"jdbc:servicenow://{self.instance}"
+            else:
+                jdbc_url = f"jdbc:servicenow://{self.instance}.service-now.com"
+            
+            logger.info(f"JDBC URL: {jdbc_url}")
+            logger.info(f"Username: {self.username}")
+            
+            logger.info("Creating connection properties...")
+            properties = jpype.JClass("java.util.Properties")()
+            properties.setProperty("user", self.username)
+            properties.setProperty("password", self.password)
+            
+            logger.info("Calling DriverManager.getConnection()...")
+            self.connection = DriverManager.getConnection(jdbc_url, properties)
+            self._connected = True
+            logger.info(f"Successfully connected to ServiceNow instance: {self.instance}")
+            
         except Exception as e:
-            logger.error(f"Connection failed: {str(e)}")
+            logger.error(f"Connection failed: {str(e)}", exc_info=True)
             self._connected = False
             raise
     
