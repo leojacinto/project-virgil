@@ -289,15 +289,11 @@ CRITICAL MERMAID REQUIREMENTS:
       A --> D[ITSM]
       D --> C
 
-MERMAID DIAGRAM SIMPLIFICATION GUIDELINES:
-- Show only PRIMARY data flows (limit to 3-4 connections per component maximum)
-- Focus on the main architectural flow: User → Portal → Application → Platform → Data
-- Omit redundant connections (e.g., if A→B→C exists, don't show A→C unless critical)
-- Prioritize these relationship types: "runs on", "creates", "resolves using", "manages via"
-- Avoid showing every possible "references", "accesses", or "provides data for" connection
-- Group similar components in subgraphs to reduce visual clutter
-- If a component has many connections, show only the most important ones
-- Keep the diagram clean and readable - clarity over completeness
+MERMAID DIAGRAM GUIDELINES FOR CLARITY:
+- Focus on primary architectural flows: User → Portal → Application → Platform → Data
+- Prioritize key relationships: "runs on", "creates", "resolves using"
+- Use subgraphs to organize components by layer
+- Keep diagrams readable - avoid excessive connections between every component
 
 Priority levels mean:
 - HIGH: Critical for core functionality, must implement first
