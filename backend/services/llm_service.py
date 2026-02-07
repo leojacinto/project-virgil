@@ -396,21 +396,21 @@ Remember:
                         if not fixed_mermaid.startswith("graph"):
                             fixed_mermaid = "graph TD\n" + fixed_mermaid
                         
-                        # First pass: fix newlines within labels only
-                        # Process line by line to preserve structure
-                        lines = fixed_mermaid.split("\n")
-                        fixed_lines = []
-                        i = 0
-                        while i < len(lines):
-                            line = lines[i]
-                            # Check if this line has an unclosed label ([ without ])
-                            if "[" in line and "]" not in line:
-                                # Join with next lines until we find the closing ]
-                                while i + 1 < len(lines) and "]" not in line:
-                                    i += 1
-                                    line = line.strip() + " " + lines[i].strip()
-                            fixed_lines.append(line)
-                            i += 1
+                        # First pass: remove newlines from within labels using regex
+                        # Find all labels [text] and remove any newlines within them
+                        import re
+                        
+                        def fix_label(match):
+                            label_content = match.group(1)
+                            # Remove newlines and extra spaces from label content
+                            fixed_content = ' '.join(label_content.split())
+                            return f"[{fixed_content}]"
+                        
+                        # Replace all [label content] with fixed versions
+                        fixed_mermaid = re.sub(r'\[([^\]]+)\]', fix_label, fixed_mermaid)
+                        
+                        # Split into lines for further processing
+                        fixed_lines = fixed_mermaid.split("\n")
                         
                         # Second pass: clean special characters
                         cleaned_lines = []
