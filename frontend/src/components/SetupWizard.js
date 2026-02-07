@@ -36,8 +36,8 @@ function SetupWizard({ onComplete }) {
     { 
       id: 'google', 
       name: 'Google Gemini', 
-      models: ['gemini-pro', 'gemini-1.5-pro'],
-      defaultModel: 'gemini-pro'
+      models: ['gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-pro'],
+      defaultModel: 'gemini-2.5-flash'
     },
     { 
       id: 'azure', 
