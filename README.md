@@ -6,11 +6,11 @@ An AI-powered application that generates architecture diagrams and provides solu
 
 ## 🚀 Quick Start with Docker (Recommended)
 
-**The easiest way to run this application is using Docker.** No need to install Python, Node.js, or Java manually!
+The easiest way to run this application is using Docker. No need to install Python, Node.js, or Java manually.
 
 ### Step 1: Install Docker Desktop
 
-**Docker Desktop is the only prerequisite you need!**
+Docker Desktop is the only prerequisite you need.
 
 #### Windows
 1. Download [Docker Desktop for Windows](https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe)
@@ -140,11 +140,11 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ## How It Works
 
-**Project Virgil** is an **AI-powered ServiceNow architecture advisor** that combines multiple intelligence layers to provide **semantically correct, instance-aware architectural guidance**. It's not just ChatGPT with ServiceNow data—it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
+Project Virgil is an AI-powered ServiceNow architecture advisor that combines multiple intelligence layers to provide semantically correct, instance-aware architectural guidance. Unlike generic LLM tools, it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
 
 ### Architecture Intelligence Stack
 
-**The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology and validated post-generation.**
+The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology and validated post-generation.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -180,15 +180,15 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Key Insight:** The ontology doesn't do 20% of the work—it prevents 80% of the mistakes. Without it, the LLM would generate architecturally incorrect diagrams (Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components).
+The ontology prevents 80% of the mistakes rather than doing 20% of the work. Without it, the LLM would generate architecturally incorrect diagrams (Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components).
 
-> **Note:** This system currently uses a custom-built ServiceNow ontology. It is **not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world**. Watch this space for future integration with ServiceNow's native knowledge graph infrastructure!
+Note: This system currently uses a custom-built ServiceNow ontology. It is not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world. Future integration with ServiceNow's native knowledge graph infrastructure is planned.
 
 ### Constraint-Based Architecture
 
-**The system doesn't rely on the LLM being "smart enough"—it constrains the LLM to only generate valid outputs.**
+The system doesn't rely on the LLM being "smart enough". Instead, it constrains the LLM to only generate valid outputs.
 
-**Three-Layer Validation:**
+Three-Layer Validation:
 
 1. **Pre-Generation Constraints** (Ontology in prompt)
    - Explicit architectural rules in system prompt
@@ -208,7 +208,7 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
    - Cleans special characters
    - Ensures diagram starts with `graph TD`
 
-**Result:** Shifted from "usually good" to "reliably good" by adding intelligence layers around the LLM, not by making the LLM smarter.
+This approach shifts from "usually good" to "reliably good" by adding intelligence layers around the LLM rather than relying on the LLM itself.
 
 ### Why This is Better Than "ChatGPT + SN Utils + VSCode"
 
@@ -225,10 +225,10 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ### Key Differentiators
 
-#### 1. **ServiceNow Ontology (The Secret Sauce)**
-- **Semantic Rules**: Enforces architectural constraints like "CMDB is foundational" and "Knowledge Base is consumed BY apps, not vice versa"
-- **Pattern Detection**: Automatically detects query types (integration, data flow, compliance) and applies relevant guidance
-- **Relationship Validation**: Prevents architecturally incorrect diagrams (e.g., Portal depending on CMDB directly)
+#### 1. ServiceNow Ontology
+- Semantic Rules: Enforces architectural constraints like "CMDB is foundational" and "Knowledge Base is consumed BY apps, not vice versa"
+- Pattern Detection: Automatically detects query types (integration, data flow, compliance) and applies relevant guidance
+- Relationship Validation: Prevents architecturally incorrect diagrams (e.g., Portal depending on CMDB directly)
 
 **Example:**
 ```
@@ -236,13 +236,13 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 ✅ Virgil enforces: Portal → Application → Platform → CMDB
 ```
 
-#### 2. **Instance-Aware Recommendations**
-- Queries your **live ServiceNow instance** via REST API
+#### 2. Instance-Aware Recommendations
+- Queries your live ServiceNow instance via REST API
 - Detects installed apps (ITSM, CSM, HRSD, ITOM, etc.)
-- Provides **gap analysis**: "You already have X, just need Y"
+- Provides gap analysis: "You already have X, just need Y"
 - Presales-ready: "Single instance recommended because you have FedRAMP compliance"
 
-**Example Output:**
+Example Output:
 ```
 CURRENT INSTANCE STATE:
 - Instance: raptorprodbpeta4.service-now.com
@@ -253,8 +253,8 @@ CURRENT INSTANCE STATE:
 Recommendation: Enable Customer Portal module (already licensed)
 ```
 
-#### 3. **Automated Diagram Generation & Validation**
-- Generates Mermaid diagrams with **semantic relationships**
+#### 3. Automated Diagram Generation & Validation
+- Generates Mermaid diagrams with semantic relationships
 - Auto-fixes common syntax errors (line breaks, quoted subgraphs)
 - Validates diagram structure before rendering
 - Fallback diagrams if LLM fails
@@ -275,55 +275,55 @@ graph TD
     C -->|runs on| Platform
 ```
 
-#### 4. **Integrated Workflow**
-- **Single interface** for query → analysis → diagram → recommendations
-- **Document context**: Upload pricing docs, RFPs, technical specs
-- **Web search**: Optional external context
-- **Mermaid Diagrams**: Interactive, validated diagrams rendered in browser
+#### 4. Integrated Workflow
+- Single interface for query → analysis → diagram → recommendations
+- Document context: Upload pricing docs, RFPs, technical specs
+- Web search: Optional external context
+- Mermaid Diagrams: Interactive, validated diagrams rendered in browser
 
 ### Real-World Use Cases
 
 #### Presales Scenario
-**Query:** "CSM + ITSM for public sector with FedRAMP compliance"
+Query: "CSM + ITSM for public sector with FedRAMP compliance"
 
-**Virgil's Response:**
+Virgil's Response:
 1. ✅ Detects your instance has ITSM + CSM installed
 2. ✅ Recommends single instance (FedRAMP compliance)
 3. ✅ Identifies gap: Need Customer Portal for public-facing requests
 4. ✅ Generates architecture diagram with proper layering
 5. ✅ Provides migration steps and cost implications
 
-**ChatGPT + Tools:**
+ChatGPT + Tools:
 - ❌ Doesn't know what's installed in your instance
 - ❌ Generic "you could use CSM" recommendation
 - ❌ No gap analysis or presales context
 - ❌ Manual diagram creation required
 
 #### Technical Architecture Review
-**Query:** "How should Knowledge Base integrate with Incident Management?"
+Query: "How should Knowledge Base integrate with Incident Management?"
 
-**Virgil's Response:**
+Virgil's Response:
 1. ✅ Ontology enforces: KB is consumed BY Incident (not vice versa)
 2. ✅ Shows correct relationship: `Incident -->|resolves using| KB`
 3. ✅ Validates against instance: Checks if KB is configured
 4. ✅ Recommends integration patterns (embedded KB, search, etc.)
 
-**ChatGPT:**
+ChatGPT:
 - ⚠️ Might suggest incorrect bidirectional relationship
 - ❌ No validation against ServiceNow architecture rules
 - ❌ Generic integration advice
 
 ## Features
 
-- **ServiceNow Ontology**: Built-in semantic rules and architectural constraints for ServiceNow platform
-- **ServiceNow RaptorDB Integration**: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
-- **SN Utils REST API**: Query live instance metadata for installed apps, capabilities, and gap analysis
-- **Document Processing**: Upload pricing documents, technical specifications, and reference materials (PDF, DOCX, XLSX, TXT, CSV)
-- **LLM-Powered Analysis**: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
-- **Instance-Aware Recommendations**: Provides presales-ready gap analysis based on your actual instance configuration
-- **Architecture Diagram Generation**: Automatically generates validated Mermaid diagrams with semantic relationships
-- **Auto-Fix & Validation**: Automatically fixes common Mermaid syntax errors and validates diagram structure
-- **Modern Web UI**: Beautiful React-based interface with TailwindCSS styling
+- ServiceNow Ontology: Built-in semantic rules and architectural constraints for ServiceNow platform
+- ServiceNow RaptorDB Integration: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
+- SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
+- Document Processing: Upload pricing documents, technical specifications, and reference materials (PDF, DOCX, XLSX, TXT, CSV)
+- LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
+- Instance-Aware Recommendations: Provides presales-ready gap analysis based on your actual instance configuration
+- Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
+- Auto-Fix & Validation: Automatically fixes common Mermaid syntax errors and validates diagram structure
+- Modern Web UI: React-based interface with TailwindCSS styling
 
 ## Architecture
 
@@ -353,16 +353,16 @@ If you prefer to run without Docker, follow these steps:
 
 ### Prerequisites
 
-- **Python 3.12+** (required for JPype compatibility on Apple Silicon)
+- Python 3.12+ (required for JPype compatibility on Apple Silicon)
 - Node.js 16+
-- **Java (OpenJDK 17+)** (for ServiceNow JDBC driver)
+- Java (OpenJDK 17+) for ServiceNow JDBC driver
   ```bash
   brew install openjdk@17
   ```
 - ServiceNow instance with RaptorDB access
 - OpenAI API key or Anthropic API key
 
-**Note:** ServiceNow JDBC driver (v1.0.3) is included in the repository.
+Note: ServiceNow JDBC driver (v1.0.3) is included in the repository.
 
 ### Installation Steps
 
@@ -551,19 +551,19 @@ The frontend will be available at `http://localhost:3000`
 ## Technologies Used
 
 ### Backend
-- **FastAPI** - Modern Python web framework
-- **JPype** - Python-Java bridge for JDBC
-- **LangChain** - LLM orchestration framework
-- **ChromaDB** - Vector database for document search
-- **Sentence Transformers** - Text embeddings
-- **Diagrams** - Python diagram generation library
+- FastAPI: Modern Python web framework
+- JPype: Python-Java bridge for JDBC
+- LangChain: LLM orchestration framework
+- ChromaDB: Vector database for document search
+- Sentence Transformers: Text embeddings
+- Diagrams: Python diagram generation library
 
 ### Frontend
-- **React** - UI framework
-- **TailwindCSS** - Utility-first CSS framework
-- **Lucide React** - Icon library
-- **Axios** - HTTP client
-- **React Dropzone** - File upload component
+- React: UI framework
+- TailwindCSS: Utility-first CSS framework
+- Lucide React: Icon library
+- Axios: HTTP client
+- React Dropzone: File upload component
 
 ## Security Considerations
 
@@ -591,15 +591,15 @@ The frontend will be available at `http://localhost:3000`
 
 ## License
 
-**MIT License - Free to Use**
+MIT License
 
 This software is provided free of charge and "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
 
 ### Important Notices
 
-**ServiceNow Licensing:** This application connects to ServiceNow instances via RaptorDB. Use of ServiceNow requires appropriate licenses from ServiceNow, Inc. This application does not include or provide ServiceNow licenses. Users are responsible for ensuring they have proper authorization and licensing to access their ServiceNow instances.
+ServiceNow Licensing: This application connects to ServiceNow instances via RaptorDB. Use of ServiceNow requires appropriate licenses from ServiceNow, Inc. This application does not include or provide ServiceNow licenses. Users are responsible for ensuring they have proper authorization and licensing to access their ServiceNow instances.
 
-**Third-Party Services:** This application integrates with third-party LLM services (OpenAI, Anthropic, Google, Azure). Users are responsible for their own API keys and compliance with the respective service providers' terms of service.
+Third-Party Services: This application integrates with third-party LLM services (OpenAI, Anthropic, Google, Azure). Users are responsible for their own API keys and compliance with the respective service providers' terms of service.
 
 ## Support
 
