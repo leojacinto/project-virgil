@@ -191,24 +191,26 @@ Priority levels mean:
 - MEDIUM: Important for complete solution, implement after high priority
 - LOW: Nice-to-have enhancements, implement if time/budget allows
 
-For mermaid_diagram, create a simple flowchart using this EXACT syntax:
-```
+For mermaid_diagram, you MUST create a simple flowchart. Use this EXACT format:
 graph TD
-    A[Public Website] --> B[CSM Service Portal]
-    B --> C[Case Management]
-    C --> D[Knowledge Base]
-    E[Employee Portal] --> F[ITSM Service Portal]
-    F --> G[Incident Management]
-    G --> H[Change Management]
-```
+    A[Component 1] --> B[Component 2]
+    B --> C[Component 3]
 
-Use ONLY these Mermaid elements:
-- graph TD (top-down) or graph LR (left-right)
-- Node format: ID[Label Text]
-- Connections: --> for arrows
-- Keep it simple - max 10 nodes
-- No special characters in IDs (use A, B, C, etc.)
-- No quotes in labels unless necessary"""
+Rules for Mermaid:
+- Start with: graph TD
+- Use simple IDs: A, B, C, D, etc.
+- Format: ID[Label] --> ID2[Label2]
+- Max 8 nodes
+- No special chars in labels
+- Keep labels short (2-4 words)
+
+Example for this query:
+graph TD
+    A[Public Portal] --> B[CSM Cases]
+    C[Employee Portal] --> D[ITSM Tickets]
+    B --> E[Knowledge Base]
+    D --> E
+    E --> F[CMDB]"""
 
         try:
             messages = [
