@@ -122,35 +122,35 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. Mermaid Auto-Fix & Validation (35%)                     │
-│    ├─ Regex-based syntax correction (line breaks, quotes)  │
-│    ├─ Post-generation validation against ontology rules    │
-│    ├─ Relationship correctness checking                    │
-│    └─ CRITICAL: Blocks 100% of syntax errors               │
+│ 1. Mermaid Auto-Fix & Validation (35%)                      │
+│    ├─ Regex-based syntax correction (line breaks, quotes)   │
+│    ├─ Post-generation validation against ontology rules     │
+│    ├─ Relationship correctness checking                     │
+│    └─ CRITICAL: Blocks 100% of syntax errors                │
 ├─────────────────────────────────────────────────────────────┤
-│ 2. Simplified Mermaid Guidelines (25%)                     │
-│    ├─ "Focus on primary flows" constraint                  │
-│    ├─ "Limit connections per component" rule               │
-│    ├─ Visual clarity over completeness                     │
-│    └─ Prevents overwhelming diagrams (47 arrows → 20)      │
+│ 2. Simplified Mermaid Guidelines (25%)                      │
+│    ├─ "Focus on primary flows" constraint                   │
+│    ├─ "Limit connections per component" rule                │
+│    ├─ Visual clarity over completeness                      │
+│    └─ Prevents overwhelming diagrams (47 arrows → 20)       │
 ├─────────────────────────────────────────────────────────────┤
-│ 3. ServiceNow Ontology (20% work, prevents 80% mistakes)   │
-│    ├─ Semantic relationship rules & constraints            │
-│    ├─ Architectural pattern validation                     │
-│    ├─ Prevents anti-patterns (Portal→CMDB, KB→Incident)    │
-│    └─ Enforces layering (Users→Portals→Apps→Platform)      │
+│ 3. ServiceNow Ontology (20% work, prevents 80% mistakes)    │
+│    ├─ Semantic relationship rules & constraints             │
+│    ├─ Architectural pattern validation                      │
+│    ├─ Prevents anti-patterns (Portal→CMDB, KB→Incident)     │
+│    └─ Enforces layering (Users→Portals→Apps→Platform)       │
 ├─────────────────────────────────────────────────────────────┤
 │ 4. LLM Generation (15%)                                     │
-│    ├─ Gemini 2.5 Flash / GPT-4 / Claude                    │
-│    ├─ Content generation within constraints                │
-│    ├─ Natural language analysis                            │
-│    └─ Good at generation, bad at validation                │
+│    ├─ Gemini 2.5 Flash / GPT-4 / Claude                     │
+│    ├─ Content generation within constraints                 │
+│    ├─ Natural language analysis                             │
+│    └─ Good at generation, bad at validation                 │
 ├─────────────────────────────────────────────────────────────┤
-│ 5. Instance Context (5% currently, 15-20% potential)       │
-│    ├─ SN Utils REST API: Applications, capabilities        │
-│    ├─ JDBC: Relationships, plugins, usage stats            │
-│    ├─ Gap analysis: What's installed vs. needed            │
-│    └─ Currently informs prompt, not yet visualized         │
+│ 5. Instance Context (5% currently, 15-20% potential)        │
+│    ├─ SN Utils REST API: Applications, capabilities         │
+│    ├─ JDBC: Relationships, plugins, usage stats             │
+│    ├─ Gap analysis: What's installed vs. needed             │
+│    └─ Currently informs prompt, not yet visualized          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
