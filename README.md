@@ -108,13 +108,151 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
+## How It Works
+
+**Project Virgil** is an **AI-powered ServiceNow architecture advisor** that combines multiple intelligence layers to provide **semantically correct, instance-aware architectural guidance**. It's not just ChatGPT with ServiceNow data—it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
+
+### Architecture Intelligence Stack
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. LLM Layer (70%)                                          │
+│    ├─ Gemini 2.5 Flash / GPT-4 / Claude                    │
+│    ├─ Natural language analysis & recommendations          │
+│    ├─ Mermaid diagram generation                           │
+│    └─ Contextual reasoning & trade-off analysis            │
+├─────────────────────────────────────────────────────────────┤
+│ 2. ServiceNow Ontology (20%)                               │
+│    ├─ Semantic relationship rules & constraints            │
+│    ├─ Query type detection (integration, data flow, etc.)  │
+│    ├─ Architectural pattern validation                     │
+│    └─ Prevents impossible/incorrect architectures          │
+├─────────────────────────────────────────────────────────────┤
+│ 3. SN Utils REST API (8%)                                  │
+│    ├─ Live instance metadata queries                       │
+│    ├─ Installed application detection                      │
+│    ├─ Capability gap analysis                              │
+│    └─ Presales-ready recommendations                       │
+├─────────────────────────────────────────────────────────────┤
+│ 4. JDBC/RaptorDB Data (2%)                                 │
+│    ├─ Deep instance metadata (tables, fields, workflows)   │
+│    ├─ Custom configuration detection                       │
+│    └─ Fallback when REST API unavailable                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Why This is Better Than "ChatGPT + SN Utils + VSCode"
+
+| Aspect | ChatGPT + Tools | Project Virgil |
+|--------|----------------|----------------|
+| **Architectural Validation** | ❌ No validation - can suggest impossible architectures | ✅ Ontology enforces semantic rules (e.g., CMDB is foundational, not dependent) |
+| **ServiceNow Knowledge** | ⚠️ Generic LLM knowledge (may be outdated) | ✅ Built-in ServiceNow ontology with relationship constraints |
+| **Instance Awareness** | ❌ No connection to your instance | ✅ Queries live instance via REST API + JDBC for current state |
+| **Diagram Quality** | ⚠️ Manual Mermaid editing required | ✅ Auto-generated, validated, and auto-fixed Mermaid diagrams |
+| **Presales Context** | ❌ Generic recommendations | ✅ Gap analysis: "You have CSM, need Customer Portal" |
+| **Consistency** | ❌ Varies per prompt | ✅ Consistent architectural patterns enforced by ontology |
+| **Integration** | ❌ Copy-paste between tools | ✅ Unified workflow: query → analysis → diagram → recommendations |
+
+### Key Differentiators
+
+#### 1. **ServiceNow Ontology (The Secret Sauce)**
+- **Semantic Rules**: Enforces architectural constraints like "CMDB is foundational" and "Knowledge Base is consumed BY apps, not vice versa"
+- **Pattern Detection**: Automatically detects query types (integration, data flow, compliance) and applies relevant guidance
+- **Relationship Validation**: Prevents architecturally incorrect diagrams (e.g., Portal depending on CMDB directly)
+
+**Example:**
+```
+❌ ChatGPT might suggest: Portal → CMDB → Application
+✅ Virgil enforces: Portal → Application → Platform → CMDB
+```
+
+#### 2. **Instance-Aware Recommendations**
+- Queries your **live ServiceNow instance** via REST API
+- Detects installed apps (ITSM, CSM, HRSD, ITOM, etc.)
+- Provides **gap analysis**: "You already have X, just need Y"
+- Presales-ready: "Single instance recommended because you have FedRAMP compliance"
+
+**Example Output:**
+```
+CURRENT INSTANCE STATE:
+- Instance: raptorprodbpeta4.service-now.com
+- ITSM: Yes ✅
+- CSM: Yes ✅
+- Customer Portal: No ❌ (Gap identified)
+
+Recommendation: Enable Customer Portal module (already licensed)
+```
+
+#### 3. **Automated Diagram Generation & Validation**
+- Generates Mermaid diagrams with **semantic relationships**
+- Auto-fixes common syntax errors (line breaks, quoted subgraphs)
+- Validates diagram structure before rendering
+- Fallback diagrams if LLM fails
+
+**Example:**
+```mermaid
+graph TD
+    subgraph Users
+        A[Public Customer]
+        B[Internal Employee]
+    end
+    subgraph Applications
+        C[Customer Service Management]
+        D[IT Service Management]
+    end
+    A -->|accesses| C
+    B -->|accesses| D
+    C -->|runs on| Platform
+```
+
+#### 4. **Integrated Workflow**
+- **Single interface** for query → analysis → diagram → recommendations
+- **Document context**: Upload pricing docs, RFPs, technical specs
+- **Web search**: Optional external context
+- **Export-ready**: Diagrams in PNG/SVG/PDF for presentations
+
+### Real-World Use Cases
+
+#### Presales Scenario
+**Query:** "CSM + ITSM for public sector with FedRAMP compliance"
+
+**Virgil's Response:**
+1. ✅ Detects your instance has ITSM + CSM installed
+2. ✅ Recommends single instance (FedRAMP compliance)
+3. ✅ Identifies gap: Need Customer Portal for public-facing requests
+4. ✅ Generates architecture diagram with proper layering
+5. ✅ Provides migration steps and cost implications
+
+**ChatGPT + Tools:**
+- ❌ Doesn't know what's installed in your instance
+- ❌ Generic "you could use CSM" recommendation
+- ❌ No gap analysis or presales context
+- ❌ Manual diagram creation required
+
+#### Technical Architecture Review
+**Query:** "How should Knowledge Base integrate with Incident Management?"
+
+**Virgil's Response:**
+1. ✅ Ontology enforces: KB is consumed BY Incident (not vice versa)
+2. ✅ Shows correct relationship: `Incident -->|resolves using| KB`
+3. ✅ Validates against instance: Checks if KB is configured
+4. ✅ Recommends integration patterns (embedded KB, search, etc.)
+
+**ChatGPT:**
+- ⚠️ Might suggest incorrect bidirectional relationship
+- ❌ No validation against ServiceNow architecture rules
+- ❌ Generic integration advice
+
 ## Features
 
+- **ServiceNow Ontology**: Built-in semantic rules and architectural constraints for ServiceNow platform
 - **ServiceNow RaptorDB Integration**: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
+- **SN Utils REST API**: Query live instance metadata for installed apps, capabilities, and gap analysis
 - **Document Processing**: Upload pricing documents, technical specifications, and reference materials (PDF, DOCX, XLSX, TXT, CSV)
-- **LLM-Powered Analysis**: Uses OpenAI GPT-4 or Anthropic Claude to analyze requirements and generate architecture recommendations
-- **Web Search Integration**: Optionally includes web search results for additional context
-- **Architecture Diagram Generation**: Automatically generates visual architecture diagrams in PNG, SVG, or PDF format
+- **LLM-Powered Analysis**: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
+- **Instance-Aware Recommendations**: Provides presales-ready gap analysis based on your actual instance configuration
+- **Architecture Diagram Generation**: Automatically generates validated Mermaid diagrams with semantic relationships
+- **Auto-Fix & Validation**: Automatically fixes common Mermaid syntax errors and validates diagram structure
 - **Modern Web UI**: Beautiful React-based interface with TailwindCSS styling
 
 ## Architecture
