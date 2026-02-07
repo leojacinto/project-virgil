@@ -410,6 +410,12 @@ Remember:
                 response = self.active_model.invoke(messages)
                 response_text = response.content
                 
+                # Save raw response for debugging
+                raw_file = f"/tmp/llm_raw_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                with open(raw_file, 'w') as f:
+                    f.write(response_text)
+                logger.info(f"Raw LLM response saved to: {raw_file}")
+                
                 # Try to parse JSON from response
                 try:
                     if "```json" in response_text:
@@ -419,10 +425,26 @@ Remember:
                     
                     result = json.loads(response_text)
                     
+                    # Save parsed result
+                    debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                    with open(debug_file, 'w') as f:
+                        json.dump(result, f, indent=2)
+                    logger.info(f"Parsed LLM response saved to: {debug_file}")
+                    
                     if "mermaid_diagram" not in result:
-                        result["mermaid_diagram"] = "graph TD\n    A[Analysis] --> B[See Details]"
-                        
-                except json.JSONDecodeError:
+                        result["mermaid_diagram"] = ""
+                    
+                    logger.info("Successfully parsed JSON response")
+                    
+                    # Log Mermaid diagram from fallback path
+                    mermaid = result.get("mermaid_diagram", "")
+                    if mermaid:
+                        mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        with open(mermaid_file, 'w') as f:
+                            f.write(mermaid)
+                        logger.info(f"Mermaid diagram (from fallback) saved to: {mermaid_file}")
+                    
+                except json.JSONDecodeError as je:
                     logger.error("Both structured output and JSON parsing failed")
                     result = {
                         "analysis": response_text,
