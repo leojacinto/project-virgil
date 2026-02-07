@@ -47,13 +47,15 @@ fi
 
 # Check for JDBC driver
 echo ""
-if [ ! -f "jdbc/servicenow-jdbc.jar" ]; then
+if [ -f "jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar" ]; then
+    echo "✓ JDBC driver found (ServiceNow JDBC v1.0.3)"
+elif [ -f "jdbc/servicenow-jdbc.jar" ]; then
+    echo "✓ JDBC driver found (custom)"
+else
     echo "⚠️  WARNING: ServiceNow JDBC JAR file not found"
-    echo "   Expected location: backend/jdbc/servicenow-jdbc.jar"
+    echo "   Expected location: backend/jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar"
     echo "   The app will start but ServiceNow connection will fail."
     echo ""
-else
-    echo "✓ JDBC driver found"
 fi
 
 # Start the server

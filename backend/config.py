@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     servicenow_instance: Optional[str] = None
     servicenow_username: Optional[str] = None
     servicenow_password: Optional[str] = None
-    servicenow_jdbc_path: str = "./jdbc/servicenow-jdbc.jar"
+    servicenow_jdbc_path: str = "./jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar"
     
     upload_dir: str = "./uploads"
     diagram_output_dir: str = "./diagrams"

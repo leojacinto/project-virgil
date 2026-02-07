@@ -38,8 +38,9 @@ project-virgil/
 - Python 3.9+
 - Node.js 16+
 - ServiceNow instance with RaptorDB access
-- ServiceNow JDBC driver JAR file
 - OpenAI API key or Anthropic API key
+
+**Note:** ServiceNow JDBC driver (v1.0.3) is included in the repository.
 
 ## Installation
 

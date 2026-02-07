@@ -4,21 +4,13 @@ No more config file drama! Everything is configured through the web interface.
 
 ## What You Need
 
-1. **ServiceNow JDBC Driver** - Place the JAR file in `backend/jdbc/`
-2. **An LLM API Key** - From OpenAI, Anthropic, Google, or Azure
+1. **An LLM API Key** - From OpenAI, Anthropic, Google, or Azure
 
-That's it!
+That's it! The ServiceNow JDBC driver is already included.
 
 ## Setup Steps
 
-### 1. Place JDBC Driver
-
-```bash
-mkdir -p backend/jdbc
-cp /path/to/servicenow-jdbc.jar backend/jdbc/
-```
-
-### 2. Start the Application
+### 1. Start the Application
 
 **Option A: Single Command (Recommended)**
 ```bash
