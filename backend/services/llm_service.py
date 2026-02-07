@@ -298,6 +298,43 @@ Remember:
                         "priority": "high"
                     })
                 
+                # Fix common Mermaid syntax errors
+                mermaid = result.get("mermaid_diagram", "")
+                if mermaid:
+                    logger.info(f"Original Mermaid diagram:\n{mermaid}")
+                    
+                    # Fix common issues
+                    fixed_mermaid = mermaid.strip()
+                    
+                    # Ensure it starts with graph TD
+                    if not fixed_mermaid.startswith("graph"):
+                        fixed_mermaid = "graph TD\n" + fixed_mermaid
+                    
+                    # Remove any markdown code blocks
+                    if "```" in fixed_mermaid:
+                        fixed_mermaid = fixed_mermaid.replace("```mermaid", "").replace("```", "").strip()
+                    
+                    # Fix common special character issues
+                    lines = fixed_mermaid.split("\n")
+                    cleaned_lines = []
+                    for line in lines:
+                        # Remove special chars from labels
+                        if "[" in line and "]" in line:
+                            # Extract label and clean it
+                            parts = line.split("[")
+                            if len(parts) > 1:
+                                label_part = parts[1].split("]")[0]
+                                # Remove problematic characters
+                                cleaned_label = label_part.replace("/", " ").replace("&", "and").replace("\\", "")
+                                line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
+                        cleaned_lines.append(line)
+                    
+                    fixed_mermaid = "\n".join(cleaned_lines)
+                    
+                    if fixed_mermaid != mermaid:
+                        logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
+                        result["mermaid_diagram"] = fixed_mermaid
+                
                 # Validate architecture against ServiceNow domain knowledge
                 if "architecture_components" in result or response.architecture_components:
                     arch_components = result.get("architecture_components", [])
