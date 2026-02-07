@@ -35,9 +35,12 @@ project-virgil/
 
 ## Prerequisites
 
-- Python 3.9+
+- **Python 3.12+** (required for JPype compatibility on Apple Silicon)
 - Node.js 16+
-- **Java 17+** (for ServiceNow JDBC connection)
+- **Java (OpenJDK 25+)** (for ServiceNow JDBC driver)
+  ```bash
+  brew install openjdk
+  ```
 - ServiceNow instance with RaptorDB access
 - OpenAI API key or Anthropic API key
 

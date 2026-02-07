@@ -34,10 +34,10 @@ source venv/bin/activate
 
 # Set JAVA_HOME for JDBC driver
 if [ -z "$JAVA_HOME" ]; then
-    if [ -d "/opt/homebrew/opt/openjdk@17" ]; then
-        export JAVA_HOME="/opt/homebrew/opt/openjdk@17"
-    elif [ -d "/usr/local/opt/openjdk@17" ]; then
-        export JAVA_HOME="/usr/local/opt/openjdk@17"
+    if [ -d "/opt/homebrew/opt/java" ]; then
+        export JAVA_HOME="/opt/homebrew/opt/java"
+    elif [ -d "/usr/local/opt/openjdk@25" ]; then
+        export JAVA_HOME="/usr/local/opt/openjdk@25"
     elif command -v /usr/libexec/java_home &> /dev/null; then
         export JAVA_HOME=$(/usr/libexec/java_home 2>/dev/null)
     fi

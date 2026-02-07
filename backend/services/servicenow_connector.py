@@ -1,6 +1,4 @@
-import jpype
-import jpype.imports
-from jpype.types import *
+import jaydebeapi
 import os
 from typing import List, Dict, Optional
 import logging
@@ -13,37 +11,11 @@ class ServiceNowConnector:
         self.instance = instance
         self.username = username
         self.password = password
-        self.jdbc_path = jdbc_path
+        self.jdbc_path = os.path.abspath(jdbc_path)
         self.connection = None
         self._connected = False
         
-        self._initialize_jvm()
-    
-    def _initialize_jvm(self):
-        if not jpype.isJVMStarted():
-            try:
-                jar_path = os.path.abspath(self.jdbc_path)
-                logger.info(f"Checking JDBC JAR at: {jar_path}")
-                
-                if not os.path.exists(jar_path):
-                    raise FileNotFoundError(f"JDBC JAR file not found at: {jar_path}")
-                
-                logger.info(f"JAR file found, size: {os.path.getsize(jar_path)} bytes")
-                
-                jvm_path = jpype.getDefaultJVMPath()
-                logger.info(f"JVM path: {jvm_path}")
-                
-                logger.info("Starting JVM...")
-                jpype.startJVM(
-                    jvm_path,
-                    f"-Djava.class.path={jar_path}",
-                    "-ea",
-                    convertStrings=False
-                )
-                logger.info("JVM started successfully")
-            except Exception as e:
-                logger.error(f"Failed to start JVM: {str(e)}", exc_info=True)
-                raise
+        logger.info(f"ServiceNow connector initialized for instance: {instance}")
     
     def test_connection(self) -> bool:
         try:
@@ -57,11 +29,10 @@ class ServiceNowConnector:
         try:
             logger.info(f"Attempting to connect to ServiceNow instance: {self.instance}")
             
-            if not jpype.isJVMStarted():
-                raise Exception("JVM not started")
+            if not os.path.exists(self.jdbc_path):
+                raise FileNotFoundError(f"JDBC JAR file not found at: {self.jdbc_path}")
             
-            logger.info("JVM is running, importing DriverManager...")
-            from java.sql import DriverManager
+            logger.info(f"JDBC JAR found at: {self.jdbc_path}")
             
             # Handle both "instance" and "instance.service-now.com" formats
             if ".service-now.com" in self.instance:
@@ -70,15 +41,16 @@ class ServiceNowConnector:
                 jdbc_url = f"jdbc:servicenow://{self.instance}.service-now.com"
             
             logger.info(f"JDBC URL: {jdbc_url}")
-            logger.info(f"Username: {self.username}")
             
-            logger.info("Creating connection properties...")
-            properties = jpype.JClass("java.util.Properties")()
-            properties.setProperty("user", self.username)
-            properties.setProperty("password", self.password)
+            jdbc_driver = "com.snc.db.jdbc.JDBCDriver"
             
-            logger.info("Calling DriverManager.getConnection()...")
-            self.connection = DriverManager.getConnection(jdbc_url, properties)
+            logger.info("Connecting via jaydebeapi...")
+            self.connection = jaydebeapi.connect(
+                jdbc_driver,
+                jdbc_url,
+                [self.username, self.password],
+                self.jdbc_path
+            )
             self._connected = True
             logger.info(f"Successfully connected to ServiceNow instance: {self.instance}")
             
@@ -95,23 +67,24 @@ class ServiceNowConnector:
             raise Exception("Not connected to ServiceNow")
         
         try:
-            statement = self.connection.createStatement()
-            result_set = statement.executeQuery(query)
+            cursor = self.connection.cursor()
+            cursor.execute(query)
             
-            metadata = result_set.getMetaData()
-            column_count = metadata.getColumnCount()
-            column_names = [metadata.getColumnName(i) for i in range(1, column_count + 1)]
+            # Get column names
+            column_names = [desc[0] for desc in cursor.description]
             
+            # Fetch all rows
+            rows = cursor.fetchall()
+            
+            # Convert to list of dictionaries
             results = []
-            while result_set.next():
-                row = {}
-                for i, col_name in enumerate(column_names, 1):
-                    row[col_name] = str(result_set.getString(i)) if result_set.getString(i) else None
-                results.append(row)
+            for row in rows:
+                row_dict = {}
+                for i, col_name in enumerate(column_names):
+                    row_dict[col_name] = str(row[i]) if row[i] is not None else None
+                results.append(row_dict)
             
-            result_set.close()
-            statement.close()
-            
+            cursor.close()
             return results
         except Exception as e:
             logger.error(f"Query execution failed: {str(e)}")

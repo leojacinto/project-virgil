@@ -11,7 +11,8 @@ langchain-openai==0.0.5
 langchain-anthropic==0.1.1
 langchain-google-genai==0.0.6
 langchain-community==0.0.20
-jpype1==1.5.0
+jaydebeapi==1.2.3
+JPype1==1.6.0
 sqlalchemy==2.0.25
 pandas==2.2.0
 numpy==1.26.3
