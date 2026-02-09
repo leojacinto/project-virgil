@@ -405,12 +405,31 @@ Priority levels mean:
 
 For mermaid_diagram, you MUST create an architecture diagram with SEMANTIC RELATIONSHIPS.
 
+ALLOWED RELATIONSHIP LABELS (use ONLY these exact labels on arrows):
+- "runs on" — application runs on platform (e.g., ITSM -->|runs on| Platform)
+- "creates" / "creates cases" / "creates tickets" / "creates requests" — portal creates work items
+- "references" — application reads data from foundational component (e.g., ITSM -->|references| CMDB)
+- "resolves using" — application uses knowledge to resolve issues
+- "accesses" — user accesses a portal
+- "authenticates via" — portal authenticates through identity management
+- "consumes" — portal consumes content (e.g., Portal -->|consumes| Knowledge Base)
+- "populates" — discovery/mapping populates CMDB
+- "integrates with" — integration hub connects to external systems
+
+DO NOT USE vague labels like "leverages", "manages", "uses", "utilizes", "supports", "feeds", "provides".
+These will be automatically replaced or removed by the validator.
+
+REQUIRED RELATIONSHIPS (must be present if these nodes exist):
+- Every application node (ITSM, CSM, HRSD, etc.) MUST have "runs on" → Platform
+- Every portal node MUST have "authenticates via" → User Management/Identity
+- User Management/Identity MUST be INSIDE the Foundation subgraph, not outside it
+
 {self.ontology.get_mermaid_guidance(query_types)}
 
 Remember:
 - Use subgraphs to show layers
-- Label arrows with relationship types (creates, runs on, references, resolves using)
-- CMDB and Platform are FOUNDATIONAL - they go at the bottom
+- Label arrows with ONLY the allowed relationship types listed above
+- CMDB, Platform, Knowledge Base, and User Management are FOUNDATIONAL - they ALL go inside the Foundation subgraph at the bottom
 - NO bidirectional arrows unless peer-to-peer integration
 - NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)
 - STRICT LIMIT: Maximum 15 arrows total. If you exceed this, remove the least important connections."""

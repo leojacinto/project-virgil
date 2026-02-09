@@ -10,6 +10,27 @@ logger = logging.getLogger(__name__)
 MAX_ARROWS = 15
 MAX_OUTGOING_PER_NODE = 3
 
+# Valid relationship labels from the ontology vocabulary
+VALID_LABELS = {
+    'runs on', 'creates', 'creates cases', 'creates tickets', 'creates requests',
+    'references', 'resolves using', 'consumes', 'accesses',
+    'authenticates via', 'extends', 'depends on', 'populates',
+    'integrates with', 'connects to',
+}
+
+# Vague labels → standard replacements
+LABEL_REPLACEMENTS = {
+    'leverages': 'references',
+    'manages': 'depends on',
+    'utilizes': 'references',
+    'feeds': 'creates',
+    'provides': 'references',
+    'supports': 'runs on',
+    'uses': 'references',
+    'interacts with': 'accesses',
+    'connects': 'connects to',
+}
+
 
 class MermaidRelationship:
     """Represents a relationship in a Mermaid diagram"""
@@ -71,6 +92,16 @@ class ArchitectureValidator:
         circular_errors = self._check_circular_dependencies(relationships)
         errors.extend(circular_errors)
         
+        # Normalize vague labels to standard vocabulary
+        mermaid, label_fixes = self._normalize_labels(mermaid)
+        if label_fixes:
+            errors.extend(label_fixes)
+        
+        # Check for missing required relationships
+        missing = self._check_missing_required(relationships, lines_to_remove)
+        if missing:
+            errors.extend(missing)
+        
         # Enforce arrow count limit
         valid_relationships = [r for r in relationships if r.raw_line.strip() not in lines_to_remove]
         if len(valid_relationships) > MAX_ARROWS:
@@ -94,8 +125,9 @@ class ArchitectureValidator:
         
         is_valid = len(errors) == 0
         
-        # Build corrected diagram by removing invalid lines
+        # Build corrected diagram (label fixes already applied to mermaid variable)
         corrected = None
+        labels_were_fixed = len(label_fixes) > 0
         if lines_to_remove:
             corrected_lines = []
             for line in mermaid.split("\n"):
@@ -103,6 +135,9 @@ class ArchitectureValidator:
                     corrected_lines.append(line)
             corrected = "\n".join(corrected_lines)
             logger.info(f"Validator removed {len(lines_to_remove)} lines from diagram")
+        elif labels_were_fixed:
+            corrected = mermaid
+            logger.info(f"Validator fixed {len(label_fixes)} labels in diagram")
         
         if not is_valid:
             logger.warning(f"Mermaid validation found {len(errors)} issues: {errors}")
@@ -145,9 +180,9 @@ class ArchitectureValidator:
     def _prune_excess_arrows(self, relationships: List[MermaidRelationship], max_count: int) -> List[MermaidRelationship]:
         """Prune excess arrows, keeping high-priority relationships and removing low-priority ones."""
         # Priority: higher = keep
-        high_priority_labels = {'runs on', 'creates', 'references', 'resolves using', 'creates cases', 'creates tickets'}
-        medium_priority_labels = {'accesses', 'authenticates', 'stores'}
-        # Everything else is low priority: 'manages', 'connects', 'uses', 'automates', 'provides', 'integrates'
+        high_priority_labels = {'runs on', 'creates', 'references', 'resolves using', 'creates cases', 'creates tickets', 'creates requests', 'authenticates via'}
+        medium_priority_labels = {'accesses', 'depends on', 'consumes', 'populates'}
+        # Everything else is low priority: 'manages', 'connects', 'uses', 'automates', 'provides', 'leverages', 'integrates'
         
         def priority(rel):
             label_lower = rel.label.lower() if rel.label else ""
@@ -230,6 +265,50 @@ class ArchitectureValidator:
             seen_pairs.add(pair)
         
         return errors
+    
+    def _normalize_labels(self, mermaid: str) -> Tuple[str, List[str]]:
+        """Replace vague labels with standard ontology vocabulary."""
+        fixes = []
+        for vague, standard in LABEL_REPLACEMENTS.items():
+            # Match |vague label| in arrows
+            pattern = re.compile(r'\|' + re.escape(vague) + r'\|', re.IGNORECASE)
+            if pattern.search(mermaid):
+                mermaid = pattern.sub(f'|{standard}|', mermaid)
+                fixes.append(f"Label fix: '{vague}' → '{standard}'")
+        return mermaid, fixes
+    
+    def _check_missing_required(self, relationships: List[MermaidRelationship], lines_to_remove: set) -> List[str]:
+        """Check that application-layer nodes have 'runs on' → Platform."""
+        warnings = []
+        
+        # Find app-layer nodes and whether they connect to platform
+        app_keywords = {'itsm', 'it service management', 'csm', 'customer service management',
+                        'hrsd', 'hr service delivery', 'itom', 'secops', 'security operations', 'grc'}
+        platform_keywords = {'platform', 'servicenow platform', 'now platform'}
+        
+        app_nodes = set()
+        platform_nodes = set()
+        for node_id, label in self._node_labels.items():
+            if any(kw in label for kw in app_keywords):
+                app_nodes.add(node_id)
+            if any(kw in label for kw in platform_keywords):
+                platform_nodes.add(node_id)
+        
+        # Check each app node has runs_on to platform
+        for app_id in app_nodes:
+            has_runs_on = False
+            for rel in relationships:
+                if rel.raw_line.strip() in lines_to_remove:
+                    continue
+                if rel.source == app_id and rel.target in platform_nodes:
+                    if 'runs on' in (rel.label or '').lower():
+                        has_runs_on = True
+                        break
+            if not has_runs_on:
+                app_label = self._node_labels.get(app_id, app_id)
+                warnings.append(f"Missing: {app_label} should have 'runs on' → Platform")
+        
+        return warnings
     
     def _check_circular_dependencies(self, relationships: List[MermaidRelationship]) -> List[str]:
         """Check for circular dependencies in foundational components"""
