@@ -14,22 +14,8 @@ class ServiceNowConnector:
         self.jdbc_path = os.path.abspath(jdbc_path)
         self.connection = None
         self._connected = False
-        self._rest_fallback = None
         
         logger.info(f"ServiceNow connector initialized for instance: {instance}")
-    
-    def _get_rest_fallback(self):
-        """Lazily initialize REST API fallback client"""
-        if self._rest_fallback is None:
-            try:
-                from services.sn_utils_service import SNUtilsService
-                self._rest_fallback = SNUtilsService(
-                    self.instance, self.username, self.password
-                )
-                logger.info("REST API fallback initialized")
-            except Exception as e:
-                logger.warning(f"Could not initialize REST API fallback: {str(e)}")
-        return self._rest_fallback
     
     def test_connection(self) -> bool:
         try:
@@ -120,19 +106,8 @@ class ServiceNowConnector:
             results = self.execute_query(query, max_retries=1)
             return [row['name'] for row in results if row.get('name')]
         except Exception as e:
-            logger.warning(f"Could not fetch tables via JDBC: {str(e)}")
-            # Try REST API fallback
-            rest = self._get_rest_fallback()
-            if rest:
-                try:
-                    tables = rest.get_tables(limit=100)
-                    if tables:
-                        names = [t.get('name', '') for t in tables if t.get('name')]
-                        logger.info(f"REST API fallback: retrieved {len(names)} tables")
-                        return names
-                except Exception as rest_e:
-                    logger.warning(f"REST API fallback for tables also failed: {str(rest_e)}")
-            # Return common ServiceNow tables as last resort
+            logger.warning(f"Could not fetch tables via query: {str(e)}")
+            # Return common ServiceNow tables as fallback
             return [
                 'incident', 'task', 'change_request', 'problem', 'cmdb_ci',
                 'sys_user', 'sys_user_group', 'cmdb_ci_server', 'cmdb_ci_service'
@@ -143,17 +118,7 @@ class ServiceNowConnector:
             query = "SELECT sys_id, name, version FROM sys_app WHERE active = 'true' ORDER BY name LIMIT 50"
             return self.execute_query(query, max_retries=1)
         except Exception as e:
-            logger.warning(f"Could not fetch installed applications via JDBC: {str(e)}")
-            # Try REST API fallback
-            rest = self._get_rest_fallback()
-            if rest:
-                try:
-                    apps = rest.get_installed_applications()
-                    if apps:
-                        logger.info(f"REST API fallback: retrieved {len(apps)} applications")
-                        return apps
-                except Exception as rest_e:
-                    logger.warning(f"REST API fallback for applications also failed: {str(rest_e)}")
+            logger.warning(f"Could not fetch installed applications: {str(e)}")
             return []
     
     def get_components(self) -> Dict:
@@ -212,22 +177,7 @@ class ServiceNowConnector:
             logger.info(f"Retrieved {len(active_results)} table relationships")
             return active_results
         except Exception as e:
-            logger.warning(f"Could not fetch table relationships via JDBC: {str(e)}")
-            # Try REST API fallback
-            rest = self._get_rest_fallback()
-            if rest:
-                try:
-                    data = rest._make_request(
-                        '/api/now/table/cmdb_rel_type',
-                        params={'sysparm_fields': 'name,parent_descriptor,child_descriptor', 'sysparm_limit': 100},
-                        cache_key='cmdb_rel_type'
-                    )
-                    if data:
-                        results = data.get('result', [])
-                        logger.info(f"REST API fallback: retrieved {len(results)} relationships")
-                        return results
-                except Exception as rest_e:
-                    logger.warning(f"REST API fallback for relationships also failed: {str(rest_e)}")
+            logger.warning(f"Could not fetch table relationships: {str(e)}")
             return []
     
     def get_installed_plugins(self) -> List[Dict]:
@@ -241,22 +191,7 @@ class ServiceNowConnector:
             logger.info(f"Retrieved {len(active_plugins)} active plugins")
             return active_plugins
         except Exception as e:
-            logger.warning(f"Could not fetch plugins via JDBC: {str(e)}")
-            # Try REST API fallback
-            rest = self._get_rest_fallback()
-            if rest:
-                try:
-                    data = rest._make_request(
-                        '/api/now/table/sys_plugins',
-                        params={'sysparm_query': 'active=true', 'sysparm_fields': 'sys_id,name,source,active,version', 'sysparm_limit': 100},
-                        cache_key='sys_plugins'
-                    )
-                    if data:
-                        plugins = data.get('result', [])
-                        logger.info(f"REST API fallback: retrieved {len(plugins)} plugins")
-                        return plugins
-                except Exception as rest_e:
-                    logger.warning(f"REST API fallback for plugins also failed: {str(rest_e)}")
+            logger.warning(f"Could not fetch plugins: {str(e)}")
             return []
     
     def get_table_usage_stats(self) -> List[Dict]:
@@ -304,21 +239,7 @@ class ServiceNowConnector:
             logger.info(f"Retrieved {len(custom_tables)} custom tables")
             return custom_tables
         except Exception as e:
-            logger.warning(f"Could not fetch custom tables via JDBC: {str(e)}")
-            # Try REST API fallback
-            rest = self._get_rest_fallback()
-            if rest:
-                try:
-                    tables = rest.get_tables(limit=500)
-                    if tables:
-                        custom = [
-                            t for t in tables
-                            if t.get('sys_scope', '') != 'global' and not t.get('name', '').startswith('sys_')
-                        ][:50]
-                        logger.info(f"REST API fallback: retrieved {len(custom)} custom tables")
-                        return custom
-                except Exception as rest_e:
-                    logger.warning(f"REST API fallback for custom tables also failed: {str(rest_e)}")
+            logger.warning(f"Could not fetch custom tables: {str(e)}")
             return []
     
     def get_instance_metadata(self) -> Dict:
