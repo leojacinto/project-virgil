@@ -240,9 +240,9 @@ The system uses a constraint-based architecture where the LLM generates content 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The ontology is a graph-based knowledge model — not a set of hardcoded rules. It encodes ServiceNow's actual platform structure: table inheritance (incident extends task), product decomposition (ITSM → Incident, Problem, Change, Service Catalog), plugin scopes, and architecture layers. The validator uses this knowledge to actively correct LLM output, not just warn about it.
+The core design principle: **LLMs need guardrails, not just prompts.** Left unconstrained, LLMs generate architecturally incorrect diagrams — Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components, vague labels like "leverages" that encode no real meaning. Project Virgil constrains the LLM before generation (ontology rules + hard limits in prompt), corrects it after generation (validator removes invalid arrows, replaces vague labels, prunes excess connections), and sanitizes the output for rendering. The LLM does ~10% of the quality work; the guardrails do the rest.
 
-Note: This system uses a custom-built ServiceNow ontology derived from ServiceNow's public platform documentation. It is not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world. Future integration with ServiceNow's native knowledge graph infrastructure is planned.
+The ontology is currently a custom-built graph model derived from ServiceNow's public platform documentation. The planned integration target is **ServiceNow's data.world** — acquired by ServiceNow in late 2024 to bring enterprise knowledge graph, data catalog, and metadata management natively into the Now Platform. Once data.world's ontology and knowledge graph APIs are available, Virgil's custom ontology will be replaced with a live connection to ServiceNow's native semantic layer, providing real-time table relationships, plugin dependencies, and instance-specific metadata without manual maintenance.
 
 ### Constraint-Based Architecture
 
@@ -270,7 +270,7 @@ Three-Layer Validation:
    - Ensures diagram starts with `graph TD`
    - Blocks 100% of rendering failures
 
-This approach shifts from "usually good" to "reliably good" by adding enforcement layers that actively correct the LLM's output.
+This approach shifts from "usually good" to "reliably good". The guardrails — not the LLM — are the product.
 
 ### Why This is Better Than "ChatGPT + SN Utils + VSCode"
 
@@ -703,15 +703,21 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 - Sanitize user inputs
 - Implement rate limiting
 
-## Future Enhancements
+## Roadmap
 
-- Multi-user support with authentication
-- Diagram editing and customization
-- Export to multiple formats (PlantUML, Mermaid, etc.)
-- Integration with more data sources
-- Real-time collaboration
-- Version control for architectures
-- Cost estimation based on pricing documents
+### data.world Integration (Primary)
+ServiceNow acquired [data.world](https://data.world) in late 2024, bringing enterprise knowledge graph, ontology management, and metadata catalog capabilities into the Now Platform. This is the natural evolution path for Project Virgil:
+- Replace custom ontology with data.world's knowledge graph API for live table relationships, class hierarchy, and plugin dependencies
+- Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
+- Eliminate manual ontology maintenance — the graph stays current with platform releases
+
+### Other Planned Enhancements
+- Unit and integration test coverage
+- Diagram persistence and version history
+- Multi-user authentication
+- Richer REST API pipeline to compensate for JDBC access limitations
+- Export to PlantUML, draw.io, and PowerPoint formats
+- Cost estimation from uploaded pricing documents
 
 ## Authors
 
