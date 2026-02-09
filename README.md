@@ -123,6 +123,17 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ## 📦 Latest Release Notes
 
+### v1.2.4 (Backend) - February 2026
+
+**Backend Fixes (v1.2.4):**
+- ✅ Fixed Mermaid syntax errors caused by `&` in subgraph names (e.g. `subgraph Portals & UI`)
+- ✅ Fixed Mermaid syntax errors caused by `/` and `()` in edge labels (e.g. `|creates requests/incidents|`)
+- ✅ Fixed Mermaid syntax errors caused by numbered subgraph prefixes (e.g. `subgraph 2. User Interface`)
+- ✅ Mermaid sanitizer now applied to both structured output and fallback JSON parsing paths
+- ✅ JSON parsing now uses `strict=False` to tolerate literal newlines in LLM responses
+- ✅ Added detailed JSONDecodeError logging with position and raw text dump for debugging
+- ✅ Added ServiceNow JDBC user role/ACL documentation
+
 ### v1.2.3 (Frontend) + v1.2.1 (Backend) - February 2026
 
 **Frontend Fixes (v1.2.3):**
@@ -158,7 +169,7 @@ The system uses a constraint-based architecture where the LLM generates content 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. Mermaid Auto-Fix & Validation (35%)                      │
-│    ├─ Regex-based syntax correction (line breaks, quotes)   │
+│    ├─ Regex-based syntax correction (subgraphs, labels, edges)│
 │    ├─ Post-generation validation against ontology rules     │
 │    ├─ Relationship correctness checking                     │
 │    └─ CRITICAL: Blocks 100% of syntax errors                │
@@ -544,6 +555,67 @@ The frontend will be available at `http://localhost:3000`
 2. Verify your ServiceNow credentials are correct
 3. Check that your instance allows JDBC connections
 4. Ensure Java is installed and accessible
+5. Ensure your public IP is allowlisted in your ServiceNow instance's IP Access Control List
+
+### ServiceNow JDBC User Access Errors
+
+If you see errors like `This user (jdbc.user.xxx) is not allowed access to table: sys_db_object`, your JDBC user needs the correct roles and ACLs in ServiceNow.
+
+**Required Roles for the JDBC User:**
+
+Assign the following roles to your JDBC user in ServiceNow (navigate to **User Administration > Users**, find the user, then go to the **Roles** tab):
+
+| Role | Purpose |
+|------|---------|
+| `jdbc` | Required for all JDBC connectivity |
+| `itil` | Read access to ITSM tables (incident, problem, change_request, task) |
+| `catalog` | Read access to Service Catalog tables |
+| `asset` | Read access to CMDB/asset tables |
+| `personalize_dictionary` | Read access to sys_dictionary, sys_db_object (table metadata) |
+| `admin` | **OR** grant this for full read access (simplest but broadest) |
+
+**Tables Queried by Project Virgil:**
+
+The application queries the following tables via JDBC. Your user needs at least **read** access to each:
+
+| Table | Purpose | Minimum Role |
+|-------|---------|-------------|
+| `sys_db_object` | Table metadata discovery | `personalize_dictionary` |
+| `sys_dictionary` | Table schema/column info | `personalize_dictionary` |
+| `sys_app` | Installed applications | `admin` |
+| `sys_plugins` | Active plugins | `admin` |
+| `wf_workflow` | Workflows | `itil` or `workflow_admin` |
+| `sys_script` | Business rules | `admin` |
+| `cmdb_rel_type` | CMDB relationship types | `itil` or `asset` |
+| `incident` | Incident records (row count) | `itil` |
+| `task` | Task records (row count) | `itil` |
+| `change_request` | Change records (row count) | `itil` |
+| `problem` | Problem records (row count) | `itil` |
+| `cmdb_ci` | CI records (row count) | `itil` or `asset` |
+| `cmdb_ci_server` | Server CIs (row count) | `itil` or `asset` |
+| `cmdb_ci_service` | Service CIs (row count) | `itil` or `asset` |
+| `sn_customerservice_case` | CSM cases (row count) | `sn_customerservice_agent` |
+| `customer_account` | Customer accounts (row count) | `sn_customerservice_agent` |
+| `sys_user` | Users (row count) | `itil` |
+| `sys_user_group` | Groups (row count) | `itil` |
+
+**Recommended Approach (least privilege):**
+
+1. Navigate to **User Administration > Users** in your ServiceNow instance
+2. Find or create your JDBC user (e.g., `jdbc.user.leo`)
+3. Go to the **Roles** tab and add: `jdbc`, `itil`, `personalize_dictionary`, `asset`
+4. If you have CSM installed, also add: `sn_customerservice_agent`
+5. For full metadata access (plugins, apps, business rules), add: `admin`
+
+**Note:** The application gracefully handles access denials — if a table is inaccessible, it logs a warning and continues with available data. The LLM analysis will still work but with less instance context.
+
+**If roles alone don't resolve the issue:**
+
+ServiceNow may have custom ACLs that override role-based access. Check:
+1. Navigate to **System Security > Access Control (ACL)**
+2. Filter by the table name (e.g., `sys_db_object`)
+3. Verify that the `read` operation ACL allows your user's roles
+4. Check if there are any `before query` Business Rules restricting access
 
 ### LLM API Issues
 

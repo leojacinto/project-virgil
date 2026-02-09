@@ -1,4 +1,5 @@
 import os
+import re
 from typing import List, Dict, Optional
 import logging
 import json
@@ -37,18 +38,76 @@ class LLMService:
         self.provider = None
         self.model_name = None
         self.ontology = ServiceNowOntology()
+    
+    def _sanitize_mermaid(self, mermaid: str) -> str:
+        """Sanitize Mermaid diagram syntax to prevent rendering errors.
+        Handles subgraph names, edge labels, and node labels."""
+        if not mermaid or len(mermaid.strip()) < 10:
+            return mermaid
         
-        if settings.openai_api_key:
-            try:
-                self.configure("openai", settings.openai_api_key)
-            except Exception as e:
-                logger.warning(f"Could not initialize OpenAI from config: {str(e)}")
+        fixed = mermaid.strip()
         
-        if settings.anthropic_api_key and not self.active_model:
-            try:
-                self.configure("anthropic", settings.anthropic_api_key)
-            except Exception as e:
-                logger.warning(f"Could not initialize Anthropic from config: {str(e)}")
+        # Remove any markdown code blocks
+        if "```" in fixed:
+            fixed = fixed.replace("```mermaid", "").replace("```", "").strip()
+        
+        # Ensure it starts with graph TD
+        if not fixed.startswith("graph"):
+            fixed = "graph TD\n" + fixed
+        
+        # First pass: fix labels [text] - remove newlines and collapse whitespace
+        def fix_label(match):
+            return f"[{' '.join(match.group(1).split())}]"
+        fixed = re.sub(r'\[([^\]]+)\]', fix_label, fixed)
+        
+        # Process line by line
+        cleaned_lines = []
+        for line in fixed.split("\n"):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            
+            # Fix subgraph names: remove &, /, (), numbered prefixes
+            if stripped.startswith("subgraph "):
+                sg_name = stripped[len("subgraph "):]
+                sg_name = sg_name.replace("&", "and").replace("/", " ").replace('"', '')
+                sg_name = re.sub(r'\([^)]*\)', '', sg_name)  # remove parenthesised text
+                sg_name = re.sub(r'^\d+\.\s*', '', sg_name)  # remove leading "1. ", "2. "
+                sg_name = " ".join(sg_name.split())
+                line = line[:len(line) - len(line.lstrip())] + "subgraph " + sg_name
+            
+            # Fix edge labels |text|: remove /, &, ()
+            if "|" in line:
+                def fix_edge_label(match):
+                    lbl = match.group(1)
+                    lbl = lbl.replace("/", " ").replace("&", "and")
+                    lbl = re.sub(r'\([^)]*\)', '', lbl)
+                    lbl = " ".join(lbl.split())
+                    return f"|{lbl}|"
+                line = re.sub(r'\|([^|]+)\|', fix_edge_label, line)
+            
+            # Fix node labels [text]: remove problematic chars
+            if "[" in line and "]" in line:
+                parts = line.split("[")
+                if len(parts) > 1:
+                    label_part = parts[1].split("]")[0]
+                    cleaned_label = label_part.replace("\n", " ").replace("\r", " ")
+                    cleaned_label = cleaned_label.replace("/", " ").replace("&", "and")
+                    cleaned_label = cleaned_label.replace("\\", "").replace('"', '').replace("'", "")
+                    cleaned_label = cleaned_label.replace("(", "- ").replace(")", "")
+                    cleaned_label = " ".join(cleaned_label.split())
+                    line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
+            
+            cleaned_lines.append(line)
+        
+        fixed = "\n".join(cleaned_lines)
+        
+        # Validate it has at least one arrow
+        if "-->" not in fixed and "---" not in fixed:
+            logger.error("Sanitized Mermaid has no arrows, returning original")
+            return mermaid
+        
+        return fixed
     
     def configure(self, provider: str, api_key: str, model: Optional[str] = None):
         provider_lower = provider.lower()
@@ -428,63 +487,7 @@ Remember:
                         logger.info(f"Original Mermaid diagram saved to: {mermaid_file}")
                         logger.info(f"Original Mermaid diagram:\n{mermaid}")
                         
-                        # Fix common issues
-                        fixed_mermaid = mermaid.strip()
-                        
-                        # Remove any markdown code blocks first
-                        if "```" in fixed_mermaid:
-                            fixed_mermaid = fixed_mermaid.replace("```mermaid", "").replace("```", "").strip()
-                        
-                        # Ensure it starts with graph TD
-                        if not fixed_mermaid.startswith("graph"):
-                            fixed_mermaid = "graph TD\n" + fixed_mermaid
-                        
-                        # First pass: remove newlines from within labels using regex
-                        # Find all labels [text] and remove any newlines within them
-                        import re
-                        
-                        def fix_label(match):
-                            label_content = match.group(1)
-                            # Remove newlines and extra spaces from label content
-                            fixed_content = ' '.join(label_content.split())
-                            return f"[{fixed_content}]"
-                        
-                        # Replace all [label content] with fixed versions
-                        fixed_mermaid = re.sub(r'\[([^\]]+)\]', fix_label, fixed_mermaid)
-                        
-                        # Split into lines for further processing
-                        fixed_lines = fixed_mermaid.split("\n")
-                        
-                        # Second pass: clean special characters
-                        cleaned_lines = []
-                        for line in fixed_lines:
-                            # Skip empty lines
-                            if not line.strip():
-                                continue
-                            # Remove special chars from labels
-                            if "[" in line and "]" in line:
-                                # Extract label and clean it
-                                parts = line.split("[")
-                                if len(parts) > 1:
-                                    label_part = parts[1].split("]")[0]
-                                    # Remove problematic characters and newlines
-                                    # Parentheses cause Mermaid syntax errors, replace with dashes
-                                    cleaned_label = label_part.replace("\n", " ").replace("\r", " ").replace("/", " ").replace("&", "and").replace("\\", "").replace('"', '').replace("'", "").replace("(", "- ").replace(")", "")
-                                    # Remove extra spaces
-                                    cleaned_label = " ".join(cleaned_label.split())
-                                    line = parts[0] + "[" + cleaned_label + "]" + "]".join(parts[1].split("]")[1:])
-                            cleaned_lines.append(line)
-                        
-                        fixed_mermaid = "\n".join(cleaned_lines)
-                        
-                        # Validate it has at least one arrow
-                        if "-->" not in fixed_mermaid and "---" not in fixed_mermaid:
-                            logger.error("Fixed Mermaid has no arrows, using fallback")
-                            fixed_mermaid = """graph TD
-    A[User Requirements] --> B[ServiceNow Platform]
-    B --> C[CMDB]
-    B --> D[Applications]
-    D --> C"""
+                        fixed_mermaid = self._sanitize_mermaid(mermaid)
                         
                         if fixed_mermaid != mermaid:
                             mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
@@ -590,7 +593,7 @@ Remember:
                         json_end = response_text.find("```", json_start)
                         response_text = response_text[json_start:json_end].strip()
                     
-                    result = json.loads(response_text)
+                    result = json.loads(response_text, strict=False)
                     
                     # Save parsed result
                     debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -603,16 +606,30 @@ Remember:
                     
                     logger.info("Successfully parsed JSON response")
                     
-                    # Log Mermaid diagram from fallback path
+                    # Sanitize and log Mermaid diagram from fallback path
                     mermaid = result.get("mermaid_diagram", "")
                     if mermaid:
                         mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                         with open(mermaid_file, 'w') as f:
                             f.write(mermaid)
                         logger.info(f"Mermaid diagram (from fallback) saved to: {mermaid_file}")
+                        
+                        fixed_mermaid = self._sanitize_mermaid(mermaid)
+                        if fixed_mermaid != mermaid:
+                            mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                            with open(mermaid_fixed_file, 'w') as f:
+                                f.write(fixed_mermaid)
+                            logger.info(f"Fixed Mermaid (fallback path) saved to: {mermaid_fixed_file}")
+                        result["mermaid_diagram"] = fixed_mermaid
                     
                 except json.JSONDecodeError as je:
-                    logger.error("Both structured output and JSON parsing failed")
+                    logger.error(f"Both structured output and JSON parsing failed: {str(je)}")
+                    logger.error(f"JSONDecodeError at position {je.pos}: {je.msg}")
+                    # Save the problematic text for debugging
+                    err_file = f"/tmp/llm_json_error_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                    with open(err_file, 'w') as f:
+                        f.write(f"Error: {str(je)}\nPosition: {je.pos}\n\n---RAW TEXT---\n{response_text}")
+                    logger.error(f"Failed JSON saved to: {err_file}")
                     result = {
                         "analysis": response_text,
                         "recommendations": [{
