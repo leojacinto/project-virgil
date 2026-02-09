@@ -256,8 +256,11 @@ class ArchitectureValidator:
                         if has_cycle(neighbor, path + [neighbor]):
                             return True
                     elif neighbor in rec_stack:
-                        # Found a cycle
-                        cycle_path = path[path.index(neighbor):] + [neighbor]
+                        # Found a cycle - build cycle path safely
+                        if neighbor in path:
+                            cycle_path = path[path.index(neighbor):] + [neighbor]
+                        else:
+                            cycle_path = [node, neighbor]
                         errors.append(f"Circular dependency detected: {' → '.join(cycle_path)}")
                         return True
             
