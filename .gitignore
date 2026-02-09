@@ -18,7 +18,6 @@ backend/uploads/
 backend/diagrams/
 backend/vectordb/
 backend/jdbc/*.jar
-!backend/jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar
 
 # Node
 node_modules/
