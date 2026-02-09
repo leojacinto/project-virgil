@@ -123,6 +123,28 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ## 📦 Latest Release Notes
 
+### v1.3.0 (Backend) - February 2026
+
+**Ontology Refactor (v1.3.0):**
+- ✅ Replaced flat dict/list ontology with graph-based knowledge model (40 nodes, 65 typed edges)
+- ✅ OntologyNode: id, label, node_type, aliases, actual SN table names, plugin IDs, architecture layer
+- ✅ OntologyEdge: typed relationships (extends, depends_on, runs_on, references, creates, consumes, resolves_using, authenticates_via, segregated_from)
+- ✅ Table hierarchy: incident/problem/change/case/hr_case/sec_incident/service_catalog all extend task
+- ✅ Graph traversal: find_node(), what_depends_on(), what_does_it_need(), get_children()
+- ✅ Coverage: ITSM, CSM, HRSD, ITOM, SecOps, GRC, SPM products and all major modules
+
+**Validator Enforcement (v1.3.0):**
+- ✅ Validator now REMOVES invalid arrows and returns corrected diagrams (was only logging warnings)
+- ✅ Parses node ID→label mappings for accurate anti-pattern detection
+- ✅ Arrow count enforcement: prunes lowest-priority connections when over limit
+- ✅ Priority system: keeps runs_on/creates/references, drops manages/connects/uses
+- ✅ Bidirectional arrow detection and circular dependency checking
+
+**Prompt Hardening (v1.3.0):**
+- ✅ Hard limits: max 15 arrows, max 10 nodes, max 4 subgraphs, max 3 outgoing per node
+- ✅ Orchestration components (Integration Hub, Flow Designer) inside Application layer subgraph
+- ✅ Group related modules into single nodes (one ITSM node, not separate Incident/Problem/Change)
+
 ### v1.2.4 (Backend) - February 2026
 
 **Backend Fixes (v1.2.4):**
@@ -164,80 +186,95 @@ Project Virgil is an AI-powered ServiceNow architecture advisor that combines mu
 
 ### Architecture Intelligence Stack
 
-The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology and validated post-generation.
+The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology, constrained by hard prompt limits, and corrected post-generation by the validator.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. Mermaid Auto-Fix & Validation (35%)                      │
-│    ├─ Regex-based syntax correction (subgraphs, labels, edges)│
-│    ├─ Post-generation validation against ontology rules     │
-│    ├─ Relationship correctness checking                     │
-│    └─ CRITICAL: Blocks 100% of syntax errors                │
+│ 1. ServiceNow Ontology (30%)                                │
+│    ├─ Graph-based knowledge model (40 nodes, 65 typed edges)│
+│    ├─ Table hierarchy: incident/case/change extend task     │
+│    ├─ Product decomposition: ITSM → [Incident, Problem, ...]│
+│    ├─ Plugin mappings: node → com.snc.incident, etc.        │
+│    ├─ Architecture layers: users → ui → app → platform → data│
+│    ├─ Anti-patterns: Portal→CMDB, KB→Incident, bidirectional│
+│    └─ Graph traversal: what_depends_on(), get_children()    │
 ├─────────────────────────────────────────────────────────────┤
-│ 2. Simplified Mermaid Guidelines (25%)                      │
-│    ├─ "Focus on primary flows" constraint                   │
-│    ├─ "Limit connections per component" rule                │
-│    ├─ Visual clarity over completeness                      │
-│    └─ Prevents overwhelming diagrams (47 arrows → 20)       │
+│ 2. Validator Enforcement (25%)                              │
+│    ├─ Post-generation correction (not just logging)         │
+│    ├─ Parses node labels for accurate anti-pattern checks   │
+│    ├─ REMOVES invalid arrows from diagram                   │
+│    ├─ Prunes excess arrows by priority (keeps creates,      │
+│    │  runs on, references; drops manages, connects, uses)   │
+│    ├─ Bidirectional arrow detection                         │
+│    └─ Circular dependency detection                         │
 ├─────────────────────────────────────────────────────────────┤
-│ 3. ServiceNow Ontology (20% work, prevents 80% mistakes)    │
-│    ├─ Semantic relationship rules & constraints             │
-│    ├─ Architectural pattern validation                      │
-│    ├─ Prevents anti-patterns (Portal→CMDB, KB→Incident)     │
-│    └─ Enforces layering (Users→Portals→Apps→Platform)       │
+│ 3. Prompt Constraints (20%)                                 │
+│    ├─ Hard limits: max 15 arrows, max 10 nodes              │
+│    ├─ Max 4 subgraphs, max 3 outgoing per node              │
+│    ├─ Group sub-modules into single nodes                   │
+│    ├─ Orchestration inside Application layer                │
+│    └─ Ontology rules injected as prompt constraints         │
 ├─────────────────────────────────────────────────────────────┤
-│ 4. LLM Generation (15%)                                     │
+│ 4. Mermaid Syntax Fix (10%)                                 │
+│    ├─ Regex-based character cleanup (&, /, (), quotes)      │
+│    ├─ Strips markdown code blocks                           │
+│    ├─ Fixes numbered subgraph prefixes                      │
+│    └─ Blocks 100% of rendering failures                     │
+├─────────────────────────────────────────────────────────────┤
+│ 5. LLM Generation (10%)                                     │
 │    ├─ Gemini 2.5 Flash / GPT-4 / Claude                     │
-│    ├─ Content generation within constraints                 │
-│    ├─ Natural language analysis                             │
-│    └─ Good at generation, bad at validation                 │
+│    ├─ Content generation within hard constraints            │
+│    ├─ Natural language analysis and recommendations         │
+│    └─ Constrained by all other layers                       │
 ├─────────────────────────────────────────────────────────────┤
-│ 5. Instance Context (5% currently, 15-20% potential)        │
+│ 6. Instance Context (5% currently, 15-20% potential)        │
 │    ├─ SN Utils REST API: Applications, capabilities         │
 │    ├─ JDBC: Relationships, plugins, usage stats             │
 │    ├─ Gap analysis: What's installed vs. needed             │
-│    └─ Currently informs prompt, not yet visualized          │
+│    └─ Fed into LLM prompt for instance-aware analysis       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The ontology prevents 80% of the mistakes rather than doing 20% of the work. Without it, the LLM would generate architecturally incorrect diagrams (Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components).
+The ontology is a graph-based knowledge model — not a set of hardcoded rules. It encodes ServiceNow's actual platform structure: table inheritance (incident extends task), product decomposition (ITSM → Incident, Problem, Change, Service Catalog), plugin scopes, and architecture layers. The validator uses this knowledge to actively correct LLM output, not just warn about it.
 
-Note: This system currently uses a custom-built ServiceNow ontology. It is not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world. Future integration with ServiceNow's native knowledge graph infrastructure is planned.
+Note: This system uses a custom-built ServiceNow ontology derived from ServiceNow's public platform documentation. It is not yet powered by ServiceNow's knowledge graph and ontology capabilities from data.world. Future integration with ServiceNow's native knowledge graph infrastructure is planned.
 
 ### Constraint-Based Architecture
 
-The system doesn't rely on the LLM being "smart enough". Instead, it constrains the LLM to only generate valid outputs.
+The system doesn't rely on the LLM being "smart enough". Instead, it constrains the LLM to only generate valid outputs, and corrects the output when it doesn't comply.
 
 Three-Layer Validation:
 
-1. **Pre-Generation Constraints** (Ontology in prompt)
-   - Explicit architectural rules in system prompt
-   - "CMDB is ALWAYS foundational - cannot depend on other components"
-   - "Knowledge Base is consumed BY apps, not vice versa"
-   - Query type detection applies specialized constraints
+1. **Pre-Generation Constraints** (Ontology + Hard Limits in prompt)
+   - Graph-based ontology rules injected into system prompt
+   - Hard numerical limits: max 15 arrows, max 10 nodes, max 4 subgraphs
+   - Query type detection applies specialized constraints (ITSM, CSM, compliance, etc.)
+   - Layering rules: Users → Portals → Applications → Platform → Data
 
-2. **Post-Generation Validation** (ArchitectureValidator)
-   - Parses Mermaid relationships
-   - Checks each relationship against ontology rules
-   - Detects anti-patterns and circular dependencies
-   - Adds validation warnings to response
+2. **Post-Generation Enforcement** (ArchitectureValidator)
+   - Parses Mermaid node labels (not just IDs) for accurate matching
+   - Checks each relationship against ontology anti-patterns
+   - **Removes invalid arrows** from the diagram (not just warnings)
+   - **Prunes excess arrows** by priority when over the 15-arrow limit
+   - Detects bidirectional arrows and circular dependencies
+   - Returns corrected diagram that replaces the original
 
-3. **Syntax Auto-Fix** (Regex + Cleanup)
-   - Removes line breaks from node labels
-   - Eliminates quoted subgraph names (Mermaid 11.x incompatible)
-   - Cleans special characters
+3. **Syntax Auto-Fix** (Mermaid Sanitizer)
+   - Removes `&`, `/`, `()` from subgraph names, edge labels, node labels
+   - Strips markdown code blocks and numbered prefixes
    - Ensures diagram starts with `graph TD`
+   - Blocks 100% of rendering failures
 
-This approach shifts from "usually good" to "reliably good" by adding intelligence layers around the LLM rather than relying on the LLM itself.
+This approach shifts from "usually good" to "reliably good" by adding enforcement layers that actively correct the LLM's output.
 
 ### Why This is Better Than "ChatGPT + SN Utils + VSCode"
 
 | Aspect | ChatGPT + Tools | Project Virgil |
 |--------|----------------|----------------|
-| **Architectural Validation** | ❌ No validation - can suggest impossible architectures | ✅ Three-layer validation: pre-generation constraints, post-generation checking, syntax auto-fix |
-| **ServiceNow Knowledge** | ⚠️ Generic LLM knowledge (may be outdated) | ✅ Built-in ServiceNow ontology with 20+ semantic rules that prevent 80% of mistakes |
+| **Architectural Validation** | ❌ No validation - can suggest impossible architectures | ✅ Three-layer enforcement: ontology constraints, validator correction, syntax auto-fix |
+| **ServiceNow Knowledge** | ⚠️ Generic LLM knowledge (may be outdated) | ✅ Graph-based ontology (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers |
 | **Instance Awareness** | ❌ No connection to your instance | ✅ Queries live instance via REST API (apps, capabilities) + JDBC (relationships, plugins, usage stats) |
-| **Diagram Quality** | ⚠️ Manual Mermaid editing required, syntax errors common | ✅ Auto-generated, validated, and auto-fixed (regex removes line breaks, quoted subgraphs) |
+| **Diagram Quality** | ⚠️ Manual Mermaid editing required, syntax errors common | ✅ Auto-generated with hard limits (max 15 arrows), validated, corrected, and syntax-fixed |
 | **Presales Context** | ❌ Generic recommendations | ✅ Gap analysis: "You have CSM with 1,234 cases, need Customer Portal for public access" |
 | **Consistency** | ❌ Varies per prompt, no error prevention | ✅ Constraint-based architecture ensures reliable output every time |
 | **Integration** | ❌ Copy-paste between tools | ✅ Unified workflow: query → constrained generation → validation → auto-fix → diagram |
@@ -245,10 +282,13 @@ This approach shifts from "usually good" to "reliably good" by adding intelligen
 
 ### Key Differentiators
 
-#### 1. ServiceNow Ontology
-- Semantic Rules: Enforces architectural constraints like "CMDB is foundational" and "Knowledge Base is consumed BY apps, not vice versa"
-- Pattern Detection: Automatically detects query types (integration, data flow, compliance) and applies relevant guidance
-- Relationship Validation: Prevents architecturally incorrect diagrams (e.g., Portal depending on CMDB directly)
+#### 1. ServiceNow Ontology (Graph-Based Knowledge Model)
+- 40 Nodes: Products (ITSM, CSM, HRSD, ITOM, SecOps, GRC, SPM), modules, portals, platform, data, orchestration
+- 65 Typed Edges: extends, depends_on, runs_on, references, creates, consumes, resolves_using, authenticates_via, segregated_from
+- Table Hierarchy: Knows that incident, problem, change, case all extend the task table
+- Plugin Mappings: Each node maps to actual ServiceNow plugin IDs (e.g., com.snc.incident, com.sn_customerservice)
+- Architecture Layers: users → ui → application → orchestration → platform → data
+- Graph Traversal: what_depends_on("cmdb") returns all 9 modules that reference CMDB
 
 **Example:**
 ```
@@ -335,14 +375,14 @@ ChatGPT:
 
 ## Features
 
-- ServiceNow Ontology: Built-in semantic rules and architectural constraints for ServiceNow platform
+- ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
 - ServiceNow RaptorDB Integration: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
 - SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
 - Document Processing: Upload pricing documents, technical specifications, and reference materials (PDF, DOCX, XLSX, TXT, CSV)
 - LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
 - Instance-Aware Recommendations: Provides presales-ready gap analysis based on your actual instance configuration
 - Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
-- Auto-Fix & Validation: Automatically fixes common Mermaid syntax errors and validates diagram structure
+- Auto-Fix & Enforcement: Syntax auto-fix, post-generation validator removes invalid arrows and prunes excess connections
 - Modern Web UI: React-based interface with TailwindCSS styling
 
 ## Architecture
@@ -351,9 +391,12 @@ ChatGPT:
 project-virgil/
 ├── backend/                 # FastAPI Python backend
 │   ├── services/           # Core service modules
+│   │   ├── servicenow_ontology.py     # Graph-based SN knowledge model (40 nodes, 65 edges)
+│   │   ├── architecture_validator.py  # Post-generation enforcement & diagram correction
 │   │   ├── servicenow_connector.py    # RaptorDB JDBC connection
+│   │   ├── sn_utils_service.py        # SN Utils REST API client
+│   │   ├── llm_service.py             # LLM integration + prompt constraints
 │   │   ├── document_processor.py      # Document upload & vector search
-│   │   ├── llm_service.py            # LLM integration (OpenAI/Anthropic)
 │   │   ├── diagram_generator.py       # Diagram generation
 │   │   └── web_search.py             # Web search integration
 │   ├── main.py             # FastAPI application
