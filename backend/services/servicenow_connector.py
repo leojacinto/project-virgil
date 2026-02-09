@@ -179,7 +179,8 @@ class ServiceNowConnector:
             components["business_rules"] = []
         
         try:
-            integrations_query = "SELECT sys_id, name FROM sys_integration WHERE active = 'true' LIMIT 20"
+            # Note: sys_integration does not exist in ServiceNow; use sys_hub_flow for Integration Hub flows
+            integrations_query = "SELECT sys_id, name FROM sys_hub_flow WHERE active = 'true' LIMIT 20"
             components["integrations"] = self.execute_query(integrations_query, max_retries=1)
         except Exception as e:
             logger.warning(f"Could not fetch integrations: {str(e)}")
