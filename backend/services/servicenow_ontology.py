@@ -1,121 +1,464 @@
 """
-ServiceNow Domain Knowledge and Ontology
-Provides structured knowledge about ServiceNow component relationships,
-dependencies, and architectural constraints.
+ServiceNow Domain Ontology
+Graph-based knowledge model of ServiceNow's platform architecture.
+Encodes table hierarchy, product modules, plugin dependencies,
+CMDB class structure, and architectural constraints.
 """
 
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Optional, Tuple
 import logging
 
 logger = logging.getLogger(__name__)
 
+
+# ---------------------------------------------------------------------------
+# Graph primitives
+# ---------------------------------------------------------------------------
+
+class OntologyNode:
+    """A node in the ServiceNow ontology graph."""
+    __slots__ = ('id', 'label', 'node_type', 'aliases', 'tables', 'plugin', 'layer')
+    
+    def __init__(self, id: str, label: str, node_type: str, *,
+                 aliases: List[str] = None, tables: List[str] = None,
+                 plugin: str = None, layer: str = None):
+        self.id = id
+        self.label = label
+        self.node_type = node_type        # product | module | table | platform | data | ui | orchestration
+        self.aliases = aliases or []
+        self.tables = tables or []         # actual SN table names
+        self.plugin = plugin               # SN plugin scope / id
+        self.layer = layer                 # architecture layer: users | ui | application | orchestration | platform | data
+    
+    def matches(self, text: str) -> bool:
+        """Check if free-form text refers to this node."""
+        t = text.lower()
+        if self.label.lower() in t or self.id.lower() in t:
+            return True
+        return any(a.lower() in t for a in self.aliases)
+
+
+class OntologyEdge:
+    """A typed, directed edge between two ontology nodes."""
+    __slots__ = ('source', 'target', 'rel_type', 'constraint')
+    
+    def __init__(self, source: str, target: str, rel_type: str, constraint: str = None):
+        self.source = source               # source node id
+        self.target = target               # target node id
+        self.rel_type = rel_type           # runs_on | references | creates | consumes | resolves_using | authenticates_via | extends | depends_on | segregated_from
+        self.constraint = constraint       # optional constraint note
+
+
+# ---------------------------------------------------------------------------
+# ServiceNow Ontology
+# ---------------------------------------------------------------------------
+
 class ServiceNowOntology:
     """
-    ServiceNow domain knowledge graph and validation rules.
-    Ensures architectures follow ServiceNow best practices and constraints.
+    Graph-based ServiceNow domain ontology.
+    Nodes represent platform components; edges represent typed relationships.
     """
     
     def __init__(self):
-        # Core foundational components that other components depend on
-        self.foundational_components = {
-            "CMDB", "Configuration Management Database", "cmdb_ci",
-            "User Management", "sys_user", "Groups", "sys_user_group",
-            "Platform", "ServiceNow Platform"
-        }
+        self._nodes: Dict[str, OntologyNode] = {}
+        self._edges: List[OntologyEdge] = []
+        self._build_graph()
         
-        # Relationship types with semantic meaning
+        # Indexes built after graph construction
+        self._children: Dict[str, List[str]] = {}       # parent -> [child] (extends)
+        self._outgoing: Dict[str, List[OntologyEdge]] = {}
+        self._incoming: Dict[str, List[OntologyEdge]] = {}
+        self._build_indexes()
+        
+        # Backward-compat: flat sets/dicts used by existing code
+        self.foundational_components = self._foundational_aliases()
         self.relationship_types = {
-            "runs_on": "Component runs on/is hosted by another (e.g., CSM runs on Platform)",
-            "consumes": "Component consumes data from another (e.g., Portal consumes Knowledge Base)",
-            "references": "Component references data in another (e.g., Incident references CMDB)",
-            "creates": "Component creates records in another (e.g., Portal creates Cases)",
-            "resolves_using": "Component uses another to resolve issues (e.g., Case resolves using KB)",
-            "authenticates_via": "Component uses another for authentication (e.g., Portal authenticates via User Mgmt)",
-            "segregated_from": "Components should NOT cross-connect (e.g., Public Portal ≠ ITSM)"
+            "runs_on": "Component runs on/is hosted by another",
+            "consumes": "Component consumes data from another",
+            "references": "Component references data in another",
+            "creates": "Component creates records in another",
+            "resolves_using": "Component uses another to resolve issues",
+            "authenticates_via": "Component uses another for authentication",
+            "extends": "Table/class extends another (inheritance)",
+            "depends_on": "Component depends on another to function",
+            "segregated_from": "Components must NOT cross-connect",
         }
-        
-        # Semantic relationships: (source, target, relationship_type)
         self.semantic_relationships = [
-            # Platform relationships (runs-on)
-            ("CSM", "Platform", "runs_on"),
-            ("ITSM", "Platform", "runs_on"),
-            ("Service Portal", "Platform", "runs_on"),
-            ("Customer Portal", "Platform", "runs_on"),
-            
-            # CMDB relationships (references - CMDB is lateral/foundational)
-            ("Incident Management", "CMDB", "references"),
-            ("Problem Management", "CMDB", "references"),
-            ("Change Management", "CMDB", "references"),
-            ("Case Management", "CMDB", "references"),
-            ("Asset Management", "CMDB", "references"),
-            
-            # Knowledge Base relationships (consumes)
-            ("Incident Management", "Knowledge Base", "resolves_using"),
-            ("Case Management", "Knowledge Base", "resolves_using"),
-            ("Service Portal", "Knowledge Base", "consumes"),
-            ("Customer Portal", "Knowledge Base", "consumes"),
-            
-            # Portal to App relationships (creates)
-            ("Customer Portal", "CSM", "creates"),
-            ("Service Portal", "ITSM", "creates"),
-            
-            # Authentication relationships
-            ("Customer Portal", "User Management", "authenticates_via"),
-            ("Service Portal", "User Management", "authenticates_via"),
-            
-            # Segregation rules (anti-patterns)
-            ("Customer Portal", "ITSM", "segregated_from"),
-            ("Service Portal", "CSM", "segregated_from"),
+            (e.source, e.target, e.rel_type)
+            for e in self._edges
+            if e.rel_type not in ("extends", "depends_on")
         ]
-        
-        # Component dependency rules: component -> list of dependencies
-        self.dependencies = {
-            "Incident Management": ["CMDB", "User Management", "Assignment Groups"],
-            "Problem Management": ["Incident Management", "CMDB", "Knowledge Base"],
-            "Change Management": ["CMDB", "Incident Management", "Approval Workflows"],
-            "Service Catalog": ["CMDB", "Workflows", "User Management"],
-            "Knowledge Base": ["User Management"],
-            "CSM": ["Customer Portal", "Case Management", "Knowledge Base"],
-            "Case Management": ["Knowledge Base", "User Management"],
-            "ITSM": ["Incident Management", "Problem Management", "Change Management"],
-            "Asset Management": ["CMDB"],
-            "Service Portal": ["User Management", "Knowledge Base"],
-            "Customer Portal": ["User Management", "Knowledge Base"],
-            "Integration Hub": ["Platform"],
-            "Flow Designer": ["Platform"],
-            "Virtual Agent": ["Knowledge Base", "NLU"],
-        }
-        
-        # Components that should NOT be downstream of others
+        self.dependencies = self._build_dependency_dict()
         self.cannot_be_downstream = {
             "CMDB": ["Knowledge Base", "Service Portal", "Customer Portal"],
             "User Management": ["Service Portal", "Customer Portal", "Case Management"],
-            "Platform": ["any"]  # Platform is always foundational
+            "Platform": ["any"],
         }
-        
-        # Common ServiceNow products and their core components
-        self.product_components = {
-            "ITSM": ["Incident Management", "Problem Management", "Change Management", 
-                    "Service Catalog", "Knowledge Base", "CMDB"],
-            "CSM": ["Customer Service Portal", "Case Management", "Customer Accounts",
-                   "Knowledge Base", "Playbooks"],
-            "ITOM": ["Discovery", "Service Mapping", "Event Management", "CMDB"],
-            "ITBM": ["Project Portfolio Management", "Agile Development", "Resource Management"],
-            "SecOps": ["Security Incident Response", "Vulnerability Response", "Threat Intelligence"],
-            "HR Service Delivery": ["HR Case Management", "Employee Portal", "Knowledge Base"],
-            "GRC": ["Policy and Compliance", "Risk Management", "Audit Management"],
-        }
-        
-        # Query type patterns for specialized handling
+        self.product_components = self._build_product_components()
         self.query_patterns = {
-            "integration": ["integrate", "integration", "connect", "sync", "api", "webhook"],
-            "itsm": ["incident", "problem", "change", "itsm", "it service"],
-            "csm": ["customer", "case", "csm", "customer service"],
-            "data_flow": ["data", "flow", "sync", "transfer", "master data"],
-            "portal": ["portal", "self-service", "employee", "customer"],
-            "automation": ["automate", "workflow", "flow", "orchestration"],
-            "compliance": ["compliance", "fedramp", "spp", "security", "audit"],
+            "integration": ["integrate", "integration", "connect", "sync", "api", "webhook", "spoke"],
+            "itsm": ["incident", "problem", "change", "itsm", "it service", "service desk"],
+            "csm": ["customer", "case", "csm", "customer service", "contact center"],
+            "data_flow": ["data", "flow", "sync", "transfer", "master data", "etl"],
+            "portal": ["portal", "self-service", "employee", "customer portal", "service portal"],
+            "automation": ["automate", "workflow", "flow", "orchestration", "playbook"],
+            "compliance": ["compliance", "fedramp", "spp", "security", "audit", "grc"],
+            "hrsd": ["hr", "human resources", "employee", "onboarding", "lifecycle"],
+            "itom": ["discovery", "service mapping", "event management", "cloud", "itom"],
+            "secops": ["security incident", "vulnerability", "threat", "secops", "siem"],
         }
+    
+    # -------------------------------------------------------------------
+    # Graph construction
+    # -------------------------------------------------------------------
+    
+    def _add_node(self, node: OntologyNode):
+        self._nodes[node.id] = node
+    
+    def _add_edge(self, source: str, target: str, rel_type: str, constraint: str = None):
+        self._edges.append(OntologyEdge(source, target, rel_type, constraint))
+    
+    def _build_graph(self):
+        """Construct the full ServiceNow ontology graph."""
+        
+        # === PLATFORM / FOUNDATIONAL LAYER ===
+        self._add_node(OntologyNode("platform", "ServiceNow Platform", "platform",
+            aliases=["Platform", "Now Platform", "ServiceNow"],
+            layer="platform"))
+        self._add_node(OntologyNode("cmdb", "CMDB", "data",
+            aliases=["Configuration Management Database", "CMDB", "Configuration Management"],
+            tables=["cmdb_ci", "cmdb_ci_server", "cmdb_ci_service", "cmdb_ci_app_server",
+                    "cmdb_ci_database", "cmdb_ci_hardware", "cmdb_ci_netgear",
+                    "cmdb_ci_vm", "cmdb_ci_linux_server", "cmdb_ci_win_server"],
+            plugin="com.snc.cmdb", layer="data"))
+        self._add_node(OntologyNode("user_mgmt", "User Management", "data",
+            aliases=["User Management", "Users", "Authentication", "Identity"],
+            tables=["sys_user", "sys_user_group", "sys_user_role", "sys_user_has_role",
+                    "sys_user_grmember"],
+            layer="data"))
+        self._add_node(OntologyNode("knowledge_base", "Knowledge Base", "data",
+            aliases=["Knowledge Base", "KB", "Knowledge Management", "Knowledge"],
+            tables=["kb_knowledge", "kb_knowledge_base", "kb_category", "kb_use"],
+            plugin="com.glideapp.knowledge", layer="data"))
+        self._add_node(OntologyNode("audit", "Audit Logging", "data",
+            aliases=["Audit", "Audit Logs", "System Logs"],
+            tables=["sys_audit", "sys_audit_delete", "syslog"],
+            layer="data"))
+        
+        # === TABLE HIERARCHY (task-based) ===
+        self._add_node(OntologyNode("task", "Task", "table",
+            aliases=["Task", "Work Item"],
+            tables=["task"], layer="data"))
+        
+        # === ITSM MODULES ===
+        self._add_node(OntologyNode("itsm", "ITSM", "product",
+            aliases=["IT Service Management", "ITSM", "IT Service"],
+            plugin="com.snc.itsm", layer="application"))
+        self._add_node(OntologyNode("incident", "Incident Management", "module",
+            aliases=["Incident", "Incident Management"],
+            tables=["incident", "incident_task"],
+            plugin="com.snc.incident", layer="application"))
+        self._add_node(OntologyNode("problem", "Problem Management", "module",
+            aliases=["Problem", "Problem Management"],
+            tables=["problem", "problem_task"],
+            plugin="com.snc.problem", layer="application"))
+        self._add_node(OntologyNode("change", "Change Management", "module",
+            aliases=["Change", "Change Management", "Change Request"],
+            tables=["change_request", "change_task"],
+            plugin="com.snc.change_management", layer="application"))
+        self._add_node(OntologyNode("service_catalog", "Service Catalog", "module",
+            aliases=["Service Catalog", "Catalog", "Request Management"],
+            tables=["sc_catalog", "sc_cat_item", "sc_request", "sc_req_item", "sc_task"],
+            plugin="com.glideapp.servicecatalog", layer="application"))
+        self._add_node(OntologyNode("asset", "Asset Management", "module",
+            aliases=["Asset", "Asset Management", "IT Asset Management", "ITAM", "HAM", "SAM"],
+            tables=["alm_asset", "alm_hardware", "alm_license"],
+            plugin="com.snc.asset_management", layer="application"))
+        
+        # === CSM MODULES ===
+        self._add_node(OntologyNode("csm", "CSM", "product",
+            aliases=["Customer Service Management", "CSM", "Customer Service"],
+            plugin="com.sn_customerservice", layer="application"))
+        self._add_node(OntologyNode("case_mgmt", "Case Management", "module",
+            aliases=["Case Management", "Case", "CSM Case"],
+            tables=["sn_customerservice_case", "sn_customerservice_task"],
+            plugin="com.sn_customerservice", layer="application"))
+        self._add_node(OntologyNode("customer_accounts", "Customer Accounts", "module",
+            aliases=["Customer Accounts", "Accounts", "Customer"],
+            tables=["customer_account", "customer_contact", "csm_consumer"],
+            plugin="com.sn_customerservice", layer="application"))
+        
+        # === HRSD MODULES ===
+        self._add_node(OntologyNode("hrsd", "HR Service Delivery", "product",
+            aliases=["HRSD", "HR Service Delivery", "HR", "Human Resources"],
+            plugin="com.sn_hr_core", layer="application"))
+        self._add_node(OntologyNode("hr_case", "HR Case Management", "module",
+            aliases=["HR Case", "HR Case Management"],
+            tables=["sn_hr_core_case", "sn_hr_core_task"],
+            plugin="com.sn_hr_core", layer="application"))
+        
+        # === ITOM MODULES ===
+        self._add_node(OntologyNode("itom", "ITOM", "product",
+            aliases=["IT Operations Management", "ITOM"],
+            layer="application"))
+        self._add_node(OntologyNode("discovery", "Discovery", "module",
+            aliases=["Discovery", "Network Discovery"],
+            tables=["discovery_status", "sa_m_pattern"],
+            plugin="com.snc.discovery", layer="application"))
+        self._add_node(OntologyNode("service_mapping", "Service Mapping", "module",
+            aliases=["Service Mapping"],
+            tables=["svc_ci_assoc"],
+            plugin="com.snc.service_mapping", layer="application"))
+        self._add_node(OntologyNode("event_mgmt", "Event Management", "module",
+            aliases=["Event Management", "Event"],
+            tables=["em_event", "em_alert"],
+            plugin="com.glide.itom.em", layer="application"))
+        
+        # === SECOPS ===
+        self._add_node(OntologyNode("secops", "Security Operations", "product",
+            aliases=["SecOps", "Security Operations"],
+            layer="application"))
+        self._add_node(OntologyNode("sec_incident", "Security Incident Response", "module",
+            aliases=["Security Incident", "SIR"],
+            tables=["sn_si_incident", "sn_si_task"],
+            plugin="com.snc.sec_inc_response", layer="application"))
+        self._add_node(OntologyNode("vuln_response", "Vulnerability Response", "module",
+            aliases=["Vulnerability Response", "VR"],
+            tables=["sn_vul_vulnerability", "sn_vul_entry"],
+            plugin="com.snc.vul_response", layer="application"))
+        
+        # === GRC ===
+        self._add_node(OntologyNode("grc", "GRC", "product",
+            aliases=["Governance Risk Compliance", "GRC", "Risk Management",
+                     "Integrated Risk Management", "IRM"],
+            layer="application"))
+        self._add_node(OntologyNode("policy_compliance", "Policy and Compliance", "module",
+            aliases=["Policy", "Compliance"],
+            tables=["sn_compliance_policy", "sn_compliance_policy_statement"],
+            plugin="com.sn_compliance", layer="application"))
+        self._add_node(OntologyNode("risk_mgmt", "Risk Management", "module",
+            aliases=["Risk"],
+            tables=["sn_risk_risk", "sn_risk_definition"],
+            plugin="com.sn_risk", layer="application"))
+        
+        # === SPM / ITBM ===
+        self._add_node(OntologyNode("spm", "Strategic Portfolio Management", "product",
+            aliases=["SPM", "ITBM", "IT Business Management", "Portfolio Management"],
+            layer="application"))
+        self._add_node(OntologyNode("ppm", "Project Portfolio Management", "module",
+            aliases=["PPM", "Project Management"],
+            tables=["pm_project", "pm_portfolio", "pm_project_task"],
+            plugin="com.snc.project_management", layer="application"))
+        
+        # === ORCHESTRATION LAYER ===
+        self._add_node(OntologyNode("integration_hub", "Integration Hub", "orchestration",
+            aliases=["Integration Hub", "IntegrationHub", "Spokes"],
+            tables=["sys_hub_flow", "sys_hub_action_type_definition"],
+            plugin="com.glide.hub.integration_hub", layer="orchestration"))
+        self._add_node(OntologyNode("flow_designer", "Flow Designer", "orchestration",
+            aliases=["Flow Designer", "Flows", "Subflows"],
+            tables=["sys_hub_flow"],
+            plugin="com.glide.hub.flow_designer", layer="orchestration"))
+        self._add_node(OntologyNode("workflow", "Workflow Engine", "orchestration",
+            aliases=["Workflow", "Workflow Engine", "Legacy Workflow"],
+            tables=["wf_workflow", "wf_workflow_version", "wf_activity"],
+            layer="orchestration"))
+        self._add_node(OntologyNode("virtual_agent", "Virtual Agent", "orchestration",
+            aliases=["Virtual Agent", "VA", "Chatbot"],
+            plugin="com.glide.cs.chatbot", layer="orchestration"))
+        self._add_node(OntologyNode("notifications", "Notifications", "orchestration",
+            aliases=["Notifications", "Email", "Push Notifications"],
+            tables=["sysevent_email_action", "sys_email"],
+            layer="orchestration"))
+        
+        # === UI LAYER ===
+        self._add_node(OntologyNode("service_portal", "Service Portal", "ui",
+            aliases=["Service Portal", "Employee Portal", "Internal Portal", "SP"],
+            tables=["sp_portal", "sp_page", "sp_widget"],
+            plugin="com.glide.service-portal", layer="ui"))
+        self._add_node(OntologyNode("customer_portal", "Customer Portal", "ui",
+            aliases=["Customer Portal", "Customer Service Portal", "Public Portal", "CSP"],
+            tables=["sp_portal"],
+            plugin="com.sn_customerservice", layer="ui"))
+        self._add_node(OntologyNode("employee_center", "Employee Center", "ui",
+            aliases=["Employee Center", "EC"],
+            plugin="com.sn_employee_center", layer="ui"))
+        self._add_node(OntologyNode("now_mobile", "Now Mobile", "ui",
+            aliases=["Now Mobile", "Mobile", "Mobile App"],
+            layer="ui"))
+        self._add_node(OntologyNode("workspace", "Agent Workspace", "ui",
+            aliases=["Agent Workspace", "Workspace", "CSM Workspace", "ITSM Workspace"],
+            layer="ui"))
+        
+        # === EXTERNAL ===
+        self._add_node(OntologyNode("external", "External Systems", "external",
+            aliases=["External Systems", "Third Party", "External"],
+            layer="external"))
+        
+        # ---------------------------------------------------------------
+        # EDGES: Table hierarchy (extends)
+        # ---------------------------------------------------------------
+        for child, parent in [
+            ("incident", "task"), ("problem", "task"), ("change", "task"),
+            ("case_mgmt", "task"), ("hr_case", "task"), ("sec_incident", "task"),
+            ("service_catalog", "task"),  # sc_request / sc_task extend task
+        ]:
+            self._add_edge(child, parent, "extends")
+        
+        # ---------------------------------------------------------------
+        # EDGES: Product -> module composition (depends_on)
+        # ---------------------------------------------------------------
+        for module in ["incident", "problem", "change", "service_catalog"]:
+            self._add_edge("itsm", module, "depends_on")
+        for module in ["case_mgmt", "customer_accounts"]:
+            self._add_edge("csm", module, "depends_on")
+        self._add_edge("hrsd", "hr_case", "depends_on")
+        for module in ["discovery", "service_mapping", "event_mgmt"]:
+            self._add_edge("itom", module, "depends_on")
+        for module in ["sec_incident", "vuln_response"]:
+            self._add_edge("secops", module, "depends_on")
+        for module in ["policy_compliance", "risk_mgmt"]:
+            self._add_edge("grc", module, "depends_on")
+        self._add_edge("spm", "ppm", "depends_on")
+        
+        # ---------------------------------------------------------------
+        # EDGES: Architectural relationships
+        # ---------------------------------------------------------------
+        # runs_on (applications -> platform)
+        for app in ["itsm", "csm", "hrsd", "itom", "secops", "grc", "spm",
+                     "service_portal", "customer_portal", "employee_center"]:
+            self._add_edge(app, "platform", "runs_on")
+        
+        # references (applications -> CMDB)
+        for app in ["incident", "problem", "change", "case_mgmt", "asset",
+                     "discovery", "service_mapping", "event_mgmt", "sec_incident"]:
+            self._add_edge(app, "cmdb", "references")
+        
+        # resolves_using (applications -> KB)
+        for app in ["incident", "problem", "case_mgmt", "hr_case"]:
+            self._add_edge(app, "knowledge_base", "resolves_using")
+        
+        # consumes (portals -> KB)
+        for portal in ["service_portal", "customer_portal", "employee_center"]:
+            self._add_edge(portal, "knowledge_base", "consumes")
+        
+        # creates (portals -> applications)
+        self._add_edge("customer_portal", "csm", "creates", "Portal creates cases in CSM")
+        self._add_edge("service_portal", "itsm", "creates", "Portal creates tickets in ITSM")
+        self._add_edge("service_portal", "service_catalog", "creates", "Portal creates catalog requests")
+        self._add_edge("employee_center", "hrsd", "creates", "Employee Center creates HR cases")
+        
+        # authenticates_via
+        for portal in ["service_portal", "customer_portal", "employee_center", "now_mobile"]:
+            self._add_edge(portal, "user_mgmt", "authenticates_via")
+        
+        # orchestration relationships
+        self._add_edge("flow_designer", "platform", "runs_on")
+        self._add_edge("integration_hub", "platform", "runs_on")
+        self._add_edge("flow_designer", "integration_hub", "depends_on")
+        self._add_edge("integration_hub", "external", "creates", "Connects to external systems")
+        self._add_edge("virtual_agent", "knowledge_base", "consumes")
+        
+        # CMDB population
+        self._add_edge("discovery", "cmdb", "creates", "Discovery populates CMDB")
+        self._add_edge("service_mapping", "cmdb", "creates", "Service Mapping maps services in CMDB")
+        
+        # Segregation rules (anti-patterns)
+        self._add_edge("customer_portal", "itsm", "segregated_from", "Public portal must not connect to internal ITSM")
+        self._add_edge("service_portal", "csm", "segregated_from", "Internal portal must not connect to external CSM")
+    
+    def _build_indexes(self):
+        """Build lookup indexes from the edge list."""
+        for edge in self._edges:
+            self._outgoing.setdefault(edge.source, []).append(edge)
+            self._incoming.setdefault(edge.target, []).append(edge)
+            if edge.rel_type == "extends":
+                self._children.setdefault(edge.target, []).append(edge.source)
+    
+    def _foundational_aliases(self) -> Set[str]:
+        """Build the flat set of foundational component names for backward compat."""
+        result = set()
+        for nid in ["cmdb", "user_mgmt", "platform", "knowledge_base"]:
+            node = self._nodes.get(nid)
+            if node:
+                result.add(node.label)
+                result.update(node.aliases)
+                result.update(node.tables)
+        return result
+    
+    def _build_dependency_dict(self) -> Dict[str, List[str]]:
+        """Build backward-compat dependency dict from edges."""
+        deps = {}
+        for edge in self._edges:
+            if edge.rel_type in ("depends_on", "references", "resolves_using", "authenticates_via"):
+                src = self._nodes[edge.source].label if edge.source in self._nodes else edge.source
+                tgt = self._nodes[edge.target].label if edge.target in self._nodes else edge.target
+                deps.setdefault(src, []).append(tgt)
+        return deps
+    
+    def _build_product_components(self) -> Dict[str, List[str]]:
+        """Build backward-compat product_components dict from edges."""
+        products = {}
+        for edge in self._edges:
+            if edge.rel_type == "depends_on" and edge.source in self._nodes:
+                src_node = self._nodes[edge.source]
+                if src_node.node_type == "product":
+                    tgt_node = self._nodes.get(edge.target)
+                    tgt_label = tgt_node.label if tgt_node else edge.target
+                    products.setdefault(src_node.label, []).append(tgt_label)
+        return products
+    
+    # -------------------------------------------------------------------
+    # Graph query methods
+    # -------------------------------------------------------------------
+    
+    def find_node(self, text: str) -> Optional[OntologyNode]:
+        """Find an ontology node by free-text match against id, label, or aliases."""
+        text_lower = text.lower()
+        # Exact id match first
+        if text_lower in self._nodes:
+            return self._nodes[text_lower]
+        # Label/alias match
+        for node in self._nodes.values():
+            if node.matches(text):
+                return node
+        return None
+    
+    def get_tables_for(self, node_id: str) -> List[str]:
+        """Get all actual SN table names associated with a node."""
+        node = self._nodes.get(node_id)
+        return node.tables if node else []
+    
+    def what_depends_on(self, node_id: str) -> List[str]:
+        """Return IDs of all nodes that depend on / reference / consume the given node."""
+        return [e.source for e in self._incoming.get(node_id, [])
+                if e.rel_type in ("depends_on", "references", "resolves_using", "consumes")]
+    
+    def what_does_it_need(self, node_id: str) -> List[str]:
+        """Return IDs of all nodes that a given node depends on."""
+        return [e.target for e in self._outgoing.get(node_id, [])
+                if e.rel_type in ("depends_on", "references", "resolves_using", "authenticates_via")]
+    
+    def get_layer(self, node_id: str) -> Optional[str]:
+        """Get the architecture layer for a node."""
+        node = self._nodes.get(node_id)
+        return node.layer if node else None
+    
+    def get_plugin(self, node_id: str) -> Optional[str]:
+        """Get the ServiceNow plugin id for a node."""
+        node = self._nodes.get(node_id)
+        return node.plugin if node else None
+    
+    def get_children(self, node_id: str) -> List[str]:
+        """Get nodes that extend this node (table inheritance)."""
+        return self._children.get(node_id, [])
+    
+    def get_segregation_rules(self) -> List[Tuple[str, str, str]]:
+        """Get all segregation (anti-pattern) rules."""
+        return [
+            (e.source, e.target, e.constraint or "")
+            for e in self._edges if e.rel_type == "segregated_from"
+        ]
     
     def get_component_dependencies(self, component: str) -> List[str]:
         """Get required dependencies for a component."""
