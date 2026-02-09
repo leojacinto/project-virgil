@@ -240,9 +240,9 @@ The system uses a constraint-based architecture where the LLM generates content 
 └─────────────────────────────────────────────────────────────┘
 ```
 
-The core design principle: **LLMs need guardrails, not just prompts.** Left unconstrained, LLMs generate architecturally incorrect diagrams  - Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components, vague labels like "leverages" that encode no real meaning. Project Virgil constrains the LLM before generation (ontology rules + hard limits in prompt), corrects it after generation (validator removes invalid arrows, replaces vague labels, prunes excess connections), and sanitizes the output for rendering. The LLM does ~10% of the quality work; the guardrails do the rest.
+The core design principle: **LLMs need guardrails, not just prompts.** Left unconstrained, LLMs generate architecturally incorrect diagrams. Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components, vague labels like "leverages" that encode no real meaning. Project Virgil constrains the LLM before generation (ontology rules + hard limits in prompt), corrects it after generation (validator removes invalid arrows, replaces vague labels, prunes excess connections), and sanitizes the output for rendering. The LLM does ~10% of the quality work. The guardrails do the rest.
 
-The ontology is currently a custom-built graph model derived from ServiceNow's public platform documentation. The planned integration target is **ServiceNow's data.world**  - acquired by ServiceNow in late 2024 to bring enterprise knowledge graph, data catalog, and metadata management natively into the Now Platform. Once data.world's ontology and knowledge graph APIs are available, Virgil's custom ontology will be replaced with a live connection to ServiceNow's native semantic layer, providing real-time table relationships, plugin dependencies, and instance-specific metadata without manual maintenance.
+The ontology is currently a custom-built graph model derived from ServiceNow's public platform documentation. The planned integration target is **ServiceNow's data.world**, acquired by ServiceNow in late 2024 to bring enterprise knowledge graph, data catalog, and metadata management natively into the Now Platform. Once data.world's ontology and knowledge graph APIs are available, Virgil's custom ontology will be replaced with a live connection to ServiceNow's native semantic layer, providing real-time table relationships, plugin dependencies, and instance-specific metadata without manual maintenance.
 
 ### Constraint-Based Architecture
 
@@ -270,7 +270,7 @@ Three-Layer Validation:
    - Ensures diagram starts with `graph TD`
    - Blocks 100% of rendering failures
 
-This approach shifts from "usually good" to "reliably good". The guardrails  - not the LLM  - are the product.
+This approach shifts from "usually good" to "reliably good". The guardrails are the product, not the LLM.
 
 ### Why This is Better Than "ChatGPT + SN Utils + VSCode"
 
@@ -655,7 +655,7 @@ The application queries the following tables via JDBC. Your user needs at least 
 4. If you have CSM installed, also add: `sn_customerservice_agent`
 5. For full metadata access (plugins, apps, business rules), add: `admin`
 
-**Note:** The application gracefully handles access denials  - if a table is inaccessible, it logs a warning and continues with available data. The LLM analysis will still work but with less instance context.
+**Note:** The application gracefully handles access denials. If a table is inaccessible, it logs a warning and continues with available data. The LLM analysis will still work but with less instance context.
 
 **If roles alone don't resolve the issue:**
 
@@ -709,7 +709,7 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 ServiceNow acquired [data.world](https://data.world) in late 2024, bringing enterprise knowledge graph, ontology management, and metadata catalog capabilities into the Now Platform. This is the natural evolution path for Project Virgil:
 - Replace custom ontology with data.world's knowledge graph API for live table relationships, class hierarchy, and plugin dependencies
 - Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
-- Eliminate manual ontology maintenance  - the graph stays current with platform releases
+- Eliminate manual ontology maintenance so the graph stays current with platform releases
 
 ### Other Planned Enhancements
 - Unit and integration test coverage
