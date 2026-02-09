@@ -4,7 +4,7 @@ Get the ServiceNow Architecture Generator running in 5 minutes!
 
 ## Prerequisites
 
-- Python 3.9+ installed
+- Python 3.9.6 (recommended and tested version)
 - Node.js 16+ installed
 - ServiceNow JDBC driver JAR file
 - OpenAI or Anthropic API key

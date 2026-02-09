@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.9-slim
 
 # Install Java and build tools (required for ServiceNow JDBC and Python packages)
 RUN apt-get update && \

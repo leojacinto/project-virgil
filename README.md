@@ -362,7 +362,7 @@ If you prefer to run without Docker, follow these steps:
 
 ### Prerequisites
 
-- Python 3.12+ (required for JPype compatibility on Apple Silicon)
+- Python 3.9.6 (tested and verified working version)
 - Node.js 16+
 - Java (OpenJDK 17+) for ServiceNow JDBC driver
   ```bash
