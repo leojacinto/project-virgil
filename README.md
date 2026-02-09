@@ -139,9 +139,14 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 - ✅ Arrow count enforcement: prunes lowest-priority connections when over limit
 - ✅ Priority system: keeps runs_on/creates/references, drops manages/connects/uses
 - ✅ Bidirectional arrow detection and circular dependency checking
+- ✅ Label vocabulary enforcement: auto-replaces vague labels (leverages→references, manages→depends on, uses→references, etc.)
+- ✅ Missing relationship detection: flags when ITSM/CSM nodes lack required `runs on` → Platform
+- ✅ 9 label replacements defined (leverages, manages, utilizes, feeds, provides, supports, uses, interacts with, connects)
 
 **Prompt Hardening (v1.3.0):**
 - ✅ Hard limits: max 15 arrows, max 10 nodes, max 4 subgraphs, max 3 outgoing per node
+- ✅ Explicit ALLOWED RELATIONSHIP LABELS whitelist (runs on, creates, references, resolves using, accesses, authenticates via, consumes, populates, integrates with)
+- ✅ REQUIRED RELATIONSHIPS: apps must `runs on` Platform, portals must `authenticates via` Identity, all foundational components inside Foundation subgraph
 - ✅ Orchestration components (Integration Hub, Flow Designer) inside Application layer subgraph
 - ✅ Group related modules into single nodes (one ITSM node, not separate Incident/Problem/Change)
 
