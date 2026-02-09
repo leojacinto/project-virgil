@@ -84,10 +84,19 @@ You need at least one LLM API key:
    GOOGLE_API_KEY=your_google_api_key_here
    ```
 
-4. **Place ServiceNow JDBC driver:**
+4. **Download and place ServiceNow JDBC driver:**
+   
+   **Important:** The JDBC driver is not included in this repository due to licensing restrictions.
+   
+   Download the driver from:
+   - Your ServiceNow instance's JDBC driver download page
+   - ServiceNow Store
+   - Contact your ServiceNow administrator
+   
+   Then place it in the jdbc directory:
    ```bash
    mkdir -p backend/jdbc
-   cp /path/to/ServiceNowJdbc-*.jar backend/jdbc/
+   cp /path/to/your-downloaded-jdbc-driver.jar backend/jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar
    ```
 
 5. **Start the application:**
@@ -361,8 +370,7 @@ If you prefer to run without Docker, follow these steps:
   ```
 - ServiceNow instance with RaptorDB access
 - OpenAI API key or Anthropic API key
-
-Note: ServiceNow JDBC driver (v1.0.3) is included in the repository.
+- ServiceNow JDBC driver (must be downloaded separately - see installation steps)
 
 ### Installation Steps
 
@@ -384,11 +392,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. Place the ServiceNow JDBC driver:
+4. Download and place the ServiceNow JDBC driver:
 ```bash
 mkdir -p jdbc
-# Copy your servicenow-jdbc.jar to the jdbc/ directory
-cp /path/to/servicenow-jdbc.jar jdbc/
+# Download the JDBC driver from your ServiceNow instance or ServiceNow Store
+# Then copy it to the jdbc/ directory
+cp /path/to/your-downloaded-jdbc-driver.jar jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar
 ```
 
 5. Create environment configuration:

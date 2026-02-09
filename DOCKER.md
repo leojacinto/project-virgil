@@ -59,9 +59,17 @@ SERPAPI_KEY=your-serpapi-key-here
 # Create the jdbc directory
 mkdir -p backend/jdbc
 
-# Copy your ServiceNow JDBC driver
-cp /path/to/ServiceNowJdbc-1.0.3-SNAPSHOT.jar backend/jdbc/
+# Download the ServiceNow JDBC driver from ServiceNow Store or your instance
+# Then copy it to the jdbc directory
+cp /path/to/your-downloaded-jdbc-driver.jar backend/jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar
 ```
+
+**Note:** You must obtain the ServiceNow JDBC driver from:
+- Your ServiceNow instance's JDBC driver download page
+- ServiceNow Store
+- Contact your ServiceNow administrator
+
+The driver is not included in this repository due to licensing restrictions.
 
 ### 4. Start the Application
 ```bash

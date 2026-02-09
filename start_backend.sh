@@ -89,6 +89,8 @@ elif [ -f "jdbc/servicenow-jdbc.jar" ]; then
 else
     echo "⚠️  WARNING: ServiceNow JDBC JAR file not found"
     echo "   Expected location: backend/jdbc/ServiceNowJdbc-1.0.3-SNAPSHOT.jar"
+    echo "   Please download the JDBC driver from your ServiceNow instance"
+    echo "   and place it in the backend/jdbc/ directory."
     echo "   The app will start but ServiceNow connection will fail."
     echo ""
 fi
