@@ -385,11 +385,18 @@ CRITICAL MERMAID REQUIREMENTS:
       A --> D[ITSM]
       D --> C
 
+MERMAID DIAGRAM HARD LIMITS:
+- MAXIMUM 15 arrows/connections in the entire diagram. Fewer is better.
+- MAXIMUM 10 nodes. Group related modules into single nodes (e.g., use one "ITSM" node, NOT separate Incident/Problem/Change nodes)
+- MAXIMUM 4 subgraphs. Combine related layers.
+- Each node should have MAXIMUM 3 outgoing connections.
+- Orchestration components (Integration Hub, Flow Designer) go INSIDE the Application layer subgraph, not in a separate subgraph.
+
 MERMAID DIAGRAM GUIDELINES FOR CLARITY:
 - Focus on primary architectural flows: User → Portal → Application → Platform → Data
 - Prioritize key relationships: "runs on", "creates", "resolves using"
+- Drop secondary relationships like "accesses", "manages", "connects" if they would exceed the arrow limit
 - Use subgraphs to organize components by layer (e.g., "subgraph Users" not "subgraph \"1. Users\"")
-- Keep diagrams readable - avoid excessive connections between every component
 
 Priority levels mean:
 - HIGH: Critical for core functionality, must implement first
@@ -405,7 +412,8 @@ Remember:
 - Label arrows with relationship types (creates, runs on, references, resolves using)
 - CMDB and Platform are FOUNDATIONAL - they go at the bottom
 - NO bidirectional arrows unless peer-to-peer integration
-- NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)"""
+- NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)
+- STRICT LIMIT: Maximum 15 arrows total. If you exceed this, remove the least important connections."""
 
         try:
             messages = [
@@ -500,13 +508,22 @@ Remember:
                         
                         # Validate the Mermaid diagram against ontology rules
                         try:
-                            is_valid, validation_errors, _ = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                            is_valid, validation_errors, corrected_diagram = self.validator.validate_mermaid_diagram(fixed_mermaid)
                             
                             if not is_valid:
                                 logger.warning(f"Mermaid validation found {len(validation_errors)} issues")
                                 if 'validation_warnings' not in result:
                                     result['validation_warnings'] = []
                                 result['validation_warnings'].extend(validation_errors)
+                                
+                                # Use the corrected diagram if the validator produced one
+                                if corrected_diagram:
+                                    result["mermaid_diagram"] = corrected_diagram
+                                    corrected_file = f"/tmp/mermaid_validated_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                                    with open(corrected_file, 'w') as f:
+                                        f.write(corrected_diagram)
+                                    logger.info(f"Validator-corrected diagram saved to: {corrected_file}")
+                                    logger.info(f"Validator-corrected diagram:\n{corrected_diagram}")
                             else:
                                 logger.info("Mermaid diagram passed validation")
                             

@@ -7,13 +7,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+MAX_ARROWS = 15
+MAX_OUTGOING_PER_NODE = 3
+
+
 class MermaidRelationship:
     """Represents a relationship in a Mermaid diagram"""
-    def __init__(self, source: str, target: str, rel_type: str, label: str = ""):
+    def __init__(self, source: str, target: str, rel_type: str, label: str = "", raw_line: str = ""):
         self.source = source
         self.target = target
         self.rel_type = rel_type
         self.label = label
+        self.raw_line = raw_line
     
     def __repr__(self):
         return f"{self.source} --{self.label or self.rel_type}--> {self.target}"
@@ -31,11 +36,15 @@ class ArchitectureValidator:
     def validate_mermaid_diagram(self, mermaid: str) -> Tuple[bool, List[str], Optional[str]]:
         """
         Validate Mermaid diagram against ontology rules.
+        Removes invalid relationships and enforces arrow limits.
         
         Returns:
             Tuple of (is_valid, errors, corrected_diagram)
         """
         errors = []
+        
+        # Parse node ID -> label mappings
+        self._node_labels = self._parse_node_labels(mermaid)
         
         # Parse relationships from Mermaid
         relationships = self._parse_mermaid_relationships(mermaid)
@@ -44,10 +53,15 @@ class ArchitectureValidator:
             errors.append("No relationships found in diagram")
             return False, errors, None
         
+        # Track lines to remove
+        lines_to_remove = set()
+        
         # Validate each relationship
         for rel in relationships:
             validation_errors = self._validate_relationship(rel)
-            errors.extend(validation_errors)
+            if validation_errors:
+                errors.extend(validation_errors)
+                lines_to_remove.add(rel.raw_line.strip())
         
         # Check for architectural anti-patterns
         anti_pattern_errors = self._check_anti_patterns(relationships)
@@ -57,14 +71,59 @@ class ArchitectureValidator:
         circular_errors = self._check_circular_dependencies(relationships)
         errors.extend(circular_errors)
         
+        # Enforce arrow count limit
+        valid_relationships = [r for r in relationships if r.raw_line.strip() not in lines_to_remove]
+        if len(valid_relationships) > MAX_ARROWS:
+            excess = len(valid_relationships) - MAX_ARROWS
+            errors.append(f"Diagram has {len(valid_relationships)} arrows, exceeds limit of {MAX_ARROWS}. Pruning {excess} lowest-priority connections.")
+            valid_relationships = self._prune_excess_arrows(valid_relationships, MAX_ARROWS)
+            # Update lines_to_remove with pruned arrows
+            valid_lines = {r.raw_line.strip() for r in valid_relationships}
+            for rel in relationships:
+                if rel.raw_line.strip() not in valid_lines:
+                    lines_to_remove.add(rel.raw_line.strip())
+        
+        # Enforce max outgoing per node
+        outgoing_count = {}
+        for rel in valid_relationships:
+            outgoing_count[rel.source] = outgoing_count.get(rel.source, 0) + 1
+        for node, count in outgoing_count.items():
+            if count > MAX_OUTGOING_PER_NODE:
+                label = self._node_labels.get(node, node)
+                errors.append(f"Node {label} has {count} outgoing connections (max {MAX_OUTGOING_PER_NODE})")
+        
         is_valid = len(errors) == 0
+        
+        # Build corrected diagram by removing invalid lines
+        corrected = None
+        if lines_to_remove:
+            corrected_lines = []
+            for line in mermaid.split("\n"):
+                if line.strip() not in lines_to_remove:
+                    corrected_lines.append(line)
+            corrected = "\n".join(corrected_lines)
+            logger.info(f"Validator removed {len(lines_to_remove)} lines from diagram")
         
         if not is_valid:
             logger.warning(f"Mermaid validation found {len(errors)} issues: {errors}")
         else:
             logger.info("Mermaid diagram passed validation")
         
-        return is_valid, errors, None
+        return is_valid, errors, corrected
+    
+    def _parse_node_labels(self, mermaid: str) -> Dict[str, str]:
+        """Parse node ID to label mappings from Mermaid (e.g., CP[Customer Portal] -> {'CP': 'customer portal'})"""
+        labels = {}
+        pattern = r'(\w+)\[([^\]]+)\]'
+        for match in re.finditer(pattern, mermaid):
+            node_id = match.group(1)
+            label = match.group(2).strip().lower()
+            labels[node_id] = label
+        return labels
+    
+    def _get_label(self, node_id: str) -> str:
+        """Get the label for a node ID, falling back to the ID itself"""
+        return self._node_labels.get(node_id, node_id.lower())
     
     def _parse_mermaid_relationships(self, mermaid: str) -> List[MermaidRelationship]:
         """Parse relationships from Mermaid diagram"""
@@ -73,67 +132,102 @@ class ArchitectureValidator:
         # Pattern to match: A -->|label| B or A --> B
         pattern = r'(\w+)\s*-->\s*(?:\|([^\|]+)\|)?\s*(\w+)'
         
-        for match in re.finditer(pattern, mermaid):
-            source = match.group(1)
-            label = match.group(2) or ""
-            target = match.group(3)
-            
-            relationships.append(MermaidRelationship(source, target, "-->", label))
+        for line in mermaid.split("\n"):
+            match = re.search(pattern, line)
+            if match:
+                source = match.group(1)
+                label = match.group(2) or ""
+                target = match.group(3)
+                relationships.append(MermaidRelationship(source, target, "-->", label, line))
         
         return relationships
     
+    def _prune_excess_arrows(self, relationships: List[MermaidRelationship], max_count: int) -> List[MermaidRelationship]:
+        """Prune excess arrows, keeping high-priority relationships and removing low-priority ones."""
+        # Priority: higher = keep
+        high_priority_labels = {'runs on', 'creates', 'references', 'resolves using', 'creates cases', 'creates tickets'}
+        medium_priority_labels = {'accesses', 'authenticates', 'stores'}
+        # Everything else is low priority: 'manages', 'connects', 'uses', 'automates', 'provides', 'integrates'
+        
+        def priority(rel):
+            label_lower = rel.label.lower() if rel.label else ""
+            if any(hp in label_lower for hp in high_priority_labels):
+                return 2
+            if any(mp in label_lower for mp in medium_priority_labels):
+                return 1
+            return 0
+        
+        # Sort by priority descending, keep top max_count
+        sorted_rels = sorted(relationships, key=priority, reverse=True)
+        kept = sorted_rels[:max_count]
+        pruned = sorted_rels[max_count:]
+        
+        if pruned:
+            logger.info(f"Pruned {len(pruned)} low-priority arrows: {[str(r) for r in pruned]}")
+        
+        return kept
+    
     def _validate_relationship(self, rel: MermaidRelationship) -> List[str]:
-        """Validate a single relationship against ontology rules"""
+        """Validate a single relationship against ontology rules using node labels"""
         errors = []
         
-        # Extract component names from node IDs (e.g., "CSM" from node ID)
-        # This is a simplified check - in production, would map node IDs to component types
-        source_lower = rel.source.lower()
-        target_lower = rel.target.lower()
-        
-        # Check for known anti-patterns
+        # Use labels for matching, not node IDs
+        source_label = self._get_label(rel.source)
+        target_label = self._get_label(rel.target)
         
         # 1. Portal should not directly access CMDB
-        if 'portal' in source_lower and 'cmdb' in target_lower:
-            errors.append(f"Invalid: {rel.source} → {rel.target} (Portals should access applications, not CMDB directly)")
+        if 'portal' in source_label and 'cmdb' in target_label:
+            errors.append(f"Removed: {source_label} → {target_label} (Portals should access applications, not CMDB directly)")
         
         # 2. Knowledge Base should not depend on applications
-        if 'kb' in source_lower or 'knowledge' in source_lower:
-            if 'incident' in target_lower or 'case' in target_lower or 'service' in target_lower:
-                errors.append(f"Invalid: {rel.source} → {rel.target} (Knowledge Base is consumed BY apps, not vice versa)")
+        if 'knowledge' in source_label:
+            if any(term in target_label for term in ['incident', 'case', 'service catalog', 'itsm', 'csm']):
+                errors.append(f"Removed: {source_label} → {target_label} (Knowledge Base is consumed BY apps, not vice versa)")
         
         # 3. CMDB should not depend on applications
-        if 'cmdb' in source_lower:
-            if 'incident' in target_lower or 'case' in target_lower or 'itsm' in target_lower or 'csm' in target_lower:
-                errors.append(f"Invalid: {rel.source} → {rel.target} (CMDB is foundational, cannot depend on applications)")
+        if 'cmdb' in source_label or 'configuration management' in source_label:
+            if any(term in target_label for term in ['incident', 'case', 'itsm', 'csm', 'service catalog', 'problem', 'change']):
+                errors.append(f"Removed: {source_label} → {target_label} (CMDB is foundational, cannot depend on applications)")
         
         # 4. User Management should not depend on applications
-        if 'user' in source_lower and 'management' in source_lower:
-            if 'incident' in target_lower or 'case' in target_lower:
-                errors.append(f"Invalid: {rel.source} → {rel.target} (User Management is foundational)")
+        if 'user management' in source_label:
+            if any(term in target_label for term in ['incident', 'case', 'itsm', 'csm', 'portal']):
+                errors.append(f"Removed: {source_label} → {target_label} (User Management is foundational)")
         
         return errors
     
     def _check_anti_patterns(self, relationships: List[MermaidRelationship]) -> List[str]:
-        """Check for architectural anti-patterns"""
+        """Check for architectural anti-patterns using node labels"""
         errors = []
         
-        # Build a graph to check patterns
+        # Build a graph using labels
         graph = {}
         for rel in relationships:
-            if rel.source not in graph:
-                graph[rel.source] = []
-            graph[rel.source].append(rel.target)
+            source_label = self._get_label(rel.source)
+            if source_label not in graph:
+                graph[source_label] = []
+            graph[source_label].append(self._get_label(rel.target))
         
         # Check for UI components depending on data layer directly
-        ui_components = [node for node in graph.keys() if 'portal' in node.lower() or 'ui' in node.lower()]
-        data_components = [node for node in graph.keys() if 'cmdb' in node.lower() or 'database' in node.lower()]
+        ui_labels = [label for label in graph.keys() if 'portal' in label or 'ui' in label]
+        data_labels = [label for label in graph.keys() if 'cmdb' in label or 'configuration management' in label]
         
-        for ui in ui_components:
+        for ui in ui_labels:
             if ui in graph:
                 for target in graph[ui]:
-                    if target in data_components:
-                        errors.append(f"Anti-pattern: UI component {ui} directly accessing data layer {target}")
+                    if target in data_labels:
+                        errors.append(f"Anti-pattern: {ui} directly accessing {target}")
+        
+        # Check for bidirectional arrows (A→B and B→A)
+        seen_pairs = set()
+        for rel in relationships:
+            pair = (rel.source, rel.target)
+            reverse = (rel.target, rel.source)
+            if reverse in seen_pairs:
+                s_label = self._get_label(rel.source)
+                t_label = self._get_label(rel.target)
+                errors.append(f"Bidirectional: {s_label} ↔ {t_label} (use single direction unless peer-to-peer)")
+            seen_pairs.add(pair)
         
         return errors
     
