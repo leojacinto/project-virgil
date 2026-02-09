@@ -570,7 +570,7 @@ Remember:
     D --> C"""
                 
                 # Validate architecture against ServiceNow domain knowledge
-                if "architecture_components" in result or response.architecture_components:
+                if "architecture_components" in result or hasattr(response, 'architecture_components'):
                     arch_components = result.get("architecture_components", [])
                     if hasattr(response, 'architecture_components'):
                         # Convert Pydantic models if needed
