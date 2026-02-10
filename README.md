@@ -121,67 +121,30 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release Notes
+## 📦 Latest Release — v1.4.0 (February 2026)
 
-### v1.3.0 (Backend) - February 2026
+**Diagram Pipeline Overhaul** — transparent, multi-stage pipeline with baseline comparison:
 
-**Ontology Refactor (v1.3.0):**
-- ✅ Replaced flat dict/list ontology with graph-based knowledge model (40 nodes, 65 typed edges)
-- ✅ OntologyNode: id, label, node_type, aliases, actual SN table names, plugin IDs, architecture layer
-- ✅ OntologyEdge: typed relationships (extends, depends_on, runs_on, references, creates, consumes, resolves_using, authenticates_via, segregated_from)
-- ✅ Table hierarchy: incident/problem/change/case/hr_case/sec_incident/service_catalog all extend task
-- ✅ Graph traversal: find_node(), what_depends_on(), what_does_it_need(), get_children()
-- ✅ Coverage: ITSM, CSM, HRSD, ITOM, SecOps, GRC, SPM products and all major modules
+- ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) shows raw output quality as a comparison baseline
+- ✅ **Query-Aware Subgraph**: Ontology nodes/edges relevant to the query extracted with 1-hop expansion
+- ✅ **Label Replacement Mapping**: 32 vague→standard label rules visible in pipeline (e.g., leverages→references, hosts→runs on)
+- ✅ **Reference Example Diagram**: Auto-generated from query-relevant ontology subgraph
+- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated — stage 4 always crashed silently. Now properly initialized.
+- ✅ **Frontend Rewrite**: DiagramLog shows all 5 pipeline stages with color-coded themes, code/render toggles, and structured constraint data
 
-**Validator Enforcement (v1.3.0):**
-- ✅ Validator now REMOVES invalid arrows and returns corrected diagrams (was only logging warnings)
-- ✅ Parses node ID→label mappings for accurate anti-pattern detection
-- ✅ Arrow count enforcement: prunes lowest-priority connections when over limit
-- ✅ Priority system: keeps runs_on/creates/references, drops manages/connects/uses
-- ✅ Bidirectional arrow detection and circular dependency checking
-- ✅ Label vocabulary enforcement: auto-replaces vague labels (leverages→references, manages→depends on, uses→references, etc.)
-- ✅ Missing relationship detection: flags when ITSM/CSM nodes lack required `runs on` → Platform
-- ✅ 9 label replacements defined (leverages, manages, utilizes, feeds, provides, supports, uses, interacts with, connects)
-
-**Prompt Hardening (v1.3.0):**
-- ✅ Hard limits: max 15 arrows, max 10 nodes, max 4 subgraphs, max 3 outgoing per node
-- ✅ Explicit ALLOWED RELATIONSHIP LABELS whitelist (runs on, creates, references, resolves using, accesses, authenticates via, consumes, populates, integrates with)
-- ✅ REQUIRED RELATIONSHIPS: apps must `runs on` Platform, portals must `authenticates via` Identity, all foundational components inside Foundation subgraph
-- ✅ Orchestration components (Integration Hub, Flow Designer) inside Application layer subgraph
-- ✅ Group related modules into single nodes (one ITSM node, not separate Incident/Problem/Change)
-
-### v1.2.4 (Backend) - February 2026
-
-**Backend Fixes (v1.2.4):**
-- ✅ Fixed Mermaid syntax errors caused by `&` in subgraph names (e.g. `subgraph Portals & UI`)
-- ✅ Fixed Mermaid syntax errors caused by `/` and `()` in edge labels (e.g. `|creates requests/incidents|`)
-- ✅ Fixed Mermaid syntax errors caused by numbered subgraph prefixes (e.g. `subgraph 2. User Interface`)
-- ✅ Mermaid sanitizer now applied to both structured output and fallback JSON parsing paths
-- ✅ JSON parsing now uses `strict=False` to tolerate literal newlines in LLM responses
-- ✅ Added detailed JSONDecodeError logging with position and raw text dump for debugging
-- ✅ Added ServiceNow JDBC user role/ACL documentation
-
-### v1.2.3 (Frontend) + v1.2.1 (Backend) - February 2026
-
-**Frontend Fixes (v1.2.3):**
-- ✅ Fixed setup wizard navigation - Continue button now properly advances to ServiceNow configuration
-- ✅ Configured axios to use correct backend URL in Docker deployments
-- ✅ Added click prevention to avoid multiple rapid API calls
-- ✅ Resolved browser caching issues with hard refresh recommendations
-
-**Backend Fixes (v1.2.1):**
-- ✅ Fixed Mermaid syntax errors caused by parentheses in node labels
-- ✅ Auto-fix now converts `Platform (FedRAMP/SPP)` to `Platform - FedRAMP/SPP`
-- ✅ Improved diagram rendering reliability across all deployment methods
-
-**Infrastructure:**
-- ✅ ARM64 (Apple Silicon) compatible Docker images
-- ✅ OpenJDK 21 for Debian Trixie compatibility
-- ✅ Both local and Docker deployments fully tested and working
+| # | Stage | Purpose |
+|---|-------|---------|
+| 0 | **Baseline** (red) | Raw LLM output — no rules, no limits, no vocabulary |
+| 1 | **Ontology Constraints** (purple) | Hard limits, allowed labels, 32 replacement rules, subgraph, reference diagram |
+| 2 | **LLM Output** (blue) | Guided LLM response with all constraints applied |
+| 3 | **Syntax Sanitizer** (amber) | Mermaid syntax auto-fix |
+| 4 | **Ontology Validator** (green) | Post-generation enforcement — removes invalid arrows, normalizes labels |
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.2.1`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.2.3`
+- Backend: `leofrancia08489/project-virgil-backend:v1.4.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.0`
+
+> 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -197,16 +160,16 @@ The system uses a constraint-based architecture where the LLM generates content 
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. ServiceNow Ontology (30%)                                │
 │    ├─ Graph-based knowledge model (40 nodes, 65 typed edges)│
+│    ├─ Query-aware subgraph extraction (1-hop expansion)     │
 │    ├─ Table hierarchy: incident/case/change extend task     │
-│    ├─ Product decomposition: ITSM → [Incident, Problem, ...]│
-│    ├─ Plugin mappings: node → com.snc.incident, etc.        │
 │    ├─ Architecture layers: users → ui → app → platform → data│
 │    ├─ Anti-patterns: Portal→CMDB, KB→Incident, bidirectional│
+│    ├─ Reference example diagram from query-relevant subgraph│
 │    └─ Graph traversal: what_depends_on(), get_children()    │
 ├─────────────────────────────────────────────────────────────┤
 │ 2. Validator Enforcement (25%)                              │
 │    ├─ Post-generation correction (not just logging)         │
-│    ├─ Parses node labels for accurate anti-pattern checks   │
+│    ├─ 32 label replacements (leverages→references, etc.)    │
 │    ├─ REMOVES invalid arrows from diagram                   │
 │    ├─ Prunes excess arrows by priority (keeps creates,      │
 │    │  runs on, references; drops manages, connects, uses)   │
@@ -216,9 +179,9 @@ The system uses a constraint-based architecture where the LLM generates content 
 │ 3. Prompt Constraints (20%)                                 │
 │    ├─ Hard limits: max 15 arrows, max 10 nodes              │
 │    ├─ Max 4 subgraphs, max 3 outgoing per node              │
-│    ├─ Group sub-modules into single nodes                   │
+│    ├─ Label replacement mapping injected into prompt         │
 │    ├─ Orchestration inside Application layer                │
-│    └─ Ontology rules injected as prompt constraints         │
+│    └─ Ontology rules + query subgraph in prompt             │
 ├─────────────────────────────────────────────────────────────┤
 │ 4. Mermaid Syntax Fix (10%)                                 │
 │    ├─ Regex-based character cleanup (&, /, (), quotes)      │
@@ -228,7 +191,7 @@ The system uses a constraint-based architecture where the LLM generates content 
 ├─────────────────────────────────────────────────────────────┤
 │ 5. LLM Generation (10%)                                     │
 │    ├─ Gemini 2.5 Flash / GPT-4 / Claude                     │
-│    ├─ Content generation within hard constraints            │
+│    ├─ Baseline comparison: unconstrained vs guided output   │
 │    ├─ Natural language analysis and recommendations         │
 │    └─ Constrained by all other layers                       │
 ├─────────────────────────────────────────────────────────────┤
