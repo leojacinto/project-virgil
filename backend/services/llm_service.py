@@ -495,8 +495,8 @@ Remember:
             ]
         }
 
-        # --- Patient 0: Unconstrained LLM call (no guardrails) ---
-        patient_zero_stage = None
+        # --- Baseline: Unconstrained LLM call (no guardrails) ---
+        baseline_stage = None
         try:
             bare_prompt = f"""Generate a Mermaid architecture diagram for this ServiceNow requirement.
 Use 'graph TD' format with --> arrows. Include relevant ServiceNow components.
@@ -505,7 +505,7 @@ Requirement: {query}
 
 Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
 
-            logger.info("Patient 0: Generating unconstrained diagram (no guardrails)")
+            logger.info("Baseline: Generating unconstrained diagram (no guardrails)")
             bare_response = self.active_model.invoke([HumanMessage(content=bare_prompt)])
             bare_mermaid = bare_response.content.strip()
             # Strip markdown fences if present
@@ -516,8 +516,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 idx = bare_mermaid.index("graph ")
                 bare_mermaid = bare_mermaid[idx:]
 
-            patient_zero_stage = {
-                "stage": "Patient Zero",
+            baseline_stage = {
+                "stage": "Baseline",
                 "description": "Unconstrained LLM output with NO ontology rules, NO hard limits, NO label vocabulary — raw baseline for comparison",
                 "mermaid": bare_mermaid,
                 "changes": [
@@ -528,9 +528,9 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     "No post-processing or validation"
                 ]
             }
-            logger.info(f"Patient 0 diagram generated: {len(bare_mermaid)} chars")
+            logger.info(f"Baseline diagram generated: {len(bare_mermaid)} chars")
         except Exception as p0_err:
-            logger.warning(f"Patient 0 generation failed (non-critical): {str(p0_err)}")
+            logger.warning(f"Baseline generation failed (non-critical): {str(p0_err)}")
 
         try:
             messages = [
@@ -593,8 +593,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 
                 # Fix common Mermaid syntax errors
                 diagram_pipeline = []
-                if patient_zero_stage:
-                    diagram_pipeline.append(patient_zero_stage)
+                if baseline_stage:
+                    diagram_pipeline.append(baseline_stage)
                 diagram_pipeline.append(ontology_constraints)
                 try:
                     mermaid = result.get("mermaid_diagram", "")
@@ -767,8 +767,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     
                     # Sanitize and log Mermaid diagram from fallback path
                     fallback_pipeline = []
-                    if patient_zero_stage:
-                        fallback_pipeline.append(patient_zero_stage)
+                    if baseline_stage:
+                        fallback_pipeline.append(baseline_stage)
                     fallback_pipeline.append(ontology_constraints)
                     mermaid = result.get("mermaid_diagram", "")
                     if mermaid:

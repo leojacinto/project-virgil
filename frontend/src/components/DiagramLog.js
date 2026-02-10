@@ -22,13 +22,13 @@ function DiagramLog({ pipeline }) {
       const modes = {};
       pipeline.forEach((stage, i) => {
         expanded[i] = true;
-        const noRender = ['Ontology Constraints', 'LLM Output', 'Patient Zero'];
+        const noRender = ['Ontology Constraints', 'LLM Output', 'Baseline'];
         modes[i] = noRender.includes(stage.stage) ? 'code' : 'diagram';
       });
       setExpandedStages(expanded);
       setViewMode(modes);
 
-      const noAutoRender = new Set(['Ontology Constraints', 'LLM Output', 'Patient Zero']);
+      const noAutoRender = new Set(['Ontology Constraints', 'LLM Output', 'Baseline']);
       const timer = setTimeout(() => {
         pipeline.forEach((stage, i) => {
           if (stage.mermaid && !noAutoRender.has(stage.stage)) {
@@ -78,7 +78,7 @@ function DiagramLog({ pipeline }) {
 
   const toggleView = (index) => {
     const stage = pipeline[index];
-    if (stage.stage === 'Ontology Constraints' || stage.stage === 'Patient Zero') return;
+    if (stage.stage === 'Ontology Constraints' || stage.stage === 'Baseline') return;
     const next = viewMode[index] === 'code' ? 'diagram' : 'code';
     setViewMode(prev => ({ ...prev, [index]: next }));
     if (next === 'diagram' && stage.mermaid) {
@@ -97,7 +97,7 @@ function DiagramLog({ pipeline }) {
   }
 
   const stageConfig = {
-    'Patient Zero':        { bg: 'bg-red-50',    border: 'border-red-300',    badge: 'bg-red-100 text-red-700' },
+    'Baseline':        { bg: 'bg-red-50',    border: 'border-red-300',    badge: 'bg-red-100 text-red-700' },
     'Ontology Constraints': { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700' },
     'LLM Output':          { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
     'Syntax Sanitizer':    { bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
@@ -287,7 +287,7 @@ function DiagramLog({ pipeline }) {
       {pipeline.map((stage, index) => {
         const cfg = stageConfig[stage.stage] || stageConfig['LLM Output'];
         const isConstraints = stage.stage === 'Ontology Constraints';
-        const isPatientZero = stage.stage === 'Patient Zero';
+        const isBaseline = stage.stage === 'Baseline';
         const isRawLLM = stage.stage === 'LLM Output';
         const hasMermaid = !!stage.mermaid;
         const cleanMessages = ['No syntax issues found', 'Passed all validation checks',
@@ -296,7 +296,7 @@ function DiagramLog({ pipeline }) {
           !stage.changes.some(c => cleanMessages.includes(c));
         const isClean = stage.changes && stage.changes.some(c => cleanMessages.includes(c));
         const isCode = viewMode[index] === 'code';
-        const canToggle = hasMermaid && !isConstraints && !isPatientZero;
+        const canToggle = hasMermaid && !isConstraints && !isBaseline;
 
         return (
           <div key={index} className={`rounded-lg border ${cfg.border} overflow-hidden`}>
@@ -306,19 +306,19 @@ function DiagramLog({ pipeline }) {
             >
               <div className="flex items-center space-x-3">
                 <div className={`flex items-center justify-center w-8 h-8 rounded-full shadow-sm ${
-                  isPatientZero ? 'bg-red-100' : 'bg-white'
+                  isBaseline ? 'bg-red-100' : 'bg-white'
                 }`}>
-                  <span className={`text-sm font-bold ${isPatientZero ? 'text-red-700' : 'text-slate-700'}`}>
-                    {isPatientZero ? '0' : index + 1 - (pipeline.some(s => s.stage === 'Patient Zero') ? 1 : 0)}
+                  <span className={`text-sm font-bold ${isBaseline ? 'text-red-700' : 'text-slate-700'}`}>
+                    {isBaseline ? '0' : index + 1 - (pipeline.some(s => s.stage === 'Baseline') ? 1 : 0)}
                   </span>
                 </div>
                 <div className="text-left">
-                  <h3 className={`font-semibold ${isPatientZero ? 'text-red-900' : 'text-slate-900'}`}>{stage.stage}</h3>
-                  <p className={`text-xs max-w-lg ${isPatientZero ? 'text-red-600' : 'text-slate-600'}`}>{stage.description}</p>
+                  <h3 className={`font-semibold ${isBaseline ? 'text-red-900' : 'text-slate-900'}`}>{stage.stage}</h3>
+                  <p className={`text-xs max-w-lg ${isBaseline ? 'text-red-600' : 'text-slate-600'}`}>{stage.description}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
-                {isPatientZero && (
+                {isBaseline && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
                     <AlertOctagon className="h-3 w-3" />
                     <span>No guardrails</span>
@@ -330,13 +330,13 @@ function DiagramLog({ pipeline }) {
                     <span>Pre-generation</span>
                   </span>
                 )}
-                {hasChanges && !isConstraints && !isPatientZero && (
+                {hasChanges && !isConstraints && !isBaseline && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
                     <AlertTriangle className="h-3 w-3" />
                     <span>{stage.changes.length} change{stage.changes.length !== 1 ? 's' : ''}</span>
                   </span>
                 )}
-                {isClean && !isConstraints && !isPatientZero && (
+                {isClean && !isConstraints && !isBaseline && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
                     <CheckCircle className="h-3 w-3" />
                     <span>Ontology rules satisfied</span>
@@ -347,19 +347,19 @@ function DiagramLog({ pipeline }) {
             </button>
 
             {expandedStages[index] && (
-              <div className={`p-4 space-y-3 ${isPatientZero ? 'bg-red-50/30' : 'bg-white'}`}>
+              <div className={`p-4 space-y-3 ${isBaseline ? 'bg-red-50/30' : 'bg-white'}`}>
                 {isConstraints && stage.constraints && renderConstraints(stage.constraints, stage.mermaid)}
 
                 {!isConstraints && stage.changes && stage.changes.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                      {isPatientZero ? 'Why this is the baseline' : isRawLLM ? 'Notes' : 'Changes Applied'}
+                      {isBaseline ? 'Why this is the baseline' : isRawLLM ? 'Notes' : 'Changes Applied'}
                     </p>
                     <ul className="space-y-1">
                       {stage.changes.map((change, ci) => (
                         <li key={ci} className="flex items-start space-x-2 text-sm text-slate-700">
                           <span className={`mt-1.5 flex-shrink-0 h-1.5 w-1.5 rounded-full ${
-                            isPatientZero ? 'bg-red-400' : hasChanges ? 'bg-amber-400' : 'bg-green-400'
+                            isBaseline ? 'bg-red-400' : hasChanges ? 'bg-amber-400' : 'bg-green-400'
                           }`} />
                           <span>{change}</span>
                         </li>
@@ -369,13 +369,13 @@ function DiagramLog({ pipeline }) {
                 )}
 
                 {hasMermaid && !isConstraints && (
-                  <div className={`border rounded-lg overflow-hidden ${isPatientZero ? 'border-red-200' : 'border-slate-200'}`}>
+                  <div className={`border rounded-lg overflow-hidden ${isBaseline ? 'border-red-200' : 'border-slate-200'}`}>
                     <div className={`flex items-center justify-between px-3 py-2 border-b ${
-                      isPatientZero ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'
+                      isBaseline ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'
                     }`}>
-                      <span className={`text-xs font-medium ${isPatientZero ? 'text-red-600' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-medium ${isBaseline ? 'text-red-600' : 'text-slate-500'}`}>
                         {isCode ? 'Mermaid Source' : 'Rendered Diagram'}
-                        {isPatientZero && ' (unconstrained)'}
+                        {isBaseline && ' (unconstrained)'}
                         {isRawLLM && isCode && ' (before processing)'}
                       </span>
                       {canToggle && (
@@ -390,7 +390,7 @@ function DiagramLog({ pipeline }) {
                     </div>
                     {isCode ? (
                       <pre className={`p-4 text-xs overflow-auto max-h-80 font-mono leading-relaxed whitespace-pre-wrap break-words ${
-                        isPatientZero ? 'text-red-800 bg-red-50/50' : 'text-slate-700 bg-slate-50'
+                        isBaseline ? 'text-red-800 bg-red-50/50' : 'text-slate-700 bg-slate-50'
                       }`}>
                         {stage.mermaid}
                       </pre>
