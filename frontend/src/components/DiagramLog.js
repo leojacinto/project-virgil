@@ -78,7 +78,7 @@ function DiagramLog({ pipeline }) {
 
   const toggleView = (index) => {
     const stage = pipeline[index];
-    if (stage.stage === 'Ontology Constraints') return;
+    if (stage.stage === 'Ontology Constraints' || stage.stage === 'Patient Zero') return;
     const next = viewMode[index] === 'code' ? 'diagram' : 'code';
     setViewMode(prev => ({ ...prev, [index]: next }));
     if (next === 'diagram' && stage.mermaid) {
@@ -296,7 +296,7 @@ function DiagramLog({ pipeline }) {
           !stage.changes.some(c => cleanMessages.includes(c));
         const isClean = stage.changes && stage.changes.some(c => cleanMessages.includes(c));
         const isCode = viewMode[index] === 'code';
-        const canToggle = hasMermaid && !isConstraints;
+        const canToggle = hasMermaid && !isConstraints && !isPatientZero;
 
         return (
           <div key={index} className={`rounded-lg border ${cfg.border} overflow-hidden`}>
