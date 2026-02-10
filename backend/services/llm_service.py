@@ -468,13 +468,13 @@ Remember:
                 ],
                 "layer_order": ["Users", "Portals/UI", "Applications", "Orchestration", "Platform", "Foundation/Data"],
                 "ontology_stats": {
-                    "nodes": len(self.ontology.graph['nodes']),
-                    "edges": len(self.ontology.graph['edges']),
-                    "relationship_types": list(set(e.rel_type for e in self.ontology.graph['edges']))
+                    "nodes": len(self.ontology._nodes),
+                    "edges": len(self.ontology._edges),
+                    "relationship_types": list(set(e.rel_type for e in self.ontology._edges))
                 }
             },
             "changes": [
-                f"Ontology graph: {len(self.ontology.graph['nodes'])} nodes, {len(self.ontology.graph['edges'])} edges",
+                f"Ontology graph: {len(self.ontology._nodes)} nodes, {len(self.ontology._edges)} edges",
                 "Hard limits: max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node",
                 f"Allowed labels: {', '.join(['runs on', 'creates', 'references', 'resolves using', 'accesses', 'authenticates via', 'consumes', 'populates', 'integrates with'])}",
                 "Blocked labels: leverages, manages, uses, utilizes, supports, feeds, provides",
