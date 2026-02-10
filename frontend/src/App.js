@@ -176,7 +176,7 @@ function App() {
                     >
                       <div className="flex items-center space-x-2">
                         <GitBranch className="h-4 w-4" />
-                        <span>Diagram Log</span>
+                        <span>Diagram Pipeline</span>
                       </div>
                     </button>
                   )}

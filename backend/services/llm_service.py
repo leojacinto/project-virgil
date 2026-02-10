@@ -434,6 +434,55 @@ Remember:
 - NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)
 - STRICT LIMIT: Maximum 15 arrows total. If you exceed this, remove the least important connections."""
 
+        # Capture ontology constraints for the pipeline
+        ontology_constraints = {
+            "stage": "Ontology Constraints",
+            "description": "Rules injected into the LLM prompt before generation, derived from the ServiceNow ontology graph",
+            "mermaid": None,
+            "constraints": {
+                "hard_limits": {
+                    "max_arrows": 15,
+                    "max_nodes": 10,
+                    "max_subgraphs": 4,
+                    "max_outgoing_per_node": 3
+                },
+                "allowed_labels": [
+                    "runs on", "creates", "creates cases", "creates tickets",
+                    "creates requests", "references", "resolves using",
+                    "accesses", "authenticates via", "consumes", "populates",
+                    "integrates with", "connects to", "depends on"
+                ],
+                "blocked_labels": [
+                    "leverages", "manages", "uses", "utilizes",
+                    "supports", "feeds", "provides"
+                ],
+                "architectural_rules": [
+                    "CMDB is always foundational, cannot depend on other components",
+                    "User Management is always foundational, required for authentication",
+                    "Knowledge Base is consumed BY other components, never consumes them",
+                    "Portals sit at UI layer, they consume services not provide them",
+                    "No bidirectional arrows unless peer-to-peer integration",
+                    "No cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)",
+                    "Every application must 'runs on' Platform",
+                    "Every portal must 'authenticates via' User Management"
+                ],
+                "layer_order": ["Users", "Portals/UI", "Applications", "Orchestration", "Platform", "Foundation/Data"],
+                "ontology_stats": {
+                    "nodes": len(self.ontology.graph['nodes']),
+                    "edges": len(self.ontology.graph['edges']),
+                    "relationship_types": list(set(e.rel_type for e in self.ontology.graph['edges']))
+                }
+            },
+            "changes": [
+                f"Ontology graph: {len(self.ontology.graph['nodes'])} nodes, {len(self.ontology.graph['edges'])} edges",
+                "Hard limits: max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node",
+                f"Allowed labels: {', '.join(['runs on', 'creates', 'references', 'resolves using', 'accesses', 'authenticates via', 'consumes', 'populates', 'integrates with'])}",
+                "Blocked labels: leverages, manages, uses, utilizes, supports, feeds, provides",
+                "Required: apps must 'runs on' Platform, portals must 'authenticates via' User Management",
+                "Foundational components (CMDB, Platform, KB, User Mgmt) must be at bottom layer"
+            ]
+        }
+
         try:
             messages = [
                 SystemMessage(content=system_prompt),
@@ -494,7 +543,7 @@ Remember:
                     })
                 
                 # Fix common Mermaid syntax errors
-                diagram_pipeline = []
+                diagram_pipeline = [ontology_constraints]
                 try:
                     mermaid = result.get("mermaid_diagram", "")
                     
@@ -664,20 +713,48 @@ Remember:
                     logger.info("Successfully parsed JSON response")
                     
                     # Sanitize and log Mermaid diagram from fallback path
+                    fallback_pipeline = [ontology_constraints]
                     mermaid = result.get("mermaid_diagram", "")
                     if mermaid:
+                        # Stage 1: Raw LLM output
+                        fallback_pipeline.append({"stage": "LLM Output", "description": "Raw diagram from the language model before any processing", "mermaid": mermaid, "changes": []})
+                        
                         mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                         with open(mermaid_file, 'w') as f:
                             f.write(mermaid)
                         logger.info(f"Mermaid diagram (from fallback) saved to: {mermaid_file}")
                         
                         fixed_mermaid = self._sanitize_mermaid(mermaid)
+                        sanitize_changes = []
                         if fixed_mermaid != mermaid:
                             mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                             with open(mermaid_fixed_file, 'w') as f:
                                 f.write(fixed_mermaid)
                             logger.info(f"Fixed Mermaid (fallback path) saved to: {mermaid_fixed_file}")
+                            sanitize_changes.append("Syntax errors corrected")
+                        else:
+                            sanitize_changes.append("No syntax issues found")
+                        
+                        # Stage 2: After sanitization
+                        fallback_pipeline.append({"stage": "Syntax Sanitizer", "description": "Fixed Mermaid syntax issues (special characters, arrow format, node IDs)", "mermaid": fixed_mermaid, "changes": sanitize_changes})
                         result["mermaid_diagram"] = fixed_mermaid
+                        
+                        # Stage 3: Validator
+                        try:
+                            is_valid, validation_errors, corrected_diagram = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                            validator_changes = []
+                            if not is_valid:
+                                validator_changes = validation_errors[:]
+                                if corrected_diagram:
+                                    result["mermaid_diagram"] = corrected_diagram
+                            else:
+                                validator_changes.append("Passed all validation checks")
+                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
+                        except Exception as val_err:
+                            logger.error(f"Fallback validation error: {str(val_err)}")
+                    
+                    if fallback_pipeline:
+                        result["diagram_pipeline"] = fallback_pipeline
                     
                 except json.JSONDecodeError as je:
                     logger.error(f"Both structured output and JSON parsing failed: {str(je)}")

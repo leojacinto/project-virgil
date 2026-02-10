@@ -61,6 +61,7 @@ class AnalysisResponse(BaseModel):
     recommendations: List[dict]
     mermaid_diagram: Optional[str] = None
     metadata: dict
+    diagram_pipeline: Optional[List[dict]] = None
 
 @app.get("/")
 async def root():
@@ -287,9 +288,10 @@ async def analyze_architecture(request: ArchitectureRequest):
         )
         
         return AnalysisResponse(
-            analysis=analysis["analysis"],
-            recommendations=analysis["recommendations"],
+            analysis=analysis.get("analysis", "Analysis not available"),
+            recommendations=analysis.get("recommendations", []),
             mermaid_diagram=analysis.get("mermaid_diagram"),
+            diagram_pipeline=analysis.get("diagram_pipeline"),
             metadata={
                 "timestamp": datetime.now().isoformat(),
                 "query": request.query,
