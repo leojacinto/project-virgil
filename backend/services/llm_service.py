@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from config import settings
 from services.servicenow_ontology import ServiceNowOntology
+from services.architecture_validator import ArchitectureValidator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ class LLMService:
         self.provider = None
         self.model_name = None
         self.ontology = ServiceNowOntology()
+        self.validator = ArchitectureValidator(self.ontology)
     
     def _sanitize_mermaid(self, mermaid: str) -> str:
         """Sanitize Mermaid diagram syntax to prevent rendering errors.
