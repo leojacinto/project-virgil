@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap, AlertOctagon, Network } from 'lucide-react';
 import mermaid from 'mermaid';
 
 function DiagramLog({ pipeline }) {
   const [expandedStages, setExpandedStages] = useState({});
   const [viewMode, setViewMode] = useState({});
+  const [refDiagramMode, setRefDiagramMode] = useState('diagram');
 
   useEffect(() => {
     mermaid.initialize({
@@ -21,18 +22,16 @@ function DiagramLog({ pipeline }) {
       const modes = {};
       pipeline.forEach((stage, i) => {
         expanded[i] = true;
-        // Ontology Constraints and LLM Output never render as diagram
-        const isConstraints = stage.stage === 'Ontology Constraints';
-        const isRawLLM = stage.stage === 'LLM Output';
-        modes[i] = (isConstraints || isRawLLM) ? 'code' : 'diagram';
+        const noRender = ['Ontology Constraints', 'LLM Output', 'Patient Zero'];
+        modes[i] = noRender.includes(stage.stage) ? 'code' : 'diagram';
       });
       setExpandedStages(expanded);
       setViewMode(modes);
 
-      // Only render stages that have valid mermaid and are not raw/constraints
+      const noAutoRender = new Set(['Ontology Constraints', 'LLM Output', 'Patient Zero']);
       const timer = setTimeout(() => {
         pipeline.forEach((stage, i) => {
-          if (stage.mermaid && stage.stage !== 'Ontology Constraints' && stage.stage !== 'LLM Output') {
+          if (stage.mermaid && !noAutoRender.has(stage.stage)) {
             renderDiagram(i);
           }
         });
@@ -46,16 +45,26 @@ function DiagramLog({ pipeline }) {
     const code = pipeline[index].mermaid;
     const el = document.getElementById(`dpipe-${index}`);
     if (!el || !code) return;
-
     try {
       el.innerHTML = '';
-      const id = `dpipe-svg-${index}-${Date.now()}`;
-      const { svg } = await mermaid.render(id, code);
+      const { svg } = await mermaid.render(`dpipe-svg-${index}-${Date.now()}`, code);
       el.innerHTML = svg;
-    } catch (err) {
-      // On failure, show code instead — no error dump
+    } catch {
       el.innerHTML = '';
       setViewMode(prev => ({ ...prev, [index]: 'code' }));
+    }
+  };
+
+  const renderRefDiagram = async (code) => {
+    const el = document.getElementById('ref-diagram');
+    if (!el || !code) return;
+    try {
+      el.innerHTML = '';
+      const { svg } = await mermaid.render(`ref-svg-${Date.now()}`, code);
+      el.innerHTML = svg;
+    } catch {
+      el.innerHTML = '';
+      setRefDiagramMode('code');
     }
   };
 
@@ -69,7 +78,7 @@ function DiagramLog({ pipeline }) {
 
   const toggleView = (index) => {
     const stage = pipeline[index];
-    if (stage.stage === 'Ontology Constraints') return; // no toggle for constraints
+    if (stage.stage === 'Ontology Constraints') return;
     const next = viewMode[index] === 'code' ? 'diagram' : 'code';
     setViewMode(prev => ({ ...prev, [index]: next }));
     if (next === 'diagram' && stage.mermaid) {
@@ -88,13 +97,14 @@ function DiagramLog({ pipeline }) {
   }
 
   const stageConfig = {
-    'Ontology Constraints': { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', Icon: Shield },
-    'LLM Output': { bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', Icon: Zap },
-    'Syntax Sanitizer': { bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', Icon: Code },
-    'Ontology Validator': { bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-700', Icon: CheckCircle },
+    'Patient Zero':        { bg: 'bg-red-50',    border: 'border-red-300',    badge: 'bg-red-100 text-red-700' },
+    'Ontology Constraints': { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700' },
+    'LLM Output':          { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
+    'Syntax Sanitizer':    { bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
+    'Ontology Validator':  { bg: 'bg-green-50',  border: 'border-green-200',  badge: 'bg-green-100 text-green-700' },
   };
 
-  const renderConstraints = (constraints) => {
+  const renderConstraints = (constraints, mermaidCode) => {
     if (!constraints) return null;
     return (
       <div className="space-y-4">
@@ -119,23 +129,25 @@ function DiagramLog({ pipeline }) {
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Allowed Relationship Labels</p>
             <div className="flex flex-wrap gap-1.5">
               {constraints.allowed_labels.map((label, i) => (
-                <span key={i} className="px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">
-                  {label}
-                </span>
+                <span key={i} className="px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">{label}</span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Blocked Labels */}
-        {constraints.blocked_labels && (
+        {/* Label Replacement Mapping */}
+        {constraints.label_replacements && Object.keys(constraints.label_replacements).length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Blocked Labels (auto-replaced or removed)</p>
-            <div className="flex flex-wrap gap-1.5">
-              {constraints.blocked_labels.map((label, i) => (
-                <span key={i} className="px-2 py-1 bg-red-50 border border-red-200 rounded text-xs font-medium text-red-600 line-through">
-                  {label}
-                </span>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              Blocked Labels → Auto-Replacement ({Object.keys(constraints.label_replacements).length} rules)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              {Object.entries(constraints.label_replacements).map(([vague, standard], i) => (
+                <div key={i} className="flex items-center space-x-2 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs">
+                  <span className="text-red-500 line-through font-medium">{vague}</span>
+                  <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                  <span className="text-green-700 font-medium">{standard}</span>
+                </div>
               ))}
             </div>
           </div>
@@ -159,18 +171,80 @@ function DiagramLog({ pipeline }) {
         {/* Layer Order */}
         {constraints.layer_order && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Layer Order (top to bottom)</p>
-            <div className="flex items-center space-x-1">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Layer Order (top → bottom)</p>
+            <div className="flex flex-wrap items-center gap-1">
               {constraints.layer_order.map((layer, i) => (
                 <React.Fragment key={i}>
-                  <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-medium text-slate-700">
-                    {layer}
-                  </span>
-                  {i < constraints.layer_order.length - 1 && (
-                    <span className="text-slate-300 text-xs">→</span>
-                  )}
+                  <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-medium text-slate-700">{layer}</span>
+                  {i < constraints.layer_order.length - 1 && <span className="text-slate-300 text-xs">→</span>}
                 </React.Fragment>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Query-Relevant Subgraph */}
+        {constraints.query_relevant_subgraph && constraints.query_relevant_subgraph.total_nodes > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+              <Network className="h-3.5 w-3.5 inline mr-1" />
+              Query-Relevant Subgraph ({constraints.query_relevant_subgraph.total_nodes} nodes, {constraints.query_relevant_subgraph.total_edges} edges)
+            </p>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {constraints.query_relevant_subgraph.nodes?.map((node, i) => (
+                <span key={i} className={`px-2 py-1 rounded text-xs font-medium ${
+                  node.layer === 'data' ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' :
+                  node.layer === 'product' ? 'bg-blue-50 border border-blue-200 text-blue-700' :
+                  node.layer === 'ui' ? 'bg-indigo-50 border border-indigo-200 text-indigo-700' :
+                  node.layer === 'platform' ? 'bg-orange-50 border border-orange-200 text-orange-700' :
+                  'bg-slate-50 border border-slate-200 text-slate-700'
+                }`}>
+                  {node.label}
+                </span>
+              ))}
+            </div>
+            {constraints.query_relevant_subgraph.segregation_rules?.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-red-500 mb-1">Segregation Rules</p>
+                {constraints.query_relevant_subgraph.segregation_rules.map((rule, i) => (
+                  <p key={i} className="text-xs text-red-600 flex items-center space-x-1">
+                    <AlertOctagon className="h-3 w-3 flex-shrink-0" />
+                    <span>{rule}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reference Example Diagram */}
+        {mermaidCode && (
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Reference Diagram (from ontology subgraph)</p>
+            <div className="border border-purple-200 rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-purple-50 border-b border-purple-200">
+                <span className="text-xs font-medium text-purple-600">
+                  {refDiagramMode === 'code' ? 'Reference Source' : 'Reference Diagram'}
+                </span>
+                <button
+                  onClick={() => {
+                    const next = refDiagramMode === 'code' ? 'diagram' : 'code';
+                    setRefDiagramMode(next);
+                    if (next === 'diagram') setTimeout(() => renderRefDiagram(mermaidCode), 100);
+                  }}
+                  className="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center space-x-1"
+                >
+                  <Code className="h-3 w-3" />
+                  <span>{refDiagramMode === 'code' ? 'Show Diagram' : 'Show Code'}</span>
+                </button>
+              </div>
+              {refDiagramMode === 'code' ? (
+                <pre className="p-4 text-xs text-slate-700 bg-purple-50/30 overflow-auto max-h-64 font-mono leading-relaxed whitespace-pre-wrap break-words">
+                  {mermaidCode}
+                </pre>
+              ) : (
+                <div id="ref-diagram" className="p-4 flex justify-center overflow-auto max-h-[400px] bg-white" />
+              )}
             </div>
           </div>
         )}
@@ -178,7 +252,7 @@ function DiagramLog({ pipeline }) {
         {/* Ontology Stats */}
         {constraints.ontology_stats && (
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Ontology Graph</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Full Ontology Graph</p>
             <div className="flex items-center space-x-4 text-sm text-slate-600">
               <span><strong>{constraints.ontology_stats.nodes}</strong> nodes</span>
               <span><strong>{constraints.ontology_stats.edges}</strong> edges</span>
@@ -195,16 +269,14 @@ function DiagramLog({ pipeline }) {
       <div className="mb-2">
         <h2 className="text-xl font-bold text-slate-900">Diagram Pipeline</h2>
         <p className="text-sm text-slate-500 mt-1">
-          How the architecture diagram was shaped from ontology constraints through LLM generation to the final validated result
+          From unconstrained baseline through ontology-guided generation to validated output
         </p>
         <div className="flex flex-wrap items-center gap-2 mt-3">
           {pipeline.map((stage, i) => {
             const cfg = stageConfig[stage.stage] || stageConfig['LLM Output'];
             return (
               <React.Fragment key={i}>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${cfg.badge}`}>
-                  {stage.stage}
-                </span>
+                <span className={`px-2 py-1 rounded text-xs font-medium ${cfg.badge}`}>{stage.stage}</span>
                 {i < pipeline.length - 1 && <ArrowRight className="h-3 w-3 text-slate-300" />}
               </React.Fragment>
             );
@@ -215,17 +287,14 @@ function DiagramLog({ pipeline }) {
       {pipeline.map((stage, index) => {
         const cfg = stageConfig[stage.stage] || stageConfig['LLM Output'];
         const isConstraints = stage.stage === 'Ontology Constraints';
+        const isPatientZero = stage.stage === 'Patient Zero';
         const isRawLLM = stage.stage === 'LLM Output';
         const hasMermaid = !!stage.mermaid;
+        const cleanMessages = ['No syntax issues found', 'Passed all validation checks',
+          'Ontology rules already satisfied', 'Ontology rules already satisfied — prompt constraints prevented issues pre-generation'];
         const hasChanges = stage.changes && stage.changes.length > 0 &&
-          !stage.changes.includes('No syntax issues found') &&
-          !stage.changes.includes('Passed all validation checks') &&
-          !stage.changes.includes('Ontology rules already satisfied');
-        const isClean = stage.changes && (
-          stage.changes.includes('No syntax issues found') ||
-          stage.changes.includes('Passed all validation checks') ||
-          stage.changes.includes('Ontology rules already satisfied')
-        );
+          !stage.changes.some(c => cleanMessages.includes(c));
+        const isClean = stage.changes && stage.changes.some(c => cleanMessages.includes(c));
         const isCode = viewMode[index] === 'code';
         const canToggle = hasMermaid && !isConstraints;
 
@@ -236,56 +305,62 @@ function DiagramLog({ pipeline }) {
               className={`w-full flex items-center justify-between p-4 ${cfg.bg} hover:opacity-90 transition-opacity`}
             >
               <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm">
-                  <span className="text-sm font-bold text-slate-700">{index + 1}</span>
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full shadow-sm ${
+                  isPatientZero ? 'bg-red-100' : 'bg-white'
+                }`}>
+                  <span className={`text-sm font-bold ${isPatientZero ? 'text-red-700' : 'text-slate-700'}`}>
+                    {isPatientZero ? '0' : index + 1 - (pipeline.some(s => s.stage === 'Patient Zero') ? 1 : 0)}
+                  </span>
                 </div>
                 <div className="text-left">
-                  <h3 className="font-semibold text-slate-900">{stage.stage}</h3>
-                  <p className="text-xs text-slate-600 max-w-lg">{stage.description}</p>
+                  <h3 className={`font-semibold ${isPatientZero ? 'text-red-900' : 'text-slate-900'}`}>{stage.stage}</h3>
+                  <p className={`text-xs max-w-lg ${isPatientZero ? 'text-red-600' : 'text-slate-600'}`}>{stage.description}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2 flex-shrink-0">
+                {isPatientZero && (
+                  <span className="flex items-center space-x-1 text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
+                    <AlertOctagon className="h-3 w-3" />
+                    <span>No guardrails</span>
+                  </span>
+                )}
                 {isConstraints && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-purple-700 bg-purple-100 px-2 py-1 rounded">
                     <Shield className="h-3 w-3" />
                     <span>Pre-generation</span>
                   </span>
                 )}
-                {hasChanges && !isConstraints && (
+                {hasChanges && !isConstraints && !isPatientZero && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
                     <AlertTriangle className="h-3 w-3" />
                     <span>{stage.changes.length} change{stage.changes.length !== 1 ? 's' : ''}</span>
                   </span>
                 )}
-                {isClean && !isConstraints && (
+                {isClean && !isConstraints && !isPatientZero && (
                   <span className="flex items-center space-x-1 text-xs font-medium text-green-700 bg-green-100 px-2 py-1 rounded">
                     <CheckCircle className="h-3 w-3" />
                     <span>Ontology rules satisfied</span>
                   </span>
                 )}
-                {expandedStages[index] ? (
-                  <ChevronUp className="h-5 w-5 text-slate-400" />
-                ) : (
-                  <ChevronDown className="h-5 w-5 text-slate-400" />
-                )}
+                {expandedStages[index] ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
               </div>
             </button>
 
             {expandedStages[index] && (
-              <div className="p-4 bg-white space-y-3">
-                {/* Ontology Constraints: show structured data */}
-                {isConstraints && stage.constraints && renderConstraints(stage.constraints)}
+              <div className={`p-4 space-y-3 ${isPatientZero ? 'bg-red-50/30' : 'bg-white'}`}>
+                {isConstraints && stage.constraints && renderConstraints(stage.constraints, stage.mermaid)}
 
-                {/* Non-constraint stages: show changes + diagram/code */}
                 {!isConstraints && stage.changes && stage.changes.length > 0 && (
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                      {isRawLLM ? 'Notes' : 'Changes Applied'}
+                      {isPatientZero ? 'Why this is the baseline' : isRawLLM ? 'Notes' : 'Changes Applied'}
                     </p>
                     <ul className="space-y-1">
                       {stage.changes.map((change, ci) => (
                         <li key={ci} className="flex items-start space-x-2 text-sm text-slate-700">
-                          <span className={`mt-1.5 flex-shrink-0 h-1.5 w-1.5 rounded-full ${hasChanges ? 'bg-amber-400' : 'bg-green-400'}`} />
+                          <span className={`mt-1.5 flex-shrink-0 h-1.5 w-1.5 rounded-full ${
+                            isPatientZero ? 'bg-red-400' : hasChanges ? 'bg-amber-400' : 'bg-green-400'
+                          }`} />
                           <span>{change}</span>
                         </li>
                       ))}
@@ -294,10 +369,13 @@ function DiagramLog({ pipeline }) {
                 )}
 
                 {hasMermaid && !isConstraints && (
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
-                      <span className="text-xs font-medium text-slate-500">
+                  <div className={`border rounded-lg overflow-hidden ${isPatientZero ? 'border-red-200' : 'border-slate-200'}`}>
+                    <div className={`flex items-center justify-between px-3 py-2 border-b ${
+                      isPatientZero ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <span className={`text-xs font-medium ${isPatientZero ? 'text-red-600' : 'text-slate-500'}`}>
                         {isCode ? 'Mermaid Source' : 'Rendered Diagram'}
+                        {isPatientZero && ' (unconstrained)'}
                         {isRawLLM && isCode && ' (before processing)'}
                       </span>
                       {canToggle && (
@@ -310,16 +388,14 @@ function DiagramLog({ pipeline }) {
                         </button>
                       )}
                     </div>
-
                     {isCode ? (
-                      <pre className="p-4 text-xs text-slate-700 bg-slate-50 overflow-auto max-h-80 font-mono leading-relaxed whitespace-pre-wrap break-words">
+                      <pre className={`p-4 text-xs overflow-auto max-h-80 font-mono leading-relaxed whitespace-pre-wrap break-words ${
+                        isPatientZero ? 'text-red-800 bg-red-50/50' : 'text-slate-700 bg-slate-50'
+                      }`}>
                         {stage.mermaid}
                       </pre>
                     ) : (
-                      <div
-                        id={`dpipe-${index}`}
-                        className="p-4 flex justify-center overflow-auto max-h-[500px]"
-                      />
+                      <div id={`dpipe-${index}`} className="p-4 flex justify-center overflow-auto max-h-[500px]" />
                     )}
                   </div>
                 )}

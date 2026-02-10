@@ -460,6 +460,155 @@ class ServiceNowOntology:
             for e in self._edges if e.rel_type == "segregated_from"
         ]
     
+    def get_relevant_subgraph(self, query: str, query_types: List[str]) -> Dict:
+        """
+        Extract the ontology subgraph relevant to a specific query.
+        Returns relevant nodes, edges, and a query-specific example diagram.
+        """
+        query_lower = query.lower()
+        relevant_ids = set()
+
+        # 1. Find directly mentioned nodes
+        for node_id, node in self._nodes.items():
+            if node.matches(query_lower):
+                relevant_ids.add(node_id)
+
+        # 2. Map query_types to seed nodes
+        type_to_seeds = {
+            "itsm": ["itsm", "incident_mgmt", "problem_mgmt", "change_mgmt"],
+            "csm": ["csm", "case_mgmt", "customer_portal"],
+            "hrsd": ["hrsd"],
+            "itom": ["itom", "discovery", "service_mapping", "event_mgmt"],
+            "secops": ["secops"],
+            "compliance": ["grc", "audit"],
+            "portal": ["service_portal", "customer_portal", "employee_center"],
+            "automation": ["integration_hub", "flow_designer"],
+            "integration": ["integration_hub", "mid_server", "external_systems"],
+            "data_flow": ["cmdb", "knowledge_base"],
+        }
+        for qt in query_types:
+            for seed in type_to_seeds.get(qt, []):
+                if seed in self._nodes:
+                    relevant_ids.add(seed)
+
+        # 3. Always include foundational nodes
+        for fid in ["platform", "cmdb", "user_mgmt", "knowledge_base"]:
+            if fid in self._nodes:
+                relevant_ids.add(fid)
+
+        # 4. Expand: add 1-hop neighbours (dependencies + dependants)
+        expanded = set(relevant_ids)
+        for nid in relevant_ids:
+            for e in self._outgoing.get(nid, []):
+                if e.rel_type != "segregated_from":
+                    expanded.add(e.target)
+            for e in self._incoming.get(nid, []):
+                if e.rel_type != "segregated_from":
+                    expanded.add(e.source)
+        relevant_ids = expanded
+
+        # 5. Collect relevant edges
+        relevant_edges = [
+            e for e in self._edges
+            if e.source in relevant_ids and e.target in relevant_ids
+            and e.rel_type != "segregated_from"
+        ]
+
+        # 6. Build nodes list
+        relevant_nodes = [
+            {"id": nid, "label": self._nodes[nid].label,
+             "type": self._nodes[nid].node_type, "layer": self._nodes[nid].layer}
+            for nid in sorted(relevant_ids) if nid in self._nodes
+        ]
+
+        # 7. Build edges list
+        edges_list = [
+            {"source": self._nodes[e.source].label,
+             "target": self._nodes[e.target].label,
+             "type": e.rel_type}
+            for e in relevant_edges
+            if e.source in self._nodes and e.target in self._nodes
+        ]
+
+        # 8. Build a reference example diagram from this subgraph
+        example_diagram = self._build_example_diagram(relevant_ids, relevant_edges)
+
+        # 9. Get segregation rules relevant to these nodes
+        segregation = [
+            f"{self._nodes[e.source].label} must NOT connect to {self._nodes[e.target].label}"
+            for e in self._edges
+            if e.rel_type == "segregated_from"
+            and e.source in relevant_ids and e.target in relevant_ids
+            and e.source in self._nodes and e.target in self._nodes
+        ]
+
+        return {
+            "nodes": relevant_nodes,
+            "edges": edges_list,
+            "example_diagram": example_diagram,
+            "segregation_rules": segregation,
+            "total_nodes": len(relevant_nodes),
+            "total_edges": len(edges_list),
+        }
+
+    def _build_example_diagram(self, node_ids: set, edges: list) -> str:
+        """Build a Mermaid reference diagram from relevant ontology nodes/edges."""
+        if not edges:
+            return ""
+
+        # Assign short IDs
+        id_map = {}
+        counter = 0
+        for nid in sorted(node_ids):
+            if nid in self._nodes:
+                id_map[nid] = chr(65 + counter) if counter < 26 else f"N{counter}"
+                counter += 1
+
+        # Group by layer
+        layers = {}
+        for nid in sorted(node_ids):
+            if nid not in self._nodes:
+                continue
+            node = self._nodes[nid]
+            layer = node.layer or "other"
+            layers.setdefault(layer, []).append(nid)
+
+        layer_order = ["ui", "product", "orchestration", "platform", "data", "other"]
+        layer_labels = {
+            "ui": "Portals", "product": "Applications", "orchestration": "Orchestration",
+            "platform": "Platform", "data": "Foundation", "other": "Other"
+        }
+
+        lines = ["graph TD"]
+        for layer in layer_order:
+            nids = layers.get(layer, [])
+            if not nids:
+                continue
+            label = layer_labels.get(layer, layer.title())
+            lines.append(f"    subgraph {label}")
+            for nid in nids:
+                short = id_map.get(nid, nid)
+                lines.append(f"        {short}[{self._nodes[nid].label}]")
+            lines.append("    end")
+
+        # Add edges (limit to 15)
+        rel_label_map = {
+            "runs_on": "runs on", "creates": "creates", "references": "references",
+            "resolves_using": "resolves using", "consumes": "consumes",
+            "authenticates_via": "authenticates via", "depends_on": "depends on",
+            "populates": "populates",
+        }
+        edge_lines = []
+        for e in edges[:15]:
+            src = id_map.get(e.source)
+            tgt = id_map.get(e.target)
+            if src and tgt:
+                lbl = rel_label_map.get(e.rel_type, e.rel_type.replace("_", " "))
+                edge_lines.append(f"    {src} -->|{lbl}| {tgt}")
+        lines.extend(edge_lines)
+
+        return "\n".join(lines)
+
     def get_component_dependencies(self, component: str) -> List[str]:
         """Get required dependencies for a component."""
         return self.dependencies.get(component, [])

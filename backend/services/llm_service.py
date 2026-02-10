@@ -434,11 +434,18 @@ Remember:
 - NO cross-connections between segregated paths (Public ≠ ITSM, Internal ≠ CSM)
 - STRICT LIMIT: Maximum 15 arrows total. If you exceed this, remove the least important connections."""
 
+        # Get query-relevant subgraph from ontology
+        from services.architecture_validator import LABEL_REPLACEMENTS
+        relevant_subgraph = self.ontology.get_relevant_subgraph(query, query_types)
+
+        # Build label replacement mapping for display
+        label_replacements = {k: v for k, v in LABEL_REPLACEMENTS.items()}
+
         # Capture ontology constraints for the pipeline
         ontology_constraints = {
             "stage": "Ontology Constraints",
             "description": "Rules injected into the LLM prompt before generation, derived from the ServiceNow ontology graph",
-            "mermaid": None,
+            "mermaid": relevant_subgraph.get("example_diagram"),
             "constraints": {
                 "hard_limits": {
                     "max_arrows": 15,
@@ -452,10 +459,7 @@ Remember:
                     "accesses", "authenticates via", "consumes", "populates",
                     "integrates with", "connects to", "depends on"
                 ],
-                "blocked_labels": [
-                    "leverages", "manages", "uses", "utilizes",
-                    "supports", "feeds", "provides"
-                ],
+                "label_replacements": label_replacements,
                 "architectural_rules": [
                     "CMDB is always foundational, cannot depend on other components",
                     "User Management is always foundational, required for authentication",
@@ -467,6 +471,13 @@ Remember:
                     "Every portal must 'authenticates via' User Management"
                 ],
                 "layer_order": ["Users", "Portals/UI", "Applications", "Orchestration", "Platform", "Foundation/Data"],
+                "query_relevant_subgraph": {
+                    "nodes": relevant_subgraph.get("nodes", []),
+                    "edges": relevant_subgraph.get("edges", []),
+                    "segregation_rules": relevant_subgraph.get("segregation_rules", []),
+                    "total_nodes": relevant_subgraph.get("total_nodes", 0),
+                    "total_edges": relevant_subgraph.get("total_edges", 0),
+                },
                 "ontology_stats": {
                     "nodes": len(self.ontology._nodes),
                     "edges": len(self.ontology._edges),
@@ -475,13 +486,51 @@ Remember:
             },
             "changes": [
                 f"Ontology graph: {len(self.ontology._nodes)} nodes, {len(self.ontology._edges)} edges",
+                f"Query-relevant subgraph: {relevant_subgraph.get('total_nodes', 0)} nodes, {relevant_subgraph.get('total_edges', 0)} edges",
                 "Hard limits: max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node",
                 f"Allowed labels: {', '.join(['runs on', 'creates', 'references', 'resolves using', 'accesses', 'authenticates via', 'consumes', 'populates', 'integrates with'])}",
-                "Blocked labels: leverages, manages, uses, utilizes, supports, feeds, provides",
+                f"Blocked labels with replacements: {len(label_replacements)} vague labels auto-mapped to standard vocabulary",
                 "Required: apps must 'runs on' Platform, portals must 'authenticates via' User Management",
                 "Foundational components (CMDB, Platform, KB, User Mgmt) must be at bottom layer"
             ]
         }
+
+        # --- Patient 0: Unconstrained LLM call (no guardrails) ---
+        patient_zero_stage = None
+        try:
+            bare_prompt = f"""Generate a Mermaid architecture diagram for this ServiceNow requirement.
+Use 'graph TD' format with --> arrows. Include relevant ServiceNow components.
+
+Requirement: {query}
+
+Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
+
+            logger.info("Patient 0: Generating unconstrained diagram (no guardrails)")
+            bare_response = self.active_model.invoke([HumanMessage(content=bare_prompt)])
+            bare_mermaid = bare_response.content.strip()
+            # Strip markdown fences if present
+            if "```" in bare_mermaid:
+                bare_mermaid = bare_mermaid.replace("```mermaid", "").replace("```", "").strip()
+            # Extract just the graph portion if there's extra text
+            if "graph " in bare_mermaid:
+                idx = bare_mermaid.index("graph ")
+                bare_mermaid = bare_mermaid[idx:]
+
+            patient_zero_stage = {
+                "stage": "Patient Zero",
+                "description": "Unconstrained LLM output with NO ontology rules, NO hard limits, NO label vocabulary — raw baseline for comparison",
+                "mermaid": bare_mermaid,
+                "changes": [
+                    "No hard limits enforced",
+                    "No label vocabulary restrictions",
+                    "No architectural rules applied",
+                    "No anti-pattern detection",
+                    "No post-processing or validation"
+                ]
+            }
+            logger.info(f"Patient 0 diagram generated: {len(bare_mermaid)} chars")
+        except Exception as p0_err:
+            logger.warning(f"Patient 0 generation failed (non-critical): {str(p0_err)}")
 
         try:
             messages = [
@@ -543,7 +592,10 @@ Remember:
                     })
                 
                 # Fix common Mermaid syntax errors
-                diagram_pipeline = [ontology_constraints]
+                diagram_pipeline = []
+                if patient_zero_stage:
+                    diagram_pipeline.append(patient_zero_stage)
+                diagram_pipeline.append(ontology_constraints)
                 try:
                     mermaid = result.get("mermaid_diagram", "")
                     
@@ -608,7 +660,7 @@ Remember:
                                     logger.info(f"Validator-corrected diagram:\n{corrected_diagram}")
                             else:
                                 logger.info("Mermaid diagram passed validation")
-                                validator_changes.append("Passed all validation checks")
+                                validator_changes.append("Ontology rules already satisfied — prompt constraints prevented issues pre-generation")
                             
                             diagram_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
                             
@@ -625,6 +677,7 @@ Remember:
                                     result['validation_warnings'].extend(rec_warnings)
                         except Exception as val_error:
                             logger.error(f"Validation error: {str(val_error)}")
+                            diagram_pipeline.append({"stage": "Ontology Validator", "description": "Validation encountered an error", "mermaid": fixed_mermaid, "changes": [f"Validator error: {str(val_error)}"]})
                 
                 except Exception as mermaid_error:
                     logger.error(f"Mermaid processing failed: {str(mermaid_error)}")
@@ -713,7 +766,10 @@ Remember:
                     logger.info("Successfully parsed JSON response")
                     
                     # Sanitize and log Mermaid diagram from fallback path
-                    fallback_pipeline = [ontology_constraints]
+                    fallback_pipeline = []
+                    if patient_zero_stage:
+                        fallback_pipeline.append(patient_zero_stage)
+                    fallback_pipeline.append(ontology_constraints)
                     mermaid = result.get("mermaid_diagram", "")
                     if mermaid:
                         # Stage 1: Raw LLM output
@@ -748,10 +804,11 @@ Remember:
                                 if corrected_diagram:
                                     result["mermaid_diagram"] = corrected_diagram
                             else:
-                                validator_changes.append("Passed all validation checks")
+                                validator_changes.append("Ontology rules already satisfied — prompt constraints prevented issues pre-generation")
                             fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
                         except Exception as val_err:
                             logger.error(f"Fallback validation error: {str(val_err)}")
+                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Validation encountered an error", "mermaid": fixed_mermaid, "changes": [f"Validator error: {str(val_err)}"]})
                     
                     if fallback_pipeline:
                         result["diagram_pipeline"] = fallback_pipeline
