@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Database, FileText, Search, Settings, Loader2 } from 'lucide-react';
+import { Database, FileText, Search, Settings, Loader2, GitBranch } from 'lucide-react';
 import SetupWizard from './components/SetupWizard';
 import DocumentUpload from './components/DocumentUpload';
 import QueryInterface from './components/QueryInterface';
 import ResultsDisplay from './components/ResultsDisplay';
 import InstanceInfo from './components/InstanceInfo';
+import DiagramLog from './components/DiagramLog';
 import axios from 'axios';
 
 function App() {
@@ -164,6 +165,21 @@ function App() {
                       </div>
                     </button>
                   )}
+                  {analysisResult?.diagram_pipeline && (
+                    <button
+                      onClick={() => setActiveTab('diagram-log')}
+                      className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                        activeTab === 'diagram-log'
+                          ? 'border-primary-500 text-primary-600'
+                          : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <GitBranch className="h-4 w-4" />
+                        <span>Diagram Log</span>
+                      </div>
+                    </button>
+                  )}
                 </nav>
               </div>
 
@@ -175,6 +191,9 @@ function App() {
                 {activeTab === 'instance' && <InstanceInfo />}
                 {activeTab === 'results' && analysisResult && (
                   <ResultsDisplay result={analysisResult} />
+                )}
+                {activeTab === 'diagram-log' && analysisResult?.diagram_pipeline && (
+                  <DiagramLog pipeline={analysisResult.diagram_pipeline} />
                 )}
               </div>
             </div>

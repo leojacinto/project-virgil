@@ -494,6 +494,7 @@ Remember:
                     })
                 
                 # Fix common Mermaid syntax errors
+                diagram_pipeline = []
                 try:
                     mermaid = result.get("mermaid_diagram", "")
                     
@@ -506,7 +507,11 @@ Remember:
     B --> D[Applications]
     D --> C"""
                         result["mermaid_diagram"] = mermaid
+                        diagram_pipeline.append({"stage": "LLM Output", "description": "No valid diagram from LLM, using fallback", "mermaid": mermaid, "changes": ["Generated fallback diagram"]})
                     else:
+                        # Stage 1: Raw LLM output
+                        diagram_pipeline.append({"stage": "LLM Output", "description": "Raw diagram from the language model before any processing", "mermaid": mermaid, "changes": []})
+                        
                         # Save original Mermaid to file for debugging
                         mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                         with open(mermaid_file, 'w') as f:
@@ -516,12 +521,18 @@ Remember:
                         
                         fixed_mermaid = self._sanitize_mermaid(mermaid)
                         
+                        # Stage 2: After sanitization
+                        sanitize_changes = []
                         if fixed_mermaid != mermaid:
                             mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                             with open(mermaid_fixed_file, 'w') as f:
                                 f.write(fixed_mermaid)
                             logger.info(f"Fixed Mermaid diagram saved to: {mermaid_fixed_file}")
                             logger.info(f"Fixed Mermaid diagram:\n{fixed_mermaid}")
+                            sanitize_changes.append("Syntax errors corrected")
+                        else:
+                            sanitize_changes.append("No syntax issues found")
+                        diagram_pipeline.append({"stage": "Syntax Sanitizer", "description": "Fixed Mermaid syntax issues (special characters, arrow format, node IDs)", "mermaid": fixed_mermaid, "changes": sanitize_changes})
                         
                         result["mermaid_diagram"] = fixed_mermaid
                         
@@ -529,11 +540,14 @@ Remember:
                         try:
                             is_valid, validation_errors, corrected_diagram = self.validator.validate_mermaid_diagram(fixed_mermaid)
                             
+                            # Stage 3: After validation
+                            validator_changes = []
                             if not is_valid:
                                 logger.warning(f"Mermaid validation found {len(validation_errors)} issues")
                                 if 'validation_warnings' not in result:
                                     result['validation_warnings'] = []
                                 result['validation_warnings'].extend(validation_errors)
+                                validator_changes = validation_errors[:]
                                 
                                 # Use the corrected diagram if the validator produced one
                                 if corrected_diagram:
@@ -545,6 +559,9 @@ Remember:
                                     logger.info(f"Validator-corrected diagram:\n{corrected_diagram}")
                             else:
                                 logger.info("Mermaid diagram passed validation")
+                                validator_changes.append("Passed all validation checks")
+                            
+                            diagram_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
                             
                             # Validate recommendations against instance data
                             if jdbc_metadata:
@@ -568,6 +585,10 @@ Remember:
     B --> C[CMDB]
     B --> D[Applications]
     D --> C"""
+                
+                # Attach diagram pipeline to result
+                if diagram_pipeline:
+                    result["diagram_pipeline"] = diagram_pipeline
                 
                 # Validate architecture against ServiceNow domain knowledge
                 if "architecture_components" in result or hasattr(response, 'architecture_components'):
