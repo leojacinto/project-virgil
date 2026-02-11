@@ -77,15 +77,25 @@ class ArchitectureValidator:
     def __init__(self, ontology: ServiceNowOntology):
         self.ontology = ontology
     
-    def validate_mermaid_diagram(self, mermaid: str) -> Tuple[bool, List[str], Optional[str]]:
+    def validate_mermaid_diagram(self, mermaid: str) -> Tuple[bool, List[str], Optional[str], Dict]:
         """
         Validate Mermaid diagram against ontology rules.
         Removes invalid relationships and enforces arrow limits.
         
         Returns:
-            Tuple of (is_valid, errors, corrected_diagram)
+            Tuple of (is_valid, errors, corrected_diagram, rules_applied)
         """
         errors = []
+        rules_applied = {
+            "label_replacements_applied": [],
+            "arrows_removed": [],
+            "anti_patterns_detected": [],
+            "arrows_pruned": 0,
+            "circular_dependencies": [],
+            "missing_relationships": [],
+            "outgoing_limit_warnings": [],
+            "architectural_rules_triggered": [],
+        }
         
         # Parse node ID -> label mappings
         self._node_labels = self._parse_node_labels(mermaid)
@@ -95,7 +105,7 @@ class ArchitectureValidator:
         
         if not relationships:
             errors.append("No relationships found in diagram")
-            return False, errors, None
+            return False, errors, None, rules_applied
         
         # Track lines to remove
         lines_to_remove = set()
@@ -106,30 +116,72 @@ class ArchitectureValidator:
             if validation_errors:
                 errors.extend(validation_errors)
                 lines_to_remove.add(rel.raw_line.strip())
+                source_label = self._get_label(rel.source)
+                target_label = self._get_label(rel.target)
+                for err in validation_errors:
+                    rules_applied["arrows_removed"].append({
+                        "source": source_label, "target": target_label, "reason": err
+                    })
+                    # Map error back to architectural rule
+                    if 'portal' in source_label and 'cmdb' in target_label:
+                        rules_applied["architectural_rules_triggered"].append(
+                            "Portals sit at UI layer, they consume services not provide them")
+                    if 'knowledge' in source_label:
+                        rules_applied["architectural_rules_triggered"].append(
+                            "Knowledge Base is consumed BY other components, never consumes them")
+                    if 'cmdb' in source_label or 'configuration management' in source_label:
+                        rules_applied["architectural_rules_triggered"].append(
+                            "CMDB is always foundational, cannot depend on other components")
+                    if 'user management' in source_label:
+                        rules_applied["architectural_rules_triggered"].append(
+                            "User Management is always foundational, required for authentication")
         
         # Check for architectural anti-patterns
         anti_pattern_errors = self._check_anti_patterns(relationships)
         errors.extend(anti_pattern_errors)
+        for err in anti_pattern_errors:
+            if 'bidirectional' in err.lower():
+                rules_applied["anti_patterns_detected"].append(err)
+                rules_applied["architectural_rules_triggered"].append(
+                    "No bidirectional arrows unless peer-to-peer integration")
+            elif 'anti-pattern' in err.lower():
+                rules_applied["anti_patterns_detected"].append(err)
         
         # Check for circular dependencies in foundational components
         circular_errors = self._check_circular_dependencies(relationships)
         errors.extend(circular_errors)
+        rules_applied["circular_dependencies"] = circular_errors[:]
         
         # Normalize vague labels to standard vocabulary
         mermaid, label_fixes = self._normalize_labels(mermaid)
         if label_fixes:
             errors.extend(label_fixes)
+            for fix in label_fixes:
+                # Parse "Label fix: 'vague' → 'standard'"
+                parts = fix.replace("Label fix: '", "").replace("'", "").split(" → ")
+                if len(parts) == 2:
+                    rules_applied["label_replacements_applied"].append(
+                        {"from": parts[0], "to": parts[1]})
         
         # Check for missing required relationships
         missing = self._check_missing_required(relationships, lines_to_remove)
         if missing:
             errors.extend(missing)
+            rules_applied["missing_relationships"] = missing[:]
+            for m in missing:
+                if 'runs on' in m.lower():
+                    rules_applied["architectural_rules_triggered"].append(
+                        "Every application must 'runs on' Platform")
+                if 'authenticates via' in m.lower():
+                    rules_applied["architectural_rules_triggered"].append(
+                        "Every portal must 'authenticates via' User Management")
         
         # Enforce arrow count limit
         valid_relationships = [r for r in relationships if r.raw_line.strip() not in lines_to_remove]
         if len(valid_relationships) > MAX_ARROWS:
             excess = len(valid_relationships) - MAX_ARROWS
             errors.append(f"Diagram has {len(valid_relationships)} arrows, exceeds limit of {MAX_ARROWS}. Pruning {excess} lowest-priority connections.")
+            rules_applied["arrows_pruned"] = excess
             valid_relationships = self._prune_excess_arrows(valid_relationships, MAX_ARROWS)
             # Update lines_to_remove with pruned arrows
             valid_lines = {r.raw_line.strip() for r in valid_relationships}
@@ -145,6 +197,12 @@ class ArchitectureValidator:
             if count > MAX_OUTGOING_PER_NODE:
                 label = self._node_labels.get(node, node)
                 errors.append(f"Node {label} has {count} outgoing connections (max {MAX_OUTGOING_PER_NODE})")
+                rules_applied["outgoing_limit_warnings"].append(
+                    f"{label}: {count} outgoing (max {MAX_OUTGOING_PER_NODE})")
+        
+        # Deduplicate architectural rules triggered
+        rules_applied["architectural_rules_triggered"] = list(
+            dict.fromkeys(rules_applied["architectural_rules_triggered"]))
         
         is_valid = len(errors) == 0
         
@@ -167,7 +225,7 @@ class ArchitectureValidator:
         else:
             logger.info("Mermaid diagram passed validation")
         
-        return is_valid, errors, corrected
+        return is_valid, errors, corrected, rules_applied
     
     def _parse_node_labels(self, mermaid: str) -> Dict[str, str]:
         """Parse node ID to label mappings from Mermaid (e.g., CP[Customer Portal] -> {'CP': 'customer portal'})"""

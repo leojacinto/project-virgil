@@ -641,7 +641,7 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                         
                         # Validate the Mermaid diagram against ontology rules
                         try:
-                            is_valid, validation_errors, corrected_diagram = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                            is_valid, validation_errors, corrected_diagram, rules_applied = self.validator.validate_mermaid_diagram(fixed_mermaid)
                             
                             # Stage 3: After validation
                             validator_changes = []
@@ -664,7 +664,10 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                                 logger.info("Mermaid diagram passed validation")
                                 validator_changes.append("Ontology rules already satisfied — prompt constraints prevented issues pre-generation")
                             
-                            diagram_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
+                            # Attach rules_applied to the ontology constraints stage
+                            ontology_constraints["rules_applied"] = rules_applied
+                            
+                            diagram_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes, "rules_applied": rules_applied})
                             
                             # Validate recommendations against instance data
                             if jdbc_metadata:
@@ -799,7 +802,7 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                         
                         # Stage 3: Validator
                         try:
-                            is_valid, validation_errors, corrected_diagram = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                            is_valid, validation_errors, corrected_diagram, rules_applied = self.validator.validate_mermaid_diagram(fixed_mermaid)
                             validator_changes = []
                             if not is_valid:
                                 validator_changes = validation_errors[:]
@@ -807,7 +810,11 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                                     result["mermaid_diagram"] = corrected_diagram
                             else:
                                 validator_changes.append("Ontology rules already satisfied — prompt constraints prevented issues pre-generation")
-                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes})
+                            
+                            # Attach rules_applied to the ontology constraints stage
+                            ontology_constraints["rules_applied"] = rules_applied
+                            
+                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes, "rules_applied": rules_applied})
                         except Exception as val_err:
                             logger.error(f"Fallback validation error: {str(val_err)}")
                             fallback_pipeline.append({"stage": "Ontology Validator", "description": "Validation encountered an error", "mermaid": fixed_mermaid, "changes": [f"Validator error: {str(val_err)}"]})

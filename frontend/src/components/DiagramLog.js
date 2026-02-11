@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap, AlertOctagon, Network } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap, AlertOctagon, Network, BookOpen } from 'lucide-react';
 import mermaid from 'mermaid';
 
 function DiagramLog({ pipeline }) {
   const [expandedStages, setExpandedStages] = useState({});
   const [viewMode, setViewMode] = useState({});
   const [refDiagramMode, setRefDiagramMode] = useState('diagram');
+  const [showFullReference, setShowFullReference] = useState(false);
 
   useEffect(() => {
     mermaid.initialize({
@@ -104,10 +105,143 @@ function DiagramLog({ pipeline }) {
     'Ontology Validator':  { bg: 'bg-green-50',  border: 'border-green-200',  badge: 'bg-green-100 text-green-700' },
   };
 
-  const renderConstraints = (constraints, mermaidCode) => {
+  const renderConstraints = (constraints, mermaidCode, rulesApplied) => {
     if (!constraints) return null;
+
+    const hasRulesApplied = rulesApplied && (
+      (rulesApplied.label_replacements_applied?.length > 0) ||
+      (rulesApplied.arrows_removed?.length > 0) ||
+      (rulesApplied.anti_patterns_detected?.length > 0) ||
+      (rulesApplied.arrows_pruned > 0) ||
+      (rulesApplied.circular_dependencies?.length > 0) ||
+      (rulesApplied.missing_relationships?.length > 0) ||
+      (rulesApplied.outgoing_limit_warnings?.length > 0) ||
+      (rulesApplied.architectural_rules_triggered?.length > 0)
+    );
+
     return (
       <div className="space-y-4">
+        {/* === RULES APPLIED TO THIS RUN === */}
+        {hasRulesApplied ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+            <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide flex items-center space-x-1">
+              <Zap className="h-3.5 w-3.5" />
+              <span>Rules Applied to This Run</span>
+            </p>
+
+            {/* Label replacements that fired */}
+            {rulesApplied.label_replacements_applied?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-amber-700 mb-1">Label Replacements ({rulesApplied.label_replacements_applied.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {rulesApplied.label_replacements_applied.map((r, i) => (
+                    <div key={i} className="flex items-center space-x-1.5 px-2 py-1 bg-white border border-amber-200 rounded text-xs">
+                      <span className="text-red-500 line-through">{r.from}</span>
+                      <ArrowRight className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                      <span className="text-green-700 font-medium">{r.to}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Arrows removed */}
+            {rulesApplied.arrows_removed?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-red-700 mb-1">Arrows Removed ({rulesApplied.arrows_removed.length})</p>
+                <ul className="space-y-1">
+                  {rulesApplied.arrows_removed.map((a, i) => (
+                    <li key={i} className="flex items-start space-x-2 text-xs text-red-700">
+                      <AlertOctagon className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <span><strong>{a.source}</strong> → <strong>{a.target}</strong>: {a.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Anti-patterns detected */}
+            {rulesApplied.anti_patterns_detected?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-red-700 mb-1">Anti-Patterns Detected</p>
+                <ul className="space-y-1">
+                  {rulesApplied.anti_patterns_detected.map((p, i) => (
+                    <li key={i} className="flex items-start space-x-2 text-xs text-red-700">
+                      <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Arrows pruned */}
+            {rulesApplied.arrows_pruned > 0 && (
+              <p className="text-xs text-amber-700">
+                <strong>{rulesApplied.arrows_pruned}</strong> low-priority arrows pruned to stay within the 15-arrow limit
+              </p>
+            )}
+
+            {/* Circular dependencies */}
+            {rulesApplied.circular_dependencies?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-red-700 mb-1">Circular Dependencies</p>
+                <ul className="space-y-1">
+                  {rulesApplied.circular_dependencies.map((c, i) => (
+                    <li key={i} className="text-xs text-red-700">{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Missing relationships */}
+            {rulesApplied.missing_relationships?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-amber-700 mb-1">Missing Required Relationships</p>
+                <ul className="space-y-1">
+                  {rulesApplied.missing_relationships.map((m, i) => (
+                    <li key={i} className="text-xs text-amber-700">{m}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Outgoing limit warnings */}
+            {rulesApplied.outgoing_limit_warnings?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-amber-700 mb-1">Outgoing Connection Limit</p>
+                <ul className="space-y-1">
+                  {rulesApplied.outgoing_limit_warnings.map((w, i) => (
+                    <li key={i} className="text-xs text-amber-700">{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Architectural rules that triggered */}
+            {rulesApplied.architectural_rules_triggered?.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-purple-700 mb-1">Architectural Rules Triggered</p>
+                <ul className="space-y-1">
+                  {rulesApplied.architectural_rules_triggered.map((rule, i) => (
+                    <li key={i} className="flex items-start space-x-2 text-xs text-purple-700">
+                      <Shield className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <span>{rule}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <p className="text-sm text-green-700 flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4 flex-shrink-0" />
+              <span>No corrections needed. All ontology rules were satisfied by the LLM output.</span>
+            </p>
+          </div>
+        )}
+
         {/* Hard Limits */}
         {constraints.hard_limits && (
           <div>
@@ -118,66 +252,6 @@ function DiagramLog({ pipeline }) {
                   <p className="text-lg font-bold text-purple-700">{val}</p>
                   <p className="text-xs text-purple-600">{key.replace(/_/g, ' ')}</p>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Allowed Labels */}
-        {constraints.allowed_labels && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Allowed Relationship Labels</p>
-            <div className="flex flex-wrap gap-1.5">
-              {constraints.allowed_labels.map((label, i) => (
-                <span key={i} className="px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">{label}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Label Replacement Mapping */}
-        {constraints.label_replacements && Object.keys(constraints.label_replacements).length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-              Blocked Labels → Auto-Replacement ({Object.keys(constraints.label_replacements).length} rules)
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
-              {Object.entries(constraints.label_replacements).map(([vague, standard], i) => (
-                <div key={i} className="flex items-center space-x-2 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs">
-                  <span className="text-red-500 line-through font-medium">{vague}</span>
-                  <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                  <span className="text-green-700 font-medium">{standard}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Architectural Rules */}
-        {constraints.architectural_rules && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Architectural Rules</p>
-            <ul className="space-y-1">
-              {constraints.architectural_rules.map((rule, i) => (
-                <li key={i} className="flex items-start space-x-2 text-sm text-slate-700">
-                  <Shield className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-purple-500" />
-                  <span>{rule}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Layer Order */}
-        {constraints.layer_order && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Layer Order (top → bottom)</p>
-            <div className="flex flex-wrap items-center gap-1">
-              {constraints.layer_order.map((layer, i) => (
-                <React.Fragment key={i}>
-                  <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-medium text-slate-700">{layer}</span>
-                  {i < constraints.layer_order.length - 1 && <span className="text-slate-300 text-xs">→</span>}
-                </React.Fragment>
               ))}
             </div>
           </div>
@@ -249,17 +323,95 @@ function DiagramLog({ pipeline }) {
           </div>
         )}
 
-        {/* Ontology Stats */}
-        {constraints.ontology_stats && (
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Full Ontology Graph</p>
-            <div className="flex items-center space-x-4 text-sm text-slate-600">
-              <span><strong>{constraints.ontology_stats.nodes}</strong> nodes</span>
-              <span><strong>{constraints.ontology_stats.edges}</strong> edges</span>
-              <span><strong>{constraints.ontology_stats.relationship_types?.length || 0}</strong> relationship types</span>
+        {/* === COLLAPSIBLE FULL CONSTRAINT REFERENCE === */}
+        <div className="border border-slate-200 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowFullReference(!showFullReference)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+          >
+            <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide flex items-center space-x-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              <span>Full Constraint Reference ({Object.keys(constraints.label_replacements || {}).length} replacement rules, {constraints.architectural_rules?.length || 0} architectural rules)</span>
+            </span>
+            {showFullReference ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+          </button>
+
+          {showFullReference && (
+            <div className="p-4 space-y-4 bg-white border-t border-slate-200">
+              {/* Allowed Labels */}
+              {constraints.allowed_labels && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Allowed Relationship Labels</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {constraints.allowed_labels.map((label, i) => (
+                      <span key={i} className="px-2 py-1 bg-green-50 border border-green-200 rounded text-xs font-medium text-green-700">{label}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Label Replacement Rules */}
+              {constraints.label_replacements && Object.keys(constraints.label_replacements).length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                    All Blocked Labels → Auto-Replacement ({Object.keys(constraints.label_replacements).length} rules)
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+                    {Object.entries(constraints.label_replacements).map(([vague, standard], i) => (
+                      <div key={i} className="flex items-center space-x-2 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs">
+                        <span className="text-red-500 line-through font-medium">{vague}</span>
+                        <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                        <span className="text-green-700 font-medium">{standard}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Architectural Rules */}
+              {constraints.architectural_rules && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">All Architectural Rules</p>
+                  <ul className="space-y-1">
+                    {constraints.architectural_rules.map((rule, i) => (
+                      <li key={i} className="flex items-start space-x-2 text-sm text-slate-700">
+                        <Shield className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-purple-500" />
+                        <span>{rule}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Layer Order */}
+              {constraints.layer_order && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Required Layer Order (top → bottom)</p>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {constraints.layer_order.map((layer, i) => (
+                      <React.Fragment key={i}>
+                        <span className="px-2 py-1 bg-slate-100 border border-slate-200 rounded text-xs font-medium text-slate-700">{layer}</span>
+                        {i < constraints.layer_order.length - 1 && <span className="text-slate-300 text-xs">→</span>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ontology Stats */}
+              {constraints.ontology_stats && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Full Ontology Graph</p>
+                  <div className="flex items-center space-x-4 text-sm text-slate-600">
+                    <span><strong>{constraints.ontology_stats.nodes}</strong> nodes</span>
+                    <span><strong>{constraints.ontology_stats.edges}</strong> edges</span>
+                    <span><strong>{constraints.ontology_stats.relationship_types?.length || 0}</strong> relationship types</span>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   };
@@ -348,7 +500,7 @@ function DiagramLog({ pipeline }) {
 
             {expandedStages[index] && (
               <div className={`p-4 space-y-3 ${isBaseline ? 'bg-red-50/30' : 'bg-white'}`}>
-                {isConstraints && stage.constraints && renderConstraints(stage.constraints, stage.mermaid)}
+                {isConstraints && stage.constraints && renderConstraints(stage.constraints, stage.mermaid, stage.rules_applied)}
 
                 {!isConstraints && stage.changes && stage.changes.length > 0 && (
                   <div>
