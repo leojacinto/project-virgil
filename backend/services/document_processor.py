@@ -15,6 +15,11 @@ from config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Store types
+STORE_SERVICENOW = 'servicenow_assets'
+STORE_CUSTOMER = 'customer_documents'
+VALID_STORES = {STORE_SERVICENOW, STORE_CUSTOMER}
+
 class DocumentProcessor:
     def __init__(self):
         self.vector_store_path = settings.vector_db_path
@@ -22,19 +27,31 @@ class DocumentProcessor:
         
         self.chroma_client = chromadb.PersistentClient(path=self.vector_store_path)
         
-        try:
-            self.collection = self.chroma_client.get_or_create_collection(
-                name="documents",
-                metadata={"hnsw:space": "cosine"}
-            )
-        except Exception as e:
-            logger.error(f"Error creating collection: {str(e)}")
-            self.collection = None
+        # Dual collections: ServiceNow reference assets + customer-specific documents
+        self.collections = {}
+        for store_name in VALID_STORES:
+            try:
+                self.collections[store_name] = self.chroma_client.get_or_create_collection(
+                    name=store_name,
+                    metadata={"hnsw:space": "cosine"}
+                )
+            except Exception as e:
+                logger.error(f"Error creating collection {store_name}: {str(e)}")
+                self.collections[store_name] = None
+        
+        # Backward compat: default collection points to customer_documents
+        self.collection = self.collections.get(STORE_CUSTOMER)
         
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         
         self.metadata_file = os.path.join(self.vector_store_path, "metadata.json")
         self.metadata = self._load_metadata()
+    
+    def _get_collection(self, store: str = STORE_CUSTOMER):
+        """Get the ChromaDB collection for the given store."""
+        if store not in VALID_STORES:
+            raise ValueError(f"Invalid store: {store}. Must be one of {VALID_STORES}")
+        return self.collections.get(store)
     
     def _load_metadata(self) -> Dict:
         if os.path.exists(self.metadata_file):
@@ -111,9 +128,10 @@ class DocumentProcessor:
         
         return chunks
     
-    def add_to_vector_store(self, file_id: str, content: str, filename: str):
-        if not self.collection:
-            logger.error("Vector store collection not initialized")
+    def add_to_vector_store(self, file_id: str, content: str, filename: str, store: str = STORE_CUSTOMER):
+        collection = self._get_collection(store)
+        if not collection:
+            logger.error(f"Vector store collection not initialized for store: {store}")
             return
         
         try:
@@ -122,10 +140,10 @@ class DocumentProcessor:
             embeddings = self.embedding_model.encode(chunks).tolist()
             
             ids = [f"{file_id}_chunk_{i}" for i in range(len(chunks))]
-            metadatas = [{"file_id": file_id, "filename": filename, "chunk_index": i} 
+            metadatas = [{"file_id": file_id, "filename": filename, "chunk_index": i, "store": store} 
                         for i in range(len(chunks))]
             
-            self.collection.add(
+            collection.add(
                 embeddings=embeddings,
                 documents=chunks,
                 metadatas=metadatas,
@@ -135,49 +153,71 @@ class DocumentProcessor:
             self.metadata[file_id] = {
                 "filename": filename,
                 "chunks": len(chunks),
-                "content_length": len(content)
+                "content_length": len(content),
+                "store": store
             }
             self._save_metadata()
             
-            logger.info(f"Added {len(chunks)} chunks from {filename} to vector store")
+            logger.info(f"Added {len(chunks)} chunks from {filename} to {store}")
         except Exception as e:
             logger.error(f"Error adding to vector store: {str(e)}")
             raise
     
-    def search_documents(self, query: str, top_k: int = 5) -> List[Dict]:
-        if not self.collection:
-            logger.error("Vector store collection not initialized")
-            return []
-        
+    def search_documents(self, query: str, top_k: int = 5, store: str = None) -> List[Dict]:
+        """Search documents. If store is None, search both stores with source tagging."""
         try:
             query_embedding = self.embedding_model.encode([query]).tolist()
             
-            results = self.collection.query(
-                query_embeddings=query_embedding,
-                n_results=top_k
-            )
+            stores_to_search = [store] if store else [STORE_SERVICENOW, STORE_CUSTOMER]
+            all_documents = []
             
-            documents = []
-            if results['documents'] and len(results['documents']) > 0:
-                for i, doc in enumerate(results['documents'][0]):
-                    metadata = results['metadatas'][0][i] if results['metadatas'] else {}
-                    distance = results['distances'][0][i] if results['distances'] else 0
+            for s in stores_to_search:
+                collection = self._get_collection(s)
+                if not collection:
+                    continue
+                
+                try:
+                    # Check if collection has any documents
+                    if collection.count() == 0:
+                        continue
                     
-                    documents.append({
-                        "content": doc,
-                        "filename": metadata.get("filename", "unknown"),
-                        "file_id": metadata.get("file_id", "unknown"),
-                        "relevance_score": 1 - distance
-                    })
+                    results = collection.query(
+                        query_embeddings=query_embedding,
+                        n_results=top_k
+                    )
+                    
+                    if results['documents'] and len(results['documents']) > 0:
+                        for i, doc in enumerate(results['documents'][0]):
+                            metadata = results['metadatas'][0][i] if results['metadatas'] else {}
+                            distance = results['distances'][0][i] if results['distances'] else 0
+                            
+                            source_label = 'ServiceNow Reference' if s == STORE_SERVICENOW else 'Customer Document'
+                            all_documents.append({
+                                "content": doc,
+                                "filename": metadata.get("filename", "unknown"),
+                                "file_id": metadata.get("file_id", "unknown"),
+                                "relevance_score": 1 - distance,
+                                "store": s,
+                                "source_label": source_label
+                            })
+                except Exception as search_err:
+                    logger.warning(f"Error searching {s}: {str(search_err)}")
             
-            return documents
+            # Sort by relevance across both stores, return top_k
+            all_documents.sort(key=lambda x: x['relevance_score'], reverse=True)
+            return all_documents[:top_k]
         except Exception as e:
             logger.error(f"Error searching documents: {str(e)}")
             return []
     
-    def list_documents(self) -> List[Dict]:
+    def list_documents(self, store: str = None) -> List[Dict]:
+        """List documents. If store is None, return all. Otherwise filter by store."""
         documents = []
         for file_id, meta in self.metadata.items():
+            doc_store = meta.get("store", STORE_CUSTOMER)  # backward compat: default to customer
+            if store and doc_store != store:
+                continue
+            
             file_path = None
             for ext in settings.allowed_extensions:
                 potential_path = os.path.join(self.upload_dir, f"{file_id}{ext}")
@@ -190,6 +230,7 @@ class DocumentProcessor:
                 "filename": meta.get("filename", "unknown"),
                 "chunks": meta.get("chunks", 0),
                 "content_length": meta.get("content_length", 0),
+                "store": doc_store,
                 "exists": file_path is not None
             })
         
@@ -197,10 +238,14 @@ class DocumentProcessor:
     
     def delete_document(self, file_id: str):
         try:
-            if self.collection:
-                results = self.collection.get(where={"file_id": file_id})
+            # Determine which store this document belongs to
+            doc_store = self.metadata.get(file_id, {}).get("store", STORE_CUSTOMER)
+            collection = self._get_collection(doc_store)
+            
+            if collection:
+                results = collection.get(where={"file_id": file_id})
                 if results['ids']:
-                    self.collection.delete(ids=results['ids'])
+                    collection.delete(ids=results['ids'])
             
             if file_id in self.metadata:
                 del self.metadata[file_id]
@@ -211,7 +256,7 @@ class DocumentProcessor:
                 if os.path.exists(file_path):
                     os.remove(file_path)
             
-            logger.info(f"Deleted document {file_id}")
+            logger.info(f"Deleted document {file_id} from {doc_store}")
         except Exception as e:
             logger.error(f"Error deleting document: {str(e)}")
             raise

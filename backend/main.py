@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -268,10 +268,17 @@ async def get_instance_summary():
         raise HTTPException(status_code=500, detail=f"Error fetching instance summary: {str(e)}")
 
 @app.post("/api/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    store: str = Form(default='customer_documents')
+):
+    """Upload a document to either servicenow_assets or customer_documents store."""
     try:
         if not any(file.filename.endswith(ext) for ext in settings.allowed_extensions):
             raise HTTPException(status_code=400, detail="File type not allowed")
+        
+        if store not in ('servicenow_assets', 'customer_documents'):
+            raise HTTPException(status_code=400, detail=f"Invalid store: {store}")
         
         file_id = str(uuid.uuid4())
         file_extension = os.path.splitext(file.filename)[1]
@@ -285,21 +292,25 @@ async def upload_document(file: UploadFile = File(...)):
             f.write(content)
         
         processed_content = document_processor.process_document(file_path)
-        document_processor.add_to_vector_store(file_id, processed_content, file.filename)
+        document_processor.add_to_vector_store(file_id, processed_content, file.filename, store=store)
         
         return {
             "file_id": file_id,
             "filename": file.filename,
             "status": "processed",
+            "store": store,
             "content_length": len(processed_content)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload error: {str(e)}")
 
 @app.get("/api/documents")
-async def list_documents():
+async def list_documents(store: str = Query(default=None)):
+    """List documents. Pass ?store=servicenow_assets or ?store=customer_documents to filter."""
     try:
-        documents = document_processor.list_documents()
+        documents = document_processor.list_documents(store=store)
         return {"documents": documents}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing documents: {str(e)}")
