@@ -7,6 +7,7 @@ CMDB class structure, and architectural constraints.
 
 from typing import Dict, List, Set, Optional, Tuple
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +31,19 @@ class OntologyNode:
         self.plugin = plugin               # SN plugin scope / id
         self.layer = layer                 # architecture layer: users | ui | application | orchestration | platform | data
     
+    @staticmethod
+    def _word_match(term: str, text: str) -> bool:
+        """Match term in text. Short terms (<=4 chars) require word boundaries."""
+        if len(term) <= 4:
+            return bool(re.search(r'\b' + re.escape(term) + r'\b', text))
+        return term in text
+
     def matches(self, text: str) -> bool:
         """Check if free-form text refers to this node."""
         t = text.lower()
-        if self.label.lower() in t or self.id.lower() in t:
+        if self._word_match(self.label.lower(), t) or self._word_match(self.id.lower(), t):
             return True
-        return any(a.lower() in t for a in self.aliases)
+        return any(self._word_match(a.lower(), t) for a in self.aliases)
 
 
 class OntologyEdge:
@@ -694,8 +702,15 @@ class ServiceNowOntology:
         detected_types = []
         
         for query_type, patterns in self.query_patterns.items():
-            if any(pattern in query_lower for pattern in patterns):
-                detected_types.append(query_type)
+            for pattern in patterns:
+                if len(pattern) <= 4:
+                    if re.search(r'\b' + re.escape(pattern) + r'\b', query_lower):
+                        detected_types.append(query_type)
+                        break
+                else:
+                    if pattern in query_lower:
+                        detected_types.append(query_type)
+                        break
         
         return detected_types if detected_types else ["general"]
     
