@@ -160,6 +160,98 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 Project Virgil is an AI-powered ServiceNow architecture advisor that combines multiple intelligence layers to provide semantically correct, instance-aware architectural guidance. Unlike generic LLM tools, it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
 
+### End-to-End Pipeline
+
+When a user submits a query, the system executes the following pipeline:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                       USER QUERY                             │
+│  "Show me a CSM + ITSM architecture with customer portal"   │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│            STEP 1: DATA GATHERING (Parallel)                 │
+│                                                              │
+│  ┌─────────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ Instance Data    │  │ Document     │  │ Web Search    │  │
+│  │ (REST or JDBC)   │  │ Store (RAG)  │  │ (optional)    │  │
+│  └────────┬────────┘  └──────┬───────┘  └──────┬────────┘  │
+│           │                  │                  │           │
+│           ▼                  ▼                  ▼           │
+│  apps, capabilities    top-5 chunks      external context  │
+│  tables, plugins       source-tagged                       │
+│  usage stats           [SN Ref] or                         │
+│                        [Customer Doc]                       │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│       STEP 2: PRE-PROCESSING (Ontology Constraints)          │
+│                                                              │
+│  Query → servicenow_ontology.py                              │
+│    ├─ Detect query type (ITSM, CSM, compliance, etc.)       │
+│    ├─ Extract relevant subgraph (1-hop expansion)           │
+│    ├─ Get allowed labels for this query                     │
+│    ├─ Get 32 label replacement rules                        │
+│    ├─ Build reference example diagram from subgraph         │
+│    ├─ Get anti-patterns (Portal→CMDB, KB→Incident, etc.)   │
+│    └─ Hard limits: max 15 arrows, 10 nodes, 4 subgraphs    │
+│                                                              │
+│  Output: constraints dict injected into LLM prompt          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│            STEP 3: LLM GENERATION (Two Calls)                │
+│                                                              │
+│  Call A: BASELINE (no constraints)                           │
+│    Prompt = query + instance data + docs                    │
+│    No ontology rules, no limits, no vocabulary              │
+│    → Raw diagram (for comparison only, not used)            │
+│                                                              │
+│  Call B: GUIDED (with constraints)                           │
+│    Prompt = query + instance data + docs                    │
+│            + ontology rules + hard limits                   │
+│            + label whitelist + anti-patterns                │
+│            + reference diagram + replacement rules          │
+│    → Constrained diagram + analysis text                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│         STEP 4: POST-PROCESSING (Two Stages)                 │
+│                                                              │
+│  Stage A: Syntax Sanitizer                                   │
+│    ├─ Strip markdown code blocks                            │
+│    ├─ Remove & / () from labels                             │
+│    ├─ Fix numbered subgraph prefixes                        │
+│    ├─ Ensure "graph TD" header                              │
+│    └─ Output: valid Mermaid syntax (always renderable)      │
+│                                                              │
+│  Stage B: Ontology Validator                                 │
+│    ├─ Parse node ID→label mappings                          │
+│    ├─ Check each arrow against ontology anti-patterns       │
+│    ├─ REMOVE invalid arrows (e.g., Portal→CMDB)            │
+│    ├─ Replace vague labels (leverages→references)           │
+│    ├─ Prune excess arrows by priority if >15               │
+│    ├─ Detect bidirectional/circular dependencies            │
+│    └─ Output: corrected diagram + validation report         │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      FINAL OUTPUT                            │
+│  ├─ Corrected Mermaid diagram (rendered in browser)         │
+│  ├─ Analysis text + recommendations (LLM-generated)         │
+│  ├─ Gap analysis (installed vs needed)                      │
+│  └─ Pipeline log (all 5 stages visible in Diagram Pipeline) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+> **Key insight:** The diagram is ~90% shaped by the ontology, validator, and hard limits. The LLM does ~10% of the diagram quality work. The analysis text and recommendations, however, are ~90% LLM-driven — enriched by instance data and documents but not validated post-generation.
+
 ### Architecture Intelligence Stack
 
 The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology, constrained by hard prompt limits, and corrected post-generation by the validator.
