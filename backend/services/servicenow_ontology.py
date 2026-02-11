@@ -32,18 +32,16 @@ class OntologyNode:
         self.layer = layer                 # architecture layer: users | ui | application | orchestration | platform | data
     
     @staticmethod
-    def _word_match(term: str, text: str) -> bool:
-        """Match term in text. Short terms (<=4 chars) require word boundaries."""
-        if len(term) <= 4:
-            return bool(re.search(r'\b' + re.escape(term) + r'\b', text))
-        return term in text
+    def _phrase_match(phrase: str, text: str) -> bool:
+        """Match a full phrase in text using word boundaries."""
+        return bool(re.search(r'\b' + re.escape(phrase) + r'\b', text))
 
     def matches(self, text: str) -> bool:
-        """Check if free-form text refers to this node."""
+        """Check if free-form text refers to this node (full phrase match)."""
         t = text.lower()
-        if self._word_match(self.label.lower(), t) or self._word_match(self.id.lower(), t):
+        if self._phrase_match(self.label.lower(), t) or self._phrase_match(self.id.lower(), t):
             return True
-        return any(self._word_match(a.lower(), t) for a in self.aliases)
+        return any(self._phrase_match(a.lower(), t) for a in self.aliases)
 
 
 class OntologyEdge:
@@ -106,12 +104,12 @@ class ServiceNowOntology:
         self.query_patterns = {
             "integration": ["integrate", "integration", "connect", "sync", "api", "webhook", "spoke"],
             "itsm": ["incident", "problem", "change", "itsm", "it service", "service desk"],
-            "csm": ["customer", "case", "csm", "customer service", "contact center"],
+            "csm": ["csm", "customer service", "contact center", "case management"],
             "data_flow": ["data", "flow", "sync", "transfer", "master data", "etl"],
-            "portal": ["portal", "self-service", "employee", "customer portal", "service portal"],
+            "portal": ["portal", "self-service", "customer portal", "service portal", "employee center"],
             "automation": ["automate", "workflow", "flow", "orchestration", "playbook"],
             "compliance": ["compliance", "fedramp", "spp", "security", "audit", "grc"],
-            "hrsd": ["hr", "human resources", "employee", "onboarding", "lifecycle"],
+            "hrsd": ["hr", "human resources", "hrsd", "onboarding", "lifecycle", "employee onboarding", "employee lifecycle"],
             "itom": ["discovery", "service mapping", "event management", "cloud", "itom"],
             "secops": ["security incident", "vulnerability", "threat", "secops", "siem"],
         }
@@ -192,7 +190,7 @@ class ServiceNowOntology:
             tables=["sn_customerservice_case", "sn_customerservice_task"],
             plugin="com.sn_customerservice", layer="application"))
         self._add_node(OntologyNode("customer_accounts", "Customer Accounts", "module",
-            aliases=["Customer Accounts", "Accounts", "Customer"],
+            aliases=["Customer Accounts", "CSM Accounts"],
             tables=["customer_account", "customer_contact", "csm_consumer"],
             plugin="com.sn_customerservice", layer="application"))
         
@@ -483,7 +481,7 @@ class ServiceNowOntology:
 
         # 2. Map query_types to seed nodes
         type_to_seeds = {
-            "itsm": ["itsm", "incident_mgmt", "problem_mgmt", "change_mgmt"],
+            "itsm": ["itsm", "incident", "problem", "change"],
             "csm": ["csm", "case_mgmt", "customer_portal"],
             "hrsd": ["hrsd"],
             "itom": ["itom", "discovery", "service_mapping", "event_mgmt"],
@@ -505,11 +503,12 @@ class ServiceNowOntology:
         #    pulling in the entire graph. Skip foundational seeds because
         #    they connect to almost everything.
         foundational_ids = {"platform", "cmdb", "user_mgmt", "knowledge_base", "audit", "task"}
+        structural_rels = {"depends_on", "runs_on", "extends"}
         expansion_seeds = relevant_ids - foundational_ids
         expanded = set(relevant_ids)
         for nid in expansion_seeds:
             for e in self._outgoing.get(nid, []):
-                if e.rel_type != "segregated_from":
+                if e.rel_type in structural_rels:
                     expanded.add(e.target)
         relevant_ids = expanded
 
