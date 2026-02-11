@@ -207,6 +207,7 @@ function App() {
             <p className="text-sm font-medium text-slate-700">
               Project Virgil — AI-Powered ServiceNow Architecture Generator
             </p>
+            {/* Knowledge Sources — uncomment when Ian Leu and Jochen Geist approve
             <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-slate-500">
               <span>Knowledge Sources:</span>
               <a href="https://www.linkedin.com/in/ian-leu" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">
@@ -216,6 +217,7 @@ function App() {
                 Integration Pattern Decision Tree — Jochen Geist
               </a>
             </div>
+            */}
             <div className="flex flex-wrap justify-center gap-x-4 text-xs text-slate-400">
               <span>Built by <a href="https://www.linkedin.com/in/leojmfrancia" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">Leo Francia</a> &</span>
               <a href="https://www.linkedin.com/in/rninne" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">

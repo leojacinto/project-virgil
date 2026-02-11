@@ -687,6 +687,7 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 
 Project Virgil's ontology and validation rules are built on curated, publicly documented ServiceNow architectural knowledge. The following resources and contributors have shaped the system's intelligence:
 
+<!--
 ### ServiceNow IT4IT v3 Blueprint
 - **Author:** [Ian Leu](https://www.linkedin.com/in/ian-leu)
 - Maps the entire ServiceNow platform against the IT4IT reference architecture (Plan, Build, Deliver, Fulfill, Consume, Run, Support, Assure value streams)
@@ -700,6 +701,7 @@ Project Virgil's ontology and validation rules are built on curated, publicly do
 - Provides pattern selection rules: when to use spokes vs custom REST, MID Server requirements, Import Sets vs real-time, Table API vs Scripted REST
 - Color-coded recommendation strength: preferred (green), acceptable (orange), fallback/last resort (red)
 - Used to validate integration patterns in generated architecture diagrams
+-->
 
 ### ServiceNow Platform Documentation
 - Official ServiceNow product documentation, CSDM framework, and platform architecture guides
@@ -713,6 +715,7 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 - Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
 - Eliminate manual ontology maintenance so the graph stays current with platform releases
 
+<!--
 ### Integration Pattern Validation
 - Encode Jochen Geist's Integration Pattern Decision Tree as a traversable graph in the validator
 - Validate integration arrows against pattern rules (e.g., flag JDBC as fallback, recommend spokes when available)
@@ -723,6 +726,7 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 - Add IT4IT value stream dimension (Plan→Build→Deliver→Fulfill→Consume→Run→Support→Assure)
 - CSDM layer enforcement in generated diagrams
 - Industry vertical extensions triggered by query context
+-->
 
 ### Other Planned Enhancements
 - Unit and integration test coverage
