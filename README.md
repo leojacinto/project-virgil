@@ -121,36 +121,39 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.4.2 (February 2026)
+## 📦 Latest Release: v1.4.4 (February 2026)
+
+### v1.4.4 | Run-Specific Ontology Rules
+
+- ✅ Ontology Constraints stage now shows only the rules that fired for this specific run
+- ✅ "Rules Applied to This Run" box: label replacements, removed arrows, anti-patterns, pruning, missing relationships, triggered architectural rules
+- ✅ Green "No corrections needed" when LLM output satisfied all rules
+- ✅ Static reference (all 32 replacement rules, all architectural rules) collapsed into "Full Constraint Reference" accordion
+
+### v1.4.3 | Documentation Overhaul
+
+- ✅ End-to-End Pipeline with Mermaid flowchart and detail table
+- ✅ Architecture Intelligence Stack with Mermaid pie chart and quality contribution table
+- ✅ Author credits with LinkedIn links in app footer
 
 ### v1.4.2 | Dual Document Store
 
-- ✅ **ServiceNow Assets Store** (purple): Reference architectures, best practice guides, capability matrices. Shared across all engagements
-- ✅ **Customer Documents Store** (blue): RFPs, SOWs, pricing sheets, technical specs. Unique per engagement
-- ✅ Both stores searched during analysis with results tagged by source (`[ServiceNow Reference]` vs `[Customer Document]`)
+- ✅ **ServiceNow Assets Store** (purple) + **Customer Documents Store** (blue) with dual RAG search
 - ✅ Tabbed UI with per-store upload, file list, and document counts
-- ✅ Backward compatible: existing documents default to Customer Documents store
 
 ### v1.4.1 | REST API Only Connection Mode
 
-- ✅ **REST API Only**: No JDBC driver or Java required. Works with any ServiceNow instance
-- ✅ **REST API + JDBC**: Full access with RaptorDB for customers with JDBC SQL API enabled
-- ✅ Connection mode toggle in Setup Wizard and Connection Panel (default: REST API Only)
-- ✅ JDBC path field hidden when REST-only selected
-- ✅ Backend gracefully handles both modes. Analysis works identically; instance context is slightly thinner in REST-only mode
+- ✅ No JDBC/Java required. Works with any ServiceNow instance via standard REST API
+- ✅ Connection mode toggle (default: REST API Only)
 
 ### v1.4.0 | Diagram Pipeline Overhaul
 
-- ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) shows raw output quality as a comparison baseline
-- ✅ **Query-Aware Subgraph**: Ontology nodes/edges relevant to the query extracted with 1-hop expansion
-- ✅ **Label Replacement Mapping**: 32 vague→standard label rules visible in pipeline
-- ✅ **Reference Example Diagram**: Auto-generated from query-relevant ontology subgraph
-- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated. Now properly initialized
-- ✅ **Frontend Rewrite**: DiagramLog shows all 5 pipeline stages with color-coded themes
+- ✅ 5-stage pipeline: Baseline, Ontology Constraints, LLM Output, Syntax Sanitizer, Ontology Validator
+- ✅ Query-aware subgraph, 32 label replacement rules, reference diagram from ontology
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.4.2`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.2`
+- Backend: `leofrancia08489/project-virgil-backend:v1.4.4`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.4`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 

@@ -4,6 +4,22 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.4.4 (Backend + Frontend) - February 2026
+
+**Run-Specific Ontology Rules:**
+- ✅ Validator now returns structured `rules_applied` dict tracking exactly which rules fired per run
+- ✅ Tracks: label replacements applied, arrows removed, anti-patterns detected, arrows pruned, circular dependencies, missing relationships, outgoing limit warnings, architectural rules triggered
+- ✅ Architectural rules are deduplicated and mapped back to their source rule text
+
+**Frontend (DiagramLog.js) Redesign:**
+- ✅ Ontology Constraints stage now shows "Rules Applied to This Run" at the top (amber box with only what fired)
+- ✅ Green "No corrections needed" box when LLM output satisfied all ontology rules
+- ✅ Hard limits and Query-Relevant Subgraph always visible (per-query dynamic data)
+- ✅ Static reference (all 32 replacement rules, all architectural rules, allowed labels, layer order, ontology stats) collapsed into "Full Constraint Reference" accordion
+- ✅ Accordion shows rule counts in header for quick reference
+
+---
+
 ## v1.4.3 (Documentation + Frontend) - February 2026
 
 **README Overhaul:**
