@@ -673,6 +673,28 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 - Sanitize user inputs
 - Implement rate limiting
 
+## Knowledge Sources & Acknowledgments
+
+Project Virgil's ontology and validation rules are built on curated, publicly documented ServiceNow architectural knowledge. The following resources and contributors have shaped the system's intelligence:
+
+### ServiceNow IT4IT v3 Blueprint
+- **Author:** [Ian Leu](https://www.linkedin.com/in/ian-leu)
+- Maps the entire ServiceNow platform against the IT4IT reference architecture (Plan, Build, Deliver, Fulfill, Consume, Run, Support, Assure value streams)
+- Provides product-to-value-stream mappings, CSDM alignment, and industry vertical extensions (Banking/BIAN, Insurance/ACCORD, Telecom/TM Forum, Healthcare/HL7)
+- Used to expand the ontology graph with product nodes, architectural layers, and cross-cutting capabilities
+
+### ServiceNow Integration Pattern Decision Tree
+- **Author:** [Jochen Geist](https://www.linkedin.com/in/jochengeist)
+- **Reference:** [Integration Design — How to choose the best pattern to integrate ServiceNow with other systems](https://www.servicenow.com/community/architect-blog/integration-design-how-to-choose-the-best-pattern-to-integrate/ba-p/2874114)
+- Deterministic decision tree (v3.1) covering 6 integration categories: Web Services, Data Persistence, Event-Driven Architecture, AI Agents (MCP/A2A), UI-Level Integrations, and Fallback Solutions
+- Provides pattern selection rules: when to use spokes vs custom REST, MID Server requirements, Import Sets vs real-time, Table API vs Scripted REST
+- Color-coded recommendation strength: preferred (green), acceptable (orange), fallback/last resort (red)
+- Used to validate integration patterns in generated architecture diagrams
+
+### ServiceNow Platform Documentation
+- Official ServiceNow product documentation, CSDM framework, and platform architecture guides
+- ServiceNow Store spoke catalog for integration validation
+
 ## Roadmap
 
 ### data.world Integration (Primary)
@@ -680,6 +702,17 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 - Replace custom ontology with data.world's knowledge graph API for live table relationships, class hierarchy, and plugin dependencies
 - Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
 - Eliminate manual ontology maintenance so the graph stays current with platform releases
+
+### Integration Pattern Validation
+- Encode Jochen Geist's Integration Pattern Decision Tree as a traversable graph in the validator
+- Validate integration arrows against pattern rules (e.g., flag JDBC as fallback, recommend spokes when available)
+- MID Server requirement detection for on-premise integration targets
+
+### Expanded Ontology (IT4IT Alignment)
+- Expand ontology from 40 to 65+ nodes using IT4IT v3 Blueprint mappings
+- Add IT4IT value stream dimension (Plan→Build→Deliver→Fulfill→Consume→Run→Support→Assure)
+- CSDM layer enforcement in generated diagrams
+- Industry vertical extensions triggered by query context
 
 ### Other Planned Enhancements
 - Unit and integration test coverage
@@ -692,7 +725,7 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 ## Authors
 
 - **Leo Francia**
-- **Robert Ninness**
+- **[Robert Ninness](https://www.linkedin.com/in/rninne)**
 
 ## License
 

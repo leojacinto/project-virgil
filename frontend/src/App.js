@@ -203,9 +203,26 @@ function App() {
 
       <footer className="mt-12 border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p className="text-center text-sm text-slate-600">
-            ServiceNow Architecture Generator - Powered by AI
-          </p>
+          <div className="flex flex-col items-center space-y-3">
+            <p className="text-sm font-medium text-slate-700">
+              Project Virgil — AI-Powered ServiceNow Architecture Generator
+            </p>
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-slate-500">
+              <span>Knowledge Sources:</span>
+              <a href="https://www.linkedin.com/in/ian-leu" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">
+                IT4IT v3 Blueprint — Ian Leu
+              </a>
+              <a href="https://www.servicenow.com/community/architect-blog/integration-design-how-to-choose-the-best-pattern-to-integrate/ba-p/2874114" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">
+                Integration Pattern Decision Tree — Jochen Geist
+              </a>
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-4 text-xs text-slate-400">
+              <span>Built by Leo Francia &</span>
+              <a href="https://www.linkedin.com/in/rninne" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">
+                Robert Ninness
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
