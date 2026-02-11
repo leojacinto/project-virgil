@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Database, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Database, Loader2, AlertCircle, CheckCircle, Wifi, Server } from 'lucide-react';
 
 function ConnectionPanel({ onConnect, loading }) {
   const [formData, setFormData] = useState({
     instance: '',
     username: '',
     password: '',
-    jdbc_path: ''
+    jdbc_path: '',
+    connection_mode: 'rest_only'
   });
   const [message, setMessage] = useState(null);
 
@@ -18,7 +19,7 @@ function ConnectionPanel({ onConnect, loading }) {
     setMessage(result);
     
     if (result.success) {
-      setFormData({ instance: '', username: '', password: '', jdbc_path: '' });
+      setFormData({ instance: '', username: '', password: '', jdbc_path: '', connection_mode: 'rest_only' });
     }
   };
 
@@ -44,6 +45,44 @@ function ConnectionPanel({ onConnect, loading }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-3">
+            Connection Mode
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, connection_mode: 'rest_only' })}
+              className={`p-4 border-2 rounded-lg text-left transition-all ${
+                formData.connection_mode === 'rest_only'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2 mb-1">
+                <Wifi className="h-4 w-4 text-blue-600" />
+                <span className="font-semibold text-slate-900">REST API Only</span>
+              </div>
+              <p className="text-xs text-slate-500">No JDBC driver or Java required. Works with any ServiceNow instance.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, connection_mode: 'rest_and_jdbc' })}
+              className={`p-4 border-2 rounded-lg text-left transition-all ${
+                formData.connection_mode === 'rest_and_jdbc'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2 mb-1">
+                <Server className="h-4 w-4 text-blue-600" />
+                <span className="font-semibold text-slate-900">REST API + JDBC</span>
+              </div>
+              <p className="text-xs text-slate-500">Full access with RaptorDB. Requires JDBC driver and Java.</p>
+            </button>
+          </div>
+        </div>
+
         <div>
           <label htmlFor="instance" className="block text-sm font-medium text-slate-700 mb-2">
             Instance Name
@@ -95,23 +134,25 @@ function ConnectionPanel({ onConnect, loading }) {
           />
         </div>
 
-        <div>
-          <label htmlFor="jdbc_path" className="block text-sm font-medium text-slate-700 mb-2">
-            JDBC JAR Path (Optional)
-          </label>
-          <input
-            type="text"
-            id="jdbc_path"
-            name="jdbc_path"
-            value={formData.jdbc_path}
-            onChange={handleChange}
-            placeholder="./jdbc/servicenow-jdbc.jar"
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-          />
-          <p className="mt-1 text-xs text-slate-500">
-            Leave empty to use default path
-          </p>
-        </div>
+        {formData.connection_mode === 'rest_and_jdbc' && (
+          <div>
+            <label htmlFor="jdbc_path" className="block text-sm font-medium text-slate-700 mb-2">
+              JDBC JAR Path (Optional)
+            </label>
+            <input
+              type="text"
+              id="jdbc_path"
+              name="jdbc_path"
+              value={formData.jdbc_path}
+              onChange={handleChange}
+              placeholder="./jdbc/servicenow-jdbc.jar"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Leave empty to use default path
+            </p>
+          </div>
+        )}
 
         {message && (
           <div
@@ -155,11 +196,13 @@ function ConnectionPanel({ onConnect, loading }) {
         </button>
       </form>
 
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Make sure the ServiceNow JDBC driver JAR file is placed in the backend/jdbc directory before connecting.
-        </p>
-      </div>
+      {formData.connection_mode === 'rest_and_jdbc' && (
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Note:</strong> Make sure the ServiceNow JDBC driver JAR file is placed in the backend/jdbc directory before connecting.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

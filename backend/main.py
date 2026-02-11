@@ -35,6 +35,8 @@ app.add_middleware(
 )
 
 servicenow_connector = None
+sn_utils_service_instance = None
+connection_mode = None  # 'rest_only' or 'rest_and_jdbc'
 document_processor = DocumentProcessor()
 llm_service = LLMService()
 diagram_generator = DiagramGenerator()
@@ -50,6 +52,7 @@ class ConnectionConfig(BaseModel):
     username: str
     password: str
     jdbc_path: Optional[str] = None
+    connection_mode: str = 'rest_and_jdbc'  # 'rest_only' or 'rest_and_jdbc'
 
 class ArchitectureRequest(BaseModel):
     query: str
@@ -98,26 +101,79 @@ async def get_llm_status():
 
 @app.post("/api/connect")
 async def connect_servicenow(config: ConnectionConfig):
-    global servicenow_connector
+    global servicenow_connector, sn_utils_service_instance, connection_mode
     try:
-        jdbc_path = config.jdbc_path if config.jdbc_path else settings.servicenow_jdbc_path
-        servicenow_connector = ServiceNowConnector(
-            instance=config.instance,
-            username=config.username,
-            password=config.password,
-            jdbc_path=jdbc_path
-        )
+        from services.sn_utils_service import SNUtilsService
         
-        is_connected = servicenow_connector.test_connection()
+        connection_mode = config.connection_mode
         
-        if is_connected:
-            return {
-                "status": "connected",
-                "message": "Successfully connected to ServiceNow RaptorDB",
-                "instance": config.instance
-            }
+        # Build instance URL for REST API
+        instance_url = config.instance
+        if not instance_url.endswith('.service-now.com'):
+            instance_url = f"{instance_url}.service-now.com"
+        
+        if connection_mode == 'rest_only':
+            # REST API only — no JDBC, no Java required
+            logger.info(f"Connecting to ServiceNow via REST API only: {config.instance}")
+            sn_utils_service_instance = SNUtilsService(
+                instance=instance_url,
+                username=config.username,
+                password=config.password
+            )
+            
+            # Test REST connection by querying instance info
+            test_result = sn_utils_service_instance.get_installed_applications()
+            if test_result is not None:
+                # Create a lightweight connector stub for backward compatibility
+                servicenow_connector = type('RESTOnlyConnector', (), {
+                    'instance': config.instance,
+                    'username': config.username,
+                    'password': config.password,
+                    'is_connected': lambda self: True,
+                    '_connected': True,
+                    'get_available_tables': lambda self: [],
+                    'get_installed_applications': lambda self: [],
+                    'get_components': lambda self: {},
+                    'get_instance_metadata': lambda self: {},
+                })()
+                return {
+                    "status": "connected",
+                    "message": "Successfully connected to ServiceNow via REST API",
+                    "instance": config.instance,
+                    "connection_mode": "rest_only"
+                }
+            else:
+                raise HTTPException(status_code=500, detail="REST API connection failed — check credentials and instance URL")
         else:
-            raise HTTPException(status_code=500, detail="Failed to connect to ServiceNow")
+            # Full JDBC + REST mode
+            logger.info(f"Connecting to ServiceNow via JDBC + REST API: {config.instance}")
+            jdbc_path = config.jdbc_path if config.jdbc_path else settings.servicenow_jdbc_path
+            servicenow_connector = ServiceNowConnector(
+                instance=config.instance,
+                username=config.username,
+                password=config.password,
+                jdbc_path=jdbc_path
+            )
+            
+            is_connected = servicenow_connector.test_connection()
+            
+            if is_connected:
+                # Also init REST API service
+                sn_utils_service_instance = SNUtilsService(
+                    instance=instance_url,
+                    username=config.username,
+                    password=config.password
+                )
+                return {
+                    "status": "connected",
+                    "message": "Successfully connected to ServiceNow via JDBC + REST API",
+                    "instance": config.instance,
+                    "connection_mode": "rest_and_jdbc"
+                }
+            else:
+                raise HTTPException(status_code=500, detail="JDBC connection failed")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Connection error: {str(e)}")
 
@@ -126,7 +182,8 @@ async def get_connection_status():
     if servicenow_connector and servicenow_connector.is_connected():
         return {
             "connected": True,
-            "instance": servicenow_connector.instance
+            "instance": servicenow_connector.instance,
+            "connection_mode": connection_mode or 'rest_and_jdbc'
         }
     return {"connected": False}
 
@@ -170,25 +227,35 @@ async def get_instance_summary():
         raise HTTPException(status_code=400, detail="Not connected to ServiceNow")
     
     try:
-        from services.sn_utils_service import SNUtilsService
-        
-        # Use SN Utils for comprehensive REST API data
-        sn_utils = SNUtilsService(
-            servicenow_connector.instance,
-            servicenow_connector.username,
-            servicenow_connector.password
-        )
+        # Use stored SN Utils instance if available, otherwise create one
+        sn_utils = sn_utils_service_instance
+        if not sn_utils:
+            from services.sn_utils_service import SNUtilsService
+            instance_url = servicenow_connector.instance
+            if not instance_url.endswith('.service-now.com'):
+                instance_url = f"{instance_url}.service-now.com"
+            sn_utils = SNUtilsService(
+                instance_url,
+                servicenow_connector.username,
+                servicenow_connector.password
+            )
         
         instance_summary = sn_utils.get_instance_summary()
         
-        # Also get JDBC metadata for structural data
-        jdbc_metadata = servicenow_connector.get_instance_metadata()
+        # Get JDBC metadata only if in JDBC mode
+        jdbc_metadata = {}
+        if connection_mode != 'rest_only':
+            try:
+                jdbc_metadata = servicenow_connector.get_instance_metadata()
+            except Exception as jdbc_err:
+                logger.warning(f"JDBC metadata fetch failed (non-critical): {str(jdbc_err)}")
         
         # Combine both data sources
         return {
             "instance": instance_summary.get('instance'),
             "applications": instance_summary.get('applications', []),
             "key_capabilities": instance_summary.get('key_capabilities', {}),
+            "connection_mode": connection_mode or 'rest_and_jdbc',
             "jdbc_metadata": {
                 "relationships": len(jdbc_metadata.get('relationships', [])),
                 "plugins": len(jdbc_metadata.get('plugins', [])),
@@ -263,11 +330,45 @@ async def analyze_architecture(request: ArchitectureRequest):
                     raise HTTPException(status_code=499, detail="Analysis cancelled by user")
         
         check_cancelled()
-        servicenow_data = {
-            "tables": servicenow_connector.get_available_tables(),
-            "applications": servicenow_connector.get_installed_applications(),
-            "components": servicenow_connector.get_components()
-        }
+        
+        # Build servicenow_data based on connection mode
+        if connection_mode == 'rest_only':
+            # REST API only — use SN Utils for instance data
+            rest_apps = []
+            rest_capabilities = {}
+            if sn_utils_service_instance:
+                try:
+                    rest_apps = sn_utils_service_instance.get_installed_applications() or []
+                    summary = sn_utils_service_instance.get_instance_summary() or {}
+                    rest_capabilities = summary.get('key_capabilities', {})
+                except Exception as rest_err:
+                    logger.warning(f"REST API data fetch failed (non-critical): {str(rest_err)}")
+            
+            servicenow_data = {
+                "tables": [],
+                "applications": rest_apps,
+                "components": {},
+                "connection_mode": "rest_only",
+                "key_capabilities": rest_capabilities
+            }
+        else:
+            # Full JDBC + REST mode
+            servicenow_data = {
+                "tables": servicenow_connector.get_available_tables(),
+                "applications": servicenow_connector.get_installed_applications(),
+                "components": servicenow_connector.get_components(),
+                "connection_mode": "rest_and_jdbc"
+            }
+            # Enrich with REST API data if available
+            if sn_utils_service_instance:
+                try:
+                    summary = sn_utils_service_instance.get_instance_summary() or {}
+                    servicenow_data["key_capabilities"] = summary.get('key_capabilities', {})
+                    # Merge REST apps if JDBC apps are empty
+                    if not servicenow_data["applications"]:
+                        servicenow_data["applications"] = sn_utils_service_instance.get_installed_applications() or []
+                except Exception as rest_err:
+                    logger.warning(f"REST API enrichment failed (non-critical): {str(rest_err)}")
         
         check_cancelled()
         relevant_docs = []
@@ -296,8 +397,9 @@ async def analyze_architecture(request: ArchitectureRequest):
                 "timestamp": datetime.now().isoformat(),
                 "query": request.query,
                 "servicenow_instance": servicenow_connector.instance,
-                "tables_analyzed": len(servicenow_data["tables"]),
-                "apps_analyzed": len(servicenow_data["applications"]),
+                "connection_mode": connection_mode or 'rest_and_jdbc',
+                "tables_analyzed": len(servicenow_data.get("tables", [])),
+                "apps_analyzed": len(servicenow_data.get("applications", [])),
                 "documents_used": len(relevant_docs),
                 "web_sources": len(web_context),
                 "task_id": task_id

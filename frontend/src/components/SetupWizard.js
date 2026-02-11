@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronLeft, CheckCircle, Loader2, Database, Brain, Zap } from 'lucide-react';
+import { ChevronRight, ChevronLeft, CheckCircle, Loader2, Database, Brain, Zap, Wifi, Server } from 'lucide-react';
 import axios from 'axios';
 
 function SetupWizard({ onComplete }) {
@@ -17,7 +17,8 @@ function SetupWizard({ onComplete }) {
     instance: '',
     username: '',
     password: '',
-    jdbc_path: ''
+    jdbc_path: '',
+    connection_mode: 'rest_only'
   });
 
   const llmProviders = [
@@ -248,8 +249,46 @@ function SetupWizard({ onComplete }) {
                     Connect to ServiceNow
                   </h2>
                   <p className="text-slate-600">
-                    Enter your ServiceNow instance credentials
+                    Choose your connection method and enter credentials
                   </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-3">
+                    Connection Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setServicenowConfig({ ...servicenowConfig, connection_mode: 'rest_only' })}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        servicenowConfig.connection_mode === 'rest_only'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Wifi className="h-4 w-4 text-blue-600" />
+                        <span className="font-semibold text-slate-900">REST API Only</span>
+                      </div>
+                      <p className="text-xs text-slate-500">No JDBC driver or Java required. Works with any ServiceNow instance.</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setServicenowConfig({ ...servicenowConfig, connection_mode: 'rest_and_jdbc' })}
+                      className={`p-4 border-2 rounded-lg text-left transition-all ${
+                        servicenowConfig.connection_mode === 'rest_and_jdbc'
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2 mb-1">
+                        <Server className="h-4 w-4 text-blue-600" />
+                        <span className="font-semibold text-slate-900">REST API + JDBC</span>
+                      </div>
+                      <p className="text-xs text-slate-500">Full access with RaptorDB. Requires JDBC driver and Java.</p>
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -297,22 +336,24 @@ function SetupWizard({ onComplete }) {
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="jdbc_path" className="block text-sm font-medium text-slate-700 mb-2">
-                    JDBC JAR Path (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    id="jdbc_path"
-                    value={servicenowConfig.jdbc_path}
-                    onChange={(e) => setServicenowConfig({ ...servicenowConfig, jdbc_path: e.target.value })}
-                    placeholder="Leave empty to use built-in driver"
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-                  />
-                  <p className="mt-1 text-xs text-slate-500">
-                    Leave empty to use default path
-                  </p>
-                </div>
+                {servicenowConfig.connection_mode === 'rest_and_jdbc' && (
+                  <div>
+                    <label htmlFor="jdbc_path" className="block text-sm font-medium text-slate-700 mb-2">
+                      JDBC JAR Path (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      id="jdbc_path"
+                      value={servicenowConfig.jdbc_path}
+                      onChange={(e) => setServicenowConfig({ ...servicenowConfig, jdbc_path: e.target.value })}
+                      placeholder="Leave empty to use built-in driver"
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      Leave empty to use default path
+                    </p>
+                  </div>
+                )}
 
                 {error && (
                   <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
