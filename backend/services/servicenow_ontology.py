@@ -18,11 +18,12 @@ logger = logging.getLogger(__name__)
 
 class OntologyNode:
     """A node in the ServiceNow ontology graph."""
-    __slots__ = ('id', 'label', 'node_type', 'aliases', 'tables', 'plugin', 'layer')
+    __slots__ = ('id', 'label', 'node_type', 'aliases', 'tables', 'plugin', 'layer', 'it4it_streams')
     
     def __init__(self, id: str, label: str, node_type: str, *,
                  aliases: List[str] = None, tables: List[str] = None,
-                 plugin: str = None, layer: str = None):
+                 plugin: str = None, layer: str = None,
+                 it4it_streams: List[str] = None):
         self.id = id
         self.label = label
         self.node_type = node_type        # product | module | table | platform | data | ui | orchestration
@@ -30,6 +31,7 @@ class OntologyNode:
         self.tables = tables or []         # actual SN table names
         self.plugin = plugin               # SN plugin scope / id
         self.layer = layer                 # architecture layer: users | ui | application | orchestration | platform | data
+        self.it4it_streams = it4it_streams or []  # IT4IT v3 value streams: S2P | R2D | R2F | D2C
     
     @staticmethod
     def _phrase_match(phrase: str, text: str) -> bool:
@@ -130,26 +132,26 @@ class ServiceNowOntology:
         # === PLATFORM / FOUNDATIONAL LAYER ===
         self._add_node(OntologyNode("platform", "ServiceNow Platform", "platform",
             aliases=["Platform", "Now Platform", "ServiceNow"],
-            layer="platform"))
+            layer="platform", it4it_streams=["S2P", "R2D", "R2F", "D2C"]))
         self._add_node(OntologyNode("cmdb", "CMDB", "data",
             aliases=["Configuration Management Database", "CMDB", "Configuration Management"],
             tables=["cmdb_ci", "cmdb_ci_server", "cmdb_ci_service", "cmdb_ci_app_server",
                     "cmdb_ci_database", "cmdb_ci_hardware", "cmdb_ci_netgear",
                     "cmdb_ci_vm", "cmdb_ci_linux_server", "cmdb_ci_win_server"],
-            plugin="com.snc.cmdb", layer="data"))
+            plugin="com.snc.cmdb", layer="data", it4it_streams=["R2D", "R2F", "D2C"]))
         self._add_node(OntologyNode("user_mgmt", "User Management", "data",
             aliases=["User Management", "Users", "Authentication", "Identity"],
             tables=["sys_user", "sys_user_group", "sys_user_role", "sys_user_has_role",
                     "sys_user_grmember"],
-            layer="data"))
+            layer="data", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("knowledge_base", "Knowledge Base", "data",
             aliases=["Knowledge Base", "KB", "Knowledge Management", "Knowledge"],
             tables=["kb_knowledge", "kb_knowledge_base", "kb_category", "kb_use"],
-            plugin="com.glideapp.knowledge", layer="data"))
+            plugin="com.glideapp.knowledge", layer="data", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("audit", "Audit Logging", "data",
             aliases=["Audit", "Audit Logs", "System Logs"],
             tables=["sys_audit", "sys_audit_delete", "syslog"],
-            layer="data"))
+            layer="data", it4it_streams=["S2P", "D2C"]))
         
         # === TABLE HIERARCHY (task-based) ===
         self._add_node(OntologyNode("task", "Task", "table",
@@ -159,142 +161,142 @@ class ServiceNowOntology:
         # === ITSM MODULES ===
         self._add_node(OntologyNode("itsm", "ITSM", "product",
             aliases=["IT Service Management", "ITSM", "IT Service"],
-            plugin="com.snc.itsm", layer="application"))
+            plugin="com.snc.itsm", layer="application", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("incident", "Incident Management", "module",
             aliases=["Incident", "Incident Management"],
             tables=["incident", "incident_task"],
-            plugin="com.snc.incident", layer="application"))
+            plugin="com.snc.incident", layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("problem", "Problem Management", "module",
             aliases=["Problem", "Problem Management"],
             tables=["problem", "problem_task"],
-            plugin="com.snc.problem", layer="application"))
+            plugin="com.snc.problem", layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("change", "Change Management", "module",
             aliases=["Change", "Change Management", "Change Request"],
             tables=["change_request", "change_task"],
-            plugin="com.snc.change_management", layer="application"))
+            plugin="com.snc.change_management", layer="application", it4it_streams=["R2D"]))
         self._add_node(OntologyNode("service_catalog", "Service Catalog", "module",
             aliases=["Service Catalog", "Catalog", "Request Management"],
             tables=["sc_catalog", "sc_cat_item", "sc_request", "sc_req_item", "sc_task"],
-            plugin="com.glideapp.servicecatalog", layer="application"))
+            plugin="com.glideapp.servicecatalog", layer="application", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("asset", "Asset Management", "module",
             aliases=["Asset", "Asset Management", "IT Asset Management", "ITAM", "HAM", "SAM"],
             tables=["alm_asset", "alm_hardware", "alm_license"],
-            plugin="com.snc.asset_management", layer="application"))
+            plugin="com.snc.asset_management", layer="application", it4it_streams=["R2D", "D2C"]))
         
         # === CSM MODULES ===
         self._add_node(OntologyNode("csm", "CSM", "product",
             aliases=["Customer Service Management", "CSM", "Customer Service"],
-            plugin="com.sn_customerservice", layer="application"))
+            plugin="com.sn_customerservice", layer="application", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("case_mgmt", "Case Management", "module",
             aliases=["Case Management", "Case", "CSM Case"],
             tables=["sn_customerservice_case", "sn_customerservice_task"],
-            plugin="com.sn_customerservice", layer="application"))
+            plugin="com.sn_customerservice", layer="application", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("customer_accounts", "Customer Accounts", "module",
             aliases=["Customer Accounts", "CSM Accounts"],
             tables=["customer_account", "customer_contact", "csm_consumer"],
-            plugin="com.sn_customerservice", layer="application"))
+            plugin="com.sn_customerservice", layer="application", it4it_streams=["R2F"]))
         
         # === HRSD MODULES ===
         self._add_node(OntologyNode("hrsd", "HR Service Delivery", "product",
             aliases=["HRSD", "HR Service Delivery", "HR", "Human Resources"],
-            plugin="com.sn_hr_core", layer="application"))
+            plugin="com.sn_hr_core", layer="application", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("hr_case", "HR Case Management", "module",
             aliases=["HR Case", "HR Case Management"],
             tables=["sn_hr_core_case", "sn_hr_core_task"],
-            plugin="com.sn_hr_core", layer="application"))
+            plugin="com.sn_hr_core", layer="application", it4it_streams=["R2F"]))
         
         # === ITOM MODULES ===
         self._add_node(OntologyNode("itom", "ITOM", "product",
             aliases=["IT Operations Management", "ITOM"],
-            layer="application"))
+            layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("discovery", "Discovery", "module",
             aliases=["Discovery", "Network Discovery"],
             tables=["discovery_status", "sa_m_pattern"],
-            plugin="com.snc.discovery", layer="application"))
+            plugin="com.snc.discovery", layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("service_mapping", "Service Mapping", "module",
             aliases=["Service Mapping"],
             tables=["svc_ci_assoc"],
-            plugin="com.snc.service_mapping", layer="application"))
+            plugin="com.snc.service_mapping", layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("event_mgmt", "Event Management", "module",
             aliases=["Event Management", "Event"],
             tables=["em_event", "em_alert"],
-            plugin="com.glide.itom.em", layer="application"))
+            plugin="com.glide.itom.em", layer="application", it4it_streams=["D2C"]))
         
         # === SECOPS ===
         self._add_node(OntologyNode("secops", "Security Operations", "product",
             aliases=["SecOps", "Security Operations"],
-            layer="application"))
+            layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("sec_incident", "Security Incident Response", "module",
             aliases=["Security Incident", "SIR"],
             tables=["sn_si_incident", "sn_si_task"],
-            plugin="com.snc.sec_inc_response", layer="application"))
+            plugin="com.snc.sec_inc_response", layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("vuln_response", "Vulnerability Response", "module",
             aliases=["Vulnerability Response", "VR"],
             tables=["sn_vul_vulnerability", "sn_vul_entry"],
-            plugin="com.snc.vul_response", layer="application"))
+            plugin="com.snc.vul_response", layer="application", it4it_streams=["D2C"]))
         
         # === GRC ===
         self._add_node(OntologyNode("grc", "GRC", "product",
             aliases=["Governance Risk Compliance", "GRC", "Risk Management",
                      "Integrated Risk Management", "IRM"],
-            layer="application"))
+            layer="application", it4it_streams=["S2P"]))
         self._add_node(OntologyNode("policy_compliance", "Policy and Compliance", "module",
             aliases=["Policy", "Compliance"],
             tables=["sn_compliance_policy", "sn_compliance_policy_statement"],
-            plugin="com.sn_compliance", layer="application"))
+            plugin="com.sn_compliance", layer="application", it4it_streams=["S2P"]))
         self._add_node(OntologyNode("risk_mgmt", "Risk Management", "module",
             aliases=["Risk"],
             tables=["sn_risk_risk", "sn_risk_definition"],
-            plugin="com.sn_risk", layer="application"))
+            plugin="com.sn_risk", layer="application", it4it_streams=["S2P"]))
         
         # === SPM / ITBM ===
         self._add_node(OntologyNode("spm", "Strategic Portfolio Management", "product",
             aliases=["SPM", "ITBM", "IT Business Management", "Portfolio Management"],
-            layer="application"))
+            layer="application", it4it_streams=["S2P"]))
         self._add_node(OntologyNode("ppm", "Project Portfolio Management", "module",
             aliases=["PPM", "Project Management"],
             tables=["pm_project", "pm_portfolio", "pm_project_task"],
-            plugin="com.snc.project_management", layer="application"))
+            plugin="com.snc.project_management", layer="application", it4it_streams=["S2P"]))
         
         # === ORCHESTRATION LAYER ===
         self._add_node(OntologyNode("integration_hub", "Integration Hub", "orchestration",
             aliases=["Integration Hub", "IntegrationHub", "Spokes"],
             tables=["sys_hub_flow", "sys_hub_action_type_definition"],
-            plugin="com.glide.hub.integration_hub", layer="orchestration"))
+            plugin="com.glide.hub.integration_hub", layer="orchestration", it4it_streams=["R2D", "R2F", "D2C"]))
         self._add_node(OntologyNode("flow_designer", "Flow Designer", "orchestration",
             aliases=["Flow Designer", "Flows", "Subflows"],
             tables=["sys_hub_flow"],
-            plugin="com.glide.hub.flow_designer", layer="orchestration"))
+            plugin="com.glide.hub.flow_designer", layer="orchestration", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("workflow", "Workflow Engine", "orchestration",
             aliases=["Workflow", "Workflow Engine", "Legacy Workflow"],
             tables=["wf_workflow", "wf_workflow_version", "wf_activity"],
-            layer="orchestration"))
+            layer="orchestration", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("virtual_agent", "Virtual Agent", "orchestration",
             aliases=["Virtual Agent", "VA", "Chatbot"],
-            plugin="com.glide.cs.chatbot", layer="orchestration"))
+            plugin="com.glide.cs.chatbot", layer="orchestration", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("notifications", "Notifications", "orchestration",
             aliases=["Notifications", "Email", "Push Notifications"],
             tables=["sysevent_email_action", "sys_email"],
-            layer="orchestration"))
+            layer="orchestration", it4it_streams=["R2F", "D2C"]))
         
         # === UI LAYER ===
         self._add_node(OntologyNode("service_portal", "Service Portal", "ui",
             aliases=["Service Portal", "Employee Portal", "Internal Portal", "SP"],
             tables=["sp_portal", "sp_page", "sp_widget"],
-            plugin="com.glide.service-portal", layer="ui"))
+            plugin="com.glide.service-portal", layer="ui", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("customer_portal", "Customer Portal", "ui",
             aliases=["Customer Portal", "Customer Service Portal", "Public Portal", "CSP"],
             tables=["sp_portal"],
-            plugin="com.sn_customerservice", layer="ui"))
+            plugin="com.sn_customerservice", layer="ui", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("employee_center", "Employee Center", "ui",
             aliases=["Employee Center", "EC"],
-            plugin="com.sn_employee_center", layer="ui"))
+            plugin="com.sn_employee_center", layer="ui", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("now_mobile", "Now Mobile", "ui",
             aliases=["Now Mobile", "Mobile", "Mobile App"],
-            layer="ui"))
+            layer="ui", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("workspace", "Agent Workspace", "ui",
             aliases=["Agent Workspace", "Workspace", "CSM Workspace", "ITSM Workspace"],
-            layer="ui"))
+            layer="ui", it4it_streams=["R2F", "D2C"]))
         
         # === EXTERNAL ===
         self._add_node(OntologyNode("external", "External Systems", "external",
