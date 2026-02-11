@@ -4,28 +4,46 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.4.3 (Documentation + Frontend) - February 2026
+
+**README Overhaul:**
+- ✅ New "End-to-End Pipeline" section with Mermaid flowchart and detail table showing all 4 processing steps
+- ✅ New "Architecture Intelligence Stack" with Mermaid pie chart showing quality contribution breakdown (Ontology 30%, Validator 25%, Prompt 20%, Syntax Fix 10%, LLM 10%, Instance 5%)
+- ✅ Replaced all ASCII art diagrams with native Mermaid (renders cleanly on GitHub)
+- ✅ Added Knowledge Sources & Acknowledgments section (currently commented out pending author approval)
+- ✅ Updated Roadmap with planned Integration Pattern Validation and Expanded Ontology items (commented out pending approval)
+- ✅ Removed all em dashes for cleaner formatting
+- ✅ Version headers reformatted with pipe separators
+
+**Frontend (App.js):**
+- ✅ Expanded footer with "Project Virgil" branding
+- ✅ Author credits with LinkedIn links (Leo Francia, Robert Ninness)
+- ✅ Knowledge Sources credits prepared but commented out pending approval from Ian Leu and Jochen Geist
+
+---
+
 ## v1.4.2 (Backend + Frontend) - February 2026
 
 **Dual Document Store:**
-- ✅ **ServiceNow Assets Store**: Separate ChromaDB collection for platform reference material — architecture diagrams, best practice guides, capability matrices. Shared across engagements, loaded once.
-- ✅ **Customer Documents Store**: Separate ChromaDB collection for engagement-specific materials — RFPs, SOWs, pricing sheets, technical specs. Changes per customer.
+- ✅ **ServiceNow Assets Store**: Separate ChromaDB collection for platform reference material. Architecture diagrams, best practice guides, capability matrices. Shared across engagements, loaded once.
+- ✅ **Customer Documents Store**: Separate ChromaDB collection for engagement-specific materials. RFPs, SOWs, pricing sheets, technical specs. Changes per customer.
 - ✅ Both stores searched during analysis with source tagging (`[ServiceNow Reference]` vs `[Customer Document]`)
 - ✅ `/api/upload` accepts `store` form field (`servicenow_assets` or `customer_documents`)
 - ✅ `/api/documents` accepts `?store=` query param for filtering
 - ✅ Tabbed frontend UI with purple (SN Assets) and blue (Customer Docs) themes, per-store dropzone and file list
-- ✅ Backward compatible — existing documents default to `customer_documents` store
+- ✅ Backward compatible: existing documents default to `customer_documents` store
 
 ---
 
 ## v1.4.1 (Backend + Frontend) - February 2026
 
 **REST API Only Connection Mode:**
-- ✅ **REST API Only**: No JDBC driver, no Java, no RaptorDB required — works with any ServiceNow instance using standard REST Table API
+- ✅ **REST API Only**: No JDBC driver, no Java, no RaptorDB required. Works with any ServiceNow instance using standard REST Table API
 - ✅ **REST API + JDBC**: Full access mode for customers with RaptorDB Pro and JDBC SQL API enabled
 - ✅ `ConnectionConfig` accepts `connection_mode`: `rest_only` or `rest_and_jdbc`
 - ✅ REST-only path creates `SNUtilsService` for instance data + lightweight connector stub for backward compatibility
 - ✅ JDBC+REST path creates full `ServiceNowConnector` + `SNUtilsService` enrichment
-- ✅ `/api/analyze` builds `servicenow_data` based on connection mode — REST-only uses SN Utils for apps/capabilities
+- ✅ `/api/analyze` builds `servicenow_data` based on connection mode. REST-only uses SN Utils for apps/capabilities
 - ✅ `/api/connection/status` and `/api/servicenow/instance-summary` return `connection_mode`
 - ✅ Frontend: Connection mode toggle in Setup Wizard and Connection Panel (Wifi icon = REST Only, Server icon = REST+JDBC)
 - ✅ Default: REST API Only (lowest barrier to entry)
@@ -36,12 +54,12 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 ## v1.4.0 (Backend + Frontend) - February 2026
 
 **Diagram Pipeline Overhaul:**
-- ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) as first pipeline stage — demonstrates raw output quality without ontology, hard limits, or vocabulary enforcement
+- ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) as first pipeline stage. Demonstrates raw output quality without ontology, hard limits, or vocabulary enforcement
 - ✅ **Query-Aware Subgraph**: `get_relevant_subgraph()` extracts ontology nodes/edges relevant to the user query with 1-hop expansion, shown in pipeline with color-coded layer badges
 - ✅ **Label Replacement Mapping**: 32 vague→standard label rules (e.g., leverages→references, manages→depends on, hosts→runs on, triggers→creates) displayed as a visible mapping grid in the pipeline
 - ✅ **Reference Example Diagram**: Auto-generated from the query-relevant ontology subgraph, renderable directly in the constraints panel
 - ✅ **Expanded Blocked Labels**: From 9 to 32 rules — added handles, triggers, sends to, links to, powered by, drives, facilitates, enables, orchestrates, maintains, governs, oversees, etc.
-- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated on `LLMService` — stage 4 always crashed silently, showing a duplicate of stage 3. Now properly imported and initialized.
+- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated on `LLMService`. Stage 4 always crashed silently, showing a duplicate of stage 3. Now properly imported and initialized.
 - ✅ **Validator Always Visible**: Ontology Validator stage now always appears in pipeline even when validation throws an exception
 - ✅ **Clean Validator Message**: Shows "Ontology rules already satisfied — prompt constraints prevented issues pre-generation" when no corrections needed
 
@@ -58,11 +76,11 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 | # | Stage | Purpose |
 |---|-------|---------|
-| 0 | Baseline (red) | Raw LLM output — no rules, no limits, no vocabulary |
+| 0 | Baseline (red) | Raw LLM output with no rules, no limits, no vocabulary |
 | 1 | Ontology Constraints (purple) | Hard limits, allowed labels, 32 replacement rules, subgraph, reference diagram |
 | 2 | LLM Output (blue) | Guided LLM response with all constraints applied |
 | 3 | Syntax Sanitizer (amber) | Mermaid syntax auto-fix (special chars, arrow format, node IDs) |
-| 4 | Ontology Validator (green) | Post-generation enforcement — removes invalid arrows, normalizes labels |
+| 4 | Ontology Validator (green) | Post-generation enforcement. Removes invalid arrows, normalizes labels |
 
 ---
 
