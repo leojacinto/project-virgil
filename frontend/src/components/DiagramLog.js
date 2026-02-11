@@ -264,13 +264,23 @@ function DiagramLog({ pipeline }) {
               <Network className="h-3.5 w-3.5 inline mr-1" />
               Query-Relevant Subgraph ({constraints.query_relevant_subgraph.total_nodes} nodes, {constraints.query_relevant_subgraph.total_edges} edges)
             </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-[10px] text-slate-500">
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-indigo-200 border border-indigo-300" /><span>UI / Portals</span></span>
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-blue-200 border border-blue-300" /><span>Applications</span></span>
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-amber-200 border border-amber-300" /><span>Orchestration</span></span>
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-orange-200 border border-orange-300" /><span>Platform</span></span>
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-emerald-200 border border-emerald-300" /><span>Foundation / Data</span></span>
+              <span className="flex items-center space-x-1"><span className="inline-block w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /><span>External</span></span>
+            </div>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {constraints.query_relevant_subgraph.nodes?.map((node, i) => (
                 <span key={i} className={`px-2 py-1 rounded text-xs font-medium ${
                   node.layer === 'data' ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' :
-                  node.layer === 'product' ? 'bg-blue-50 border border-blue-200 text-blue-700' :
+                  node.layer === 'application' ? 'bg-blue-50 border border-blue-200 text-blue-700' :
                   node.layer === 'ui' ? 'bg-indigo-50 border border-indigo-200 text-indigo-700' :
+                  node.layer === 'orchestration' ? 'bg-amber-50 border border-amber-200 text-amber-700' :
                   node.layer === 'platform' ? 'bg-orange-50 border border-orange-200 text-orange-700' :
+                  node.layer === 'external' ? 'bg-slate-100 border border-slate-300 text-slate-600' :
                   'bg-slate-50 border border-slate-200 text-slate-700'
                 }`}>
                   {node.label}
