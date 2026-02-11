@@ -444,6 +444,33 @@ async def get_diagram(diagram_id: str):
         raise HTTPException(status_code=404, detail="Diagram not found")
     return FileResponse(diagram_path)
 
+@app.post("/api/assess")
+async def assess_instance():
+    """Run Instance Assessment (Nirvana) — deterministic scan + rule evaluation."""
+    from services.instance_scanner import InstanceScanner
+    from services.instance_scanner_rules import ENABLED as RULES_ENABLED, RuleEngine
+
+    if sn_utils_service_instance is None:
+        raise HTTPException(status_code=400, detail="Not connected to a ServiceNow instance")
+
+    try:
+        scanner = InstanceScanner(sn_utils_service_instance)
+        result = scanner.scan()
+        return result
+    except Exception as e:
+        logger.error(f"Instance assessment failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/assess/rules")
+async def get_assessment_rules():
+    """Return the full rule catalog and enabled status (no instance connection needed)."""
+    from services.instance_scanner_rules import RuleEngine
+    engine = RuleEngine()
+    return {
+        "summary": engine.get_rule_summary(),
+        "rules": engine.get_all_rules(),
+    }
+
 @app.get("/api/health")
 async def health_check():
     return {
