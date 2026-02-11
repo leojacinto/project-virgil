@@ -491,21 +491,24 @@ class ServiceNowOntology:
                 if seed in self._nodes:
                     relevant_ids.add(seed)
 
-        # 3. Always include foundational nodes
-        for fid in ["platform", "cmdb", "user_mgmt", "knowledge_base"]:
-            if fid in self._nodes:
-                relevant_ids.add(fid)
-
-        # 4. Expand: add 1-hop neighbours (dependencies + dependants)
+        # 3. Expand outgoing edges only from non-foundational seeds.
+        #    Outgoing = what the seed depends on / runs on / references.
+        #    Skip incoming = prevents "everything that references CMDB" from
+        #    pulling in the entire graph. Skip foundational seeds because
+        #    they connect to almost everything.
+        foundational_ids = {"platform", "cmdb", "user_mgmt", "knowledge_base", "audit", "task"}
+        expansion_seeds = relevant_ids - foundational_ids
         expanded = set(relevant_ids)
-        for nid in relevant_ids:
+        for nid in expansion_seeds:
             for e in self._outgoing.get(nid, []):
                 if e.rel_type != "segregated_from":
                     expanded.add(e.target)
-            for e in self._incoming.get(nid, []):
-                if e.rel_type != "segregated_from":
-                    expanded.add(e.source)
         relevant_ids = expanded
+
+        # 4. Always include foundational nodes
+        for fid in ["platform", "cmdb", "user_mgmt", "knowledge_base"]:
+            if fid in self._nodes:
+                relevant_ids.add(fid)
 
         # 5. Collect relevant edges
         relevant_edges = [
