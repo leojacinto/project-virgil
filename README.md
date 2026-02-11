@@ -86,7 +86,7 @@ You need at least one LLM API key:
 
 4. **(Optional) Download and place ServiceNow JDBC driver:**
    
-   > **Note:** JDBC is only needed if you select **REST API + JDBC** mode during setup. If you use **REST API Only** mode (the default), skip this step entirely — no JDBC driver or Java required.
+   > **Note:** JDBC is only needed if you select **REST API + JDBC** mode during setup. If you use **REST API Only** mode (the default), skip this step entirely. No JDBC driver or Java required.
    
    Download the driver from:
    - Your ServiceNow instance's JDBC driver download page
@@ -121,31 +121,31 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release — v1.4.2 (February 2026)
+## 📦 Latest Release: v1.4.2 (February 2026)
 
-### v1.4.2 — Dual Document Store
+### v1.4.2 | Dual Document Store
 
-- ✅ **ServiceNow Assets Store** (purple): Reference architectures, best practice guides, capability matrices — shared across all engagements
-- ✅ **Customer Documents Store** (blue): RFPs, SOWs, pricing sheets, technical specs — unique per engagement
+- ✅ **ServiceNow Assets Store** (purple): Reference architectures, best practice guides, capability matrices. Shared across all engagements
+- ✅ **Customer Documents Store** (blue): RFPs, SOWs, pricing sheets, technical specs. Unique per engagement
 - ✅ Both stores searched during analysis with results tagged by source (`[ServiceNow Reference]` vs `[Customer Document]`)
 - ✅ Tabbed UI with per-store upload, file list, and document counts
-- ✅ Backward compatible — existing documents default to Customer Documents store
+- ✅ Backward compatible: existing documents default to Customer Documents store
 
-### v1.4.1 — REST API Only Connection Mode
+### v1.4.1 | REST API Only Connection Mode
 
-- ✅ **REST API Only**: No JDBC driver or Java required — works with any ServiceNow instance
+- ✅ **REST API Only**: No JDBC driver or Java required. Works with any ServiceNow instance
 - ✅ **REST API + JDBC**: Full access with RaptorDB for customers with JDBC SQL API enabled
 - ✅ Connection mode toggle in Setup Wizard and Connection Panel (default: REST API Only)
 - ✅ JDBC path field hidden when REST-only selected
-- ✅ Backend gracefully handles both modes — analysis works identically, instance context is slightly thinner in REST-only mode
+- ✅ Backend gracefully handles both modes. Analysis works identically; instance context is slightly thinner in REST-only mode
 
-### v1.4.0 — Diagram Pipeline Overhaul
+### v1.4.0 | Diagram Pipeline Overhaul
 
 - ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) shows raw output quality as a comparison baseline
 - ✅ **Query-Aware Subgraph**: Ontology nodes/edges relevant to the query extracted with 1-hop expansion
 - ✅ **Label Replacement Mapping**: 32 vague→standard label rules visible in pipeline
 - ✅ **Reference Example Diagram**: Auto-generated from query-relevant ontology subgraph
-- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated — now properly initialized
+- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated. Now properly initialized
 - ✅ **Frontend Rewrite**: DiagramLog shows all 5 pipeline stages with color-coded themes
 
 **Docker Hub Images:**
@@ -176,13 +176,13 @@ graph TD
 | Step | What Happens |
 |------|-------------|
 | **User Query** | Natural language request, e.g. *"CSM + ITSM architecture with customer portal"* |
-| **Data Gathering** | Three parallel sources: **Instance Data** (REST API or JDBC — apps, tables, plugins), **Document Store** (dual RAG — SN Assets + Customer Docs, top-5 chunks), **Web Search** (optional external context) |
+| **Data Gathering** | Three parallel sources: **Instance Data** (REST API or JDBC: apps, tables, plugins), **Document Store** (dual RAG across SN Assets + Customer Docs, top-5 chunks), **Web Search** (optional external context) |
 | **Pre-Processing** | Ontology constraints: query type detection, relevant subgraph with 1-hop expansion, allowed labels + 32 replacement rules, anti-patterns, reference diagram, hard limits (15 arrows, 10 nodes, 4 subgraphs) |
-| **LLM Generation** | Two calls: **Baseline** (no constraints, comparison only) and **Guided** (all constraints applied — produces diagram + analysis text) |
+| **LLM Generation** | Two calls: **Baseline** (no constraints, comparison only) and **Guided** (all constraints applied, produces diagram + analysis text) |
 | **Post-Processing** | **Syntax Sanitizer** (character cleanup, format correction) then **Ontology Validator** (removes invalid arrows, replaces vague labels, prunes excess connections, detects circular deps) |
 | **Final Output** | Corrected Mermaid diagram, analysis + recommendations, gap analysis, full pipeline log |
 
-> **Key insight:** The diagram is ~90% shaped by the ontology, validator, and hard limits. The LLM does ~10% of the diagram quality work. The analysis text and recommendations, however, are ~90% LLM-driven — enriched by instance data and documents but not validated post-generation.
+> **Key insight:** The diagram is ~90% shaped by the ontology, validator, and hard limits. The LLM does ~10% of the diagram quality work. The analysis text and recommendations, however, are ~90% LLM-driven, enriched by instance data and documents but not validated post-generation.
 
 ### Architecture Intelligence Stack
 
@@ -201,11 +201,11 @@ pie title Diagram Quality Contribution
 | Layer | Weight | What It Does |
 |-------|--------|-------------|
 | **ServiceNow Ontology** | 30% | Graph-based knowledge model (40 nodes, 65 typed edges), query-aware subgraph extraction, table hierarchy, architecture layers, anti-patterns, reference example diagrams |
-| **Validator Enforcement** | 25% | Post-generation correction — removes invalid arrows, 32 label replacements, prunes excess arrows by priority, detects bidirectional and circular dependencies |
-| **Prompt Constraints** | 20% | Hard limits injected into LLM prompt — max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node, label whitelist, orchestration layering rules |
-| **Mermaid Syntax Fix** | 10% | Regex-based character cleanup, strips code blocks, fixes subgraph prefixes — blocks 100% of rendering failures |
-| **LLM Generation** | 10% | Gemini 2.5 Flash, GPT-4, or Claude — baseline comparison, constrained generation, analysis text and recommendations |
-| **Instance Context** | 5% | REST API apps and capabilities, JDBC tables, plugins, usage stats — gap analysis fed into LLM prompt |
+| **Validator Enforcement** | 25% | Post-generation correction that removes invalid arrows, applies 32 label replacements, prunes excess arrows by priority, and detects bidirectional and circular dependencies |
+| **Prompt Constraints** | 20% | Hard limits injected into LLM prompt: max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node, label whitelist, orchestration layering rules |
+| **Mermaid Syntax Fix** | 10% | Regex-based character cleanup, strips code blocks, fixes subgraph prefixes. Blocks 100% of rendering failures |
+| **LLM Generation** | 10% | Gemini 2.5 Flash, GPT-4, or Claude. Baseline comparison, constrained generation, analysis text and recommendations |
+| **Instance Context** | 5% | REST API apps and capabilities, JDBC tables, plugins, usage stats. Gap analysis fed into LLM prompt |
 
 The core design principle: **LLMs need guardrails, not just prompts.** Left unconstrained, LLMs generate architecturally incorrect diagrams. Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components, vague labels like "leverages" that encode no real meaning. Project Virgil constrains the LLM before generation (ontology rules + hard limits in prompt), corrects it after generation (validator removes invalid arrows, replaces vague labels, prunes excess connections), and sanitizes the output for rendering. The LLM does ~10% of the quality work. The guardrails do the rest.
 
@@ -390,7 +390,7 @@ If you prefer to run without Docker, follow these steps:
 
 - Python 3.9.6 (tested and verified working version)
 - Node.js 16+
-- ServiceNow instance (any edition — RaptorDB not required)
+- ServiceNow instance (any edition, RaptorDB not required)
 - OpenAI API key, Anthropic API key, or Google Gemini API key
 - **(Optional, for JDBC mode only):** Java (OpenJDK 17+) + ServiceNow JDBC driver
   ```bash
@@ -682,7 +682,7 @@ Project Virgil's ontology and validation rules are built on curated, publicly do
 
 ### ServiceNow Integration Pattern Decision Tree
 - **Author:** [Jochen Geist](https://www.linkedin.com/in/jochengeist)
-- **Reference:** [Integration Design — How to choose the best pattern to integrate ServiceNow with other systems](https://www.servicenow.com/community/architect-blog/integration-design-how-to-choose-the-best-pattern-to-integrate/ba-p/2874114)
+- **Reference:** [Integration Design: How to choose the best pattern to integrate ServiceNow with other systems](https://www.servicenow.com/community/architect-blog/integration-design-how-to-choose-the-best-pattern-to-integrate/ba-p/2874114)
 - Deterministic decision tree (v3.1) covering 6 integration categories: Web Services, Data Persistence, Event-Driven Architecture, AI Agents (MCP/A2A), UI-Level Integrations, and Fallback Solutions
 - Provides pattern selection rules: when to use spokes vs custom REST, MID Server requirements, Import Sets vs real-time, Table API vs Scripted REST
 - Color-coded recommendation strength: preferred (green), acceptable (orange), fallback/last resort (red)
