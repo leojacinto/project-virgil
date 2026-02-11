@@ -164,90 +164,36 @@ Project Virgil is an AI-powered ServiceNow architecture advisor that combines mu
 
 When a user submits a query, the system executes the following pipeline:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       USER QUERY                             │
-│  "Show me a CSM + ITSM architecture with customer portal"   │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│            STEP 1: DATA GATHERING (Parallel)                 │
-│                                                              │
-│  ┌─────────────────┐  ┌──────────────┐  ┌───────────────┐  │
-│  │ Instance Data    │  │ Document     │  │ Web Search    │  │
-│  │ (REST or JDBC)   │  │ Store (RAG)  │  │ (optional)    │  │
-│  └────────┬────────┘  └──────┬───────┘  └──────┬────────┘  │
-│           │                  │                  │           │
-│           ▼                  ▼                  ▼           │
-│  apps, capabilities    top-5 chunks      external context  │
-│  tables, plugins       source-tagged                       │
-│  usage stats           [SN Ref] or                         │
-│                        [Customer Doc]                       │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│       STEP 2: PRE-PROCESSING (Ontology Constraints)          │
-│                                                              │
-│  Query → servicenow_ontology.py                              │
-│    ├─ Detect query type (ITSM, CSM, compliance, etc.)       │
-│    ├─ Extract relevant subgraph (1-hop expansion)           │
-│    ├─ Get allowed labels for this query                     │
-│    ├─ Get 32 label replacement rules                        │
-│    ├─ Build reference example diagram from subgraph         │
-│    ├─ Get anti-patterns (Portal→CMDB, KB→Incident, etc.)   │
-│    └─ Hard limits: max 15 arrows, 10 nodes, 4 subgraphs    │
-│                                                              │
-│  Output: constraints dict injected into LLM prompt          │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│            STEP 3: LLM GENERATION (Two Calls)                │
-│                                                              │
-│  Call A: BASELINE (no constraints)                           │
-│    Prompt = query + instance data + docs                    │
-│    No ontology rules, no limits, no vocabulary              │
-│    → Raw diagram (for comparison only, not used)            │
-│                                                              │
-│  Call B: GUIDED (with constraints)                           │
-│    Prompt = query + instance data + docs                    │
-│            + ontology rules + hard limits                   │
-│            + label whitelist + anti-patterns                │
-│            + reference diagram + replacement rules          │
-│    → Constrained diagram + analysis text                    │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│         STEP 4: POST-PROCESSING (Two Stages)                 │
-│                                                              │
-│  Stage A: Syntax Sanitizer                                   │
-│    ├─ Strip markdown code blocks                            │
-│    ├─ Remove & / () from labels                             │
-│    ├─ Fix numbered subgraph prefixes                        │
-│    ├─ Ensure "graph TD" header                              │
-│    └─ Output: valid Mermaid syntax (always renderable)      │
-│                                                              │
-│  Stage B: Ontology Validator                                 │
-│    ├─ Parse node ID→label mappings                          │
-│    ├─ Check each arrow against ontology anti-patterns       │
-│    ├─ REMOVE invalid arrows (e.g., Portal→CMDB)            │
-│    ├─ Replace vague labels (leverages→references)           │
-│    ├─ Prune excess arrows by priority if >15               │
-│    ├─ Detect bidirectional/circular dependencies            │
-│    └─ Output: corrected diagram + validation report         │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      FINAL OUTPUT                            │
-│  ├─ Corrected Mermaid diagram (rendered in browser)         │
-│  ├─ Analysis text + recommendations (LLM-generated)         │
-│  ├─ Gap analysis (installed vs needed)                      │
-│  └─ Pipeline log (all 5 stages visible in Diagram Pipeline) │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    Q["USER QUERY"] --> DG
+
+    subgraph DG["Step 1: Data Gathering — Parallel"]
+        ID["Instance Data<br/>REST API or JDBC<br/>apps, capabilities, tables, plugins"]
+        DS["Document Store<br/>Dual RAG search<br/>SN Assets + Customer Docs"]
+        WS["Web Search<br/>optional external context"]
+    end
+
+    DG --> PP
+
+    subgraph PP["Step 2: Pre-Processing — Ontology Constraints"]
+        OC["Query type detection<br/>Relevant subgraph with 1-hop expansion<br/>Allowed labels + 32 replacement rules<br/>Anti-patterns + reference diagram<br/>Hard limits: 15 arrows, 10 nodes, 4 subgraphs"]
+    end
+
+    PP --> GEN
+
+    subgraph GEN["Step 3: LLM Generation — Two Calls"]
+        BA["BASELINE<br/>No constraints — comparison only"]
+        GU["GUIDED<br/>All constraints applied"]
+    end
+
+    GEN --> POST
+
+    subgraph POST["Step 4: Post-Processing"]
+        SS["Syntax Sanitizer<br/>Character cleanup<br/>Format correction"] --> OV["Ontology Validator<br/>Remove invalid arrows<br/>Replace vague labels<br/>Prune excess connections"]
+    end
+
+    POST --> OUT["FINAL OUTPUT<br/>Corrected diagram + analysis<br/>Gap analysis + pipeline log"]
 ```
 
 > **Key insight:** The diagram is ~90% shaped by the ontology, validator, and hard limits. The LLM does ~10% of the diagram quality work. The analysis text and recommendations, however, are ~90% LLM-driven — enriched by instance data and documents but not validated post-generation.
@@ -256,52 +202,24 @@ When a user submits a query, the system executes the following pipeline:
 
 The system uses a constraint-based architecture where the LLM generates content within strict boundaries enforced by the ontology, constrained by hard prompt limits, and corrected post-generation by the validator.
 
+```mermaid
+pie title Diagram Quality Contribution
+    "ServiceNow Ontology" : 30
+    "Validator Enforcement" : 25
+    "Prompt Constraints" : 20
+    "Mermaid Syntax Fix" : 10
+    "LLM Generation" : 10
+    "Instance Context" : 5
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. ServiceNow Ontology (30%)                                │
-│    ├─ Graph-based knowledge model (40 nodes, 65 typed edges)│
-│    ├─ Query-aware subgraph extraction (1-hop expansion)     │
-│    ├─ Table hierarchy: incident/case/change extend task     │
-│    ├─ Architecture layers: users → ui → app → platform → data│
-│    ├─ Anti-patterns: Portal→CMDB, KB→Incident, bidirectional│
-│    ├─ Reference example diagram from query-relevant subgraph│
-│    └─ Graph traversal: what_depends_on(), get_children()    │
-├─────────────────────────────────────────────────────────────┤
-│ 2. Validator Enforcement (25%)                              │
-│    ├─ Post-generation correction (not just logging)         │
-│    ├─ 32 label replacements (leverages→references, etc.)    │
-│    ├─ REMOVES invalid arrows from diagram                   │
-│    ├─ Prunes excess arrows by priority (keeps creates,      │
-│    │  runs on, references; drops manages, connects, uses)   │
-│    ├─ Bidirectional arrow detection                         │
-│    └─ Circular dependency detection                         │
-├─────────────────────────────────────────────────────────────┤
-│ 3. Prompt Constraints (20%)                                 │
-│    ├─ Hard limits: max 15 arrows, max 10 nodes              │
-│    ├─ Max 4 subgraphs, max 3 outgoing per node              │
-│    ├─ Label replacement mapping injected into prompt         │
-│    ├─ Orchestration inside Application layer                │
-│    └─ Ontology rules + query subgraph in prompt             │
-├─────────────────────────────────────────────────────────────┤
-│ 4. Mermaid Syntax Fix (10%)                                 │
-│    ├─ Regex-based character cleanup (&, /, (), quotes)      │
-│    ├─ Strips markdown code blocks                           │
-│    ├─ Fixes numbered subgraph prefixes                      │
-│    └─ Blocks 100% of rendering failures                     │
-├─────────────────────────────────────────────────────────────┤
-│ 5. LLM Generation (10%)                                     │
-│    ├─ Gemini 2.5 Flash / GPT-4 / Claude                     │
-│    ├─ Baseline comparison: unconstrained vs guided output   │
-│    ├─ Natural language analysis and recommendations         │
-│    └─ Constrained by all other layers                       │
-├─────────────────────────────────────────────────────────────┤
-│ 6. Instance Context (5% currently, 15-20% potential)        │
-│    ├─ SN Utils REST API: Applications, capabilities         │
-│    ├─ JDBC: Relationships, plugins, usage stats             │
-│    ├─ Gap analysis: What's installed vs. needed             │
-│    └─ Fed into LLM prompt for instance-aware analysis       │
-└─────────────────────────────────────────────────────────────┘
-```
+
+| Layer | Weight | What It Does |
+|-------|--------|-------------|
+| **ServiceNow Ontology** | 30% | Graph-based knowledge model (40 nodes, 65 typed edges), query-aware subgraph extraction, table hierarchy, architecture layers, anti-patterns, reference example diagrams |
+| **Validator Enforcement** | 25% | Post-generation correction — removes invalid arrows, 32 label replacements, prunes excess arrows by priority, detects bidirectional and circular dependencies |
+| **Prompt Constraints** | 20% | Hard limits injected into LLM prompt — max 15 arrows, 10 nodes, 4 subgraphs, 3 outgoing per node, label whitelist, orchestration layering rules |
+| **Mermaid Syntax Fix** | 10% | Regex-based character cleanup, strips code blocks, fixes subgraph prefixes — blocks 100% of rendering failures |
+| **LLM Generation** | 10% | Gemini 2.5 Flash, GPT-4, or Claude — baseline comparison, constrained generation, analysis text and recommendations |
+| **Instance Context** | 5% | REST API apps and capabilities, JDBC tables, plugins, usage stats — gap analysis fed into LLM prompt |
 
 The core design principle: **LLMs need guardrails, not just prompts.** Left unconstrained, LLMs generate architecturally incorrect diagrams. Portal accessing CMDB directly, Knowledge Base depending on Incident, circular dependencies in foundational components, vague labels like "leverages" that encode no real meaning. Project Virgil constrains the LLM before generation (ontology rules + hard limits in prompt), corrects it after generation (validator removes invalid arrows, replaces vague labels, prunes excess connections), and sanitizes the output for rendering. The LLM does ~10% of the quality work. The guardrails do the rest.
 
