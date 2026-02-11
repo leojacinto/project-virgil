@@ -166,35 +166,21 @@ When a user submits a query, the system executes the following pipeline:
 
 ```mermaid
 graph TD
-    Q["USER QUERY"] --> DG
-
-    subgraph DG["Step 1: Data Gathering — Parallel"]
-        ID["Instance Data<br/>REST API or JDBC<br/>apps, capabilities, tables, plugins"]
-        DS["Document Store<br/>Dual RAG search<br/>SN Assets + Customer Docs"]
-        WS["Web Search<br/>optional external context"]
-    end
-
-    DG --> PP
-
-    subgraph PP["Step 2: Pre-Processing — Ontology Constraints"]
-        OC["Query type detection<br/>Relevant subgraph with 1-hop expansion<br/>Allowed labels + 32 replacement rules<br/>Anti-patterns + reference diagram<br/>Hard limits: 15 arrows, 10 nodes, 4 subgraphs"]
-    end
-
-    PP --> GEN
-
-    subgraph GEN["Step 3: LLM Generation — Two Calls"]
-        BA["BASELINE<br/>No constraints — comparison only"]
-        GU["GUIDED<br/>All constraints applied"]
-    end
-
-    GEN --> POST
-
-    subgraph POST["Step 4: Post-Processing"]
-        SS["Syntax Sanitizer<br/>Character cleanup<br/>Format correction"] --> OV["Ontology Validator<br/>Remove invalid arrows<br/>Replace vague labels<br/>Prune excess connections"]
-    end
-
-    POST --> OUT["FINAL OUTPUT<br/>Corrected diagram + analysis<br/>Gap analysis + pipeline log"]
+    A[User Query] --> B[Data Gathering]
+    B --> C[Pre-Processing]
+    C --> D[LLM Generation]
+    D --> E[Post-Processing]
+    E --> F[Final Output]
 ```
+
+| Step | What Happens |
+|------|-------------|
+| **User Query** | Natural language request, e.g. *"CSM + ITSM architecture with customer portal"* |
+| **Data Gathering** | Three parallel sources: **Instance Data** (REST API or JDBC — apps, tables, plugins), **Document Store** (dual RAG — SN Assets + Customer Docs, top-5 chunks), **Web Search** (optional external context) |
+| **Pre-Processing** | Ontology constraints: query type detection, relevant subgraph with 1-hop expansion, allowed labels + 32 replacement rules, anti-patterns, reference diagram, hard limits (15 arrows, 10 nodes, 4 subgraphs) |
+| **LLM Generation** | Two calls: **Baseline** (no constraints, comparison only) and **Guided** (all constraints applied — produces diagram + analysis text) |
+| **Post-Processing** | **Syntax Sanitizer** (character cleanup, format correction) then **Ontology Validator** (removes invalid arrows, replaces vague labels, prunes excess connections, detects circular deps) |
+| **Final Output** | Corrected Mermaid diagram, analysis + recommendations, gap analysis, full pipeline log |
 
 > **Key insight:** The diagram is ~90% shaped by the ontology, validator, and hard limits. The LLM does ~10% of the diagram quality work. The analysis text and recommendations, however, are ~90% LLM-driven — enriched by instance data and documents but not validated post-generation.
 
