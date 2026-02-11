@@ -724,7 +724,7 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 
 ## Authors
 
-- **Leo Francia**
+- **[Leo Francia](https://www.linkedin.com/in/leojmfrancia)**
 - **[Robert Ninness](https://www.linkedin.com/in/rninne)**
 
 ## License
