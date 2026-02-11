@@ -218,12 +218,12 @@ function App() {
               </a>
             </div>
             */}
-            <div className="flex flex-wrap justify-center gap-x-4 text-xs text-slate-400">
-              <span>Built by <a href="https://www.linkedin.com/in/leojmfrancia" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">Leo Francia</a> &</span>
-              <a href="https://www.linkedin.com/in/rninne" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">
-                Robert Ninness
-              </a>
-            </div>
+            <p className="text-xs text-slate-400">
+              Built by{' '}
+              <a href="https://www.linkedin.com/in/leojmfrancia" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">Leo Francia</a>
+              {' & '}
+              <a href="https://www.linkedin.com/in/rninne" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">Robert Ninness</a>
+            </p>
           </div>
         </div>
       </footer>

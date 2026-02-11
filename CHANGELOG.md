@@ -4,6 +4,24 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.4.5 (Backend + Frontend) - February 2026
+
+**Subgraph Extraction Overhaul:**
+- ✅ Fixed subgraph explosion: was returning 35/40 nodes, now returns 6-18 depending on query scope
+- ✅ Outgoing-only expansion from non-foundational seeds (prevents CMDB/Platform from pulling in everything)
+- ✅ Structural-only expansion: follows `depends_on`, `runs_on`, `extends` edges only (not `creates`, `references`)
+- ✅ Full phrase matching with word boundaries (prevents "EC" matching inside "architecture", "customer" matching "Customer Accounts")
+- ✅ Cleaned query patterns: removed generic single-word triggers ("employee", "customer", "case")
+- ✅ Fixed `type_to_seeds` with correct node IDs
+- ✅ Removed overly broad aliases from ontology nodes
+
+**Frontend:**
+- ✅ Color legend added to Query-Relevant Subgraph: UI/Portals, Applications, Orchestration, Platform, Foundation/Data, External
+- ✅ Fixed layer color mapping: `application` (blue), `orchestration` (amber), `external` (slate)
+- ✅ Fixed footer credit spacing ("Built by" names no longer separated by gap)
+
+---
+
 ## v1.4.4 (Backend + Frontend) - February 2026
 
 **Run-Specific Ontology Rules:**

@@ -121,14 +121,18 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.4.4 (February 2026)
+## 📦 Latest Release: v1.4.5 (February 2026)
+
+### v1.4.5 | Subgraph Extraction Overhaul
+
+- ✅ Query-relevant subgraph now returns 6-18 nodes (was 35/40). Structural-only expansion, phrase matching, cleaned patterns
+- ✅ Color legend for architecture layers: UI/Portals, Applications, Orchestration, Platform, Foundation/Data, External
+- ✅ Footer credit spacing fixed
 
 ### v1.4.4 | Run-Specific Ontology Rules
 
-- ✅ Ontology Constraints stage now shows only the rules that fired for this specific run
-- ✅ "Rules Applied to This Run" box: label replacements, removed arrows, anti-patterns, pruning, missing relationships, triggered architectural rules
+- ✅ "Rules Applied to This Run" shows only what fired. "Full Constraint Reference" collapsed into accordion
 - ✅ Green "No corrections needed" when LLM output satisfied all rules
-- ✅ Static reference (all 32 replacement rules, all architectural rules) collapsed into "Full Constraint Reference" accordion
 
 ### v1.4.3 | Documentation Overhaul
 
@@ -152,8 +156,8 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 - ✅ Query-aware subgraph, 32 label replacement rules, reference diagram from ontology
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.4.4`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.4`
+- Backend: `leofrancia08489/project-virgil-backend:v1.4.5`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.5`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
