@@ -84,9 +84,9 @@ You need at least one LLM API key:
    GOOGLE_API_KEY=your_google_api_key_here
    ```
 
-4. **Download and place ServiceNow JDBC driver:**
+4. **(Optional) Download and place ServiceNow JDBC driver:**
    
-   **Important:** The JDBC driver is not included in this repository due to licensing restrictions.
+   > **Note:** JDBC is only needed if you select **REST API + JDBC** mode during setup. If you use **REST API Only** mode (the default), skip this step entirely — no JDBC driver or Java required.
    
    Download the driver from:
    - Your ServiceNow instance's JDBC driver download page
@@ -121,28 +121,36 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release — v1.4.0 (February 2026)
+## 📦 Latest Release — v1.4.2 (February 2026)
 
-**Diagram Pipeline Overhaul** — transparent, multi-stage pipeline with baseline comparison:
+### v1.4.2 — Dual Document Store
+
+- ✅ **ServiceNow Assets Store** (purple): Reference architectures, best practice guides, capability matrices — shared across all engagements
+- ✅ **Customer Documents Store** (blue): RFPs, SOWs, pricing sheets, technical specs — unique per engagement
+- ✅ Both stores searched during analysis with results tagged by source (`[ServiceNow Reference]` vs `[Customer Document]`)
+- ✅ Tabbed UI with per-store upload, file list, and document counts
+- ✅ Backward compatible — existing documents default to Customer Documents store
+
+### v1.4.1 — REST API Only Connection Mode
+
+- ✅ **REST API Only**: No JDBC driver or Java required — works with any ServiceNow instance
+- ✅ **REST API + JDBC**: Full access with RaptorDB for customers with JDBC SQL API enabled
+- ✅ Connection mode toggle in Setup Wizard and Connection Panel (default: REST API Only)
+- ✅ JDBC path field hidden when REST-only selected
+- ✅ Backend gracefully handles both modes — analysis works identically, instance context is slightly thinner in REST-only mode
+
+### v1.4.0 — Diagram Pipeline Overhaul
 
 - ✅ **Baseline Stage**: Unconstrained LLM call (no guardrails) shows raw output quality as a comparison baseline
 - ✅ **Query-Aware Subgraph**: Ontology nodes/edges relevant to the query extracted with 1-hop expansion
-- ✅ **Label Replacement Mapping**: 32 vague→standard label rules visible in pipeline (e.g., leverages→references, hosts→runs on)
+- ✅ **Label Replacement Mapping**: 32 vague→standard label rules visible in pipeline
 - ✅ **Reference Example Diagram**: Auto-generated from query-relevant ontology subgraph
-- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated — stage 4 always crashed silently. Now properly initialized.
-- ✅ **Frontend Rewrite**: DiagramLog shows all 5 pipeline stages with color-coded themes, code/render toggles, and structured constraint data
-
-| # | Stage | Purpose |
-|---|-------|---------|
-| 0 | **Baseline** (red) | Raw LLM output — no rules, no limits, no vocabulary |
-| 1 | **Ontology Constraints** (purple) | Hard limits, allowed labels, 32 replacement rules, subgraph, reference diagram |
-| 2 | **LLM Output** (blue) | Guided LLM response with all constraints applied |
-| 3 | **Syntax Sanitizer** (amber) | Mermaid syntax auto-fix |
-| 4 | **Ontology Validator** (green) | Post-generation enforcement — removes invalid arrows, normalizes labels |
+- ✅ **Validator Fix**: `ArchitectureValidator` was never instantiated — now properly initialized
+- ✅ **Frontend Rewrite**: DiagramLog shows all 5 pipeline stages with color-coded themes
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.4.0`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.0`
+- Backend: `leofrancia08489/project-virgil-backend:v1.4.2`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.2`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -344,9 +352,9 @@ ChatGPT:
 ## Features
 
 - ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
-- ServiceNow RaptorDB Integration: Connect to your ServiceNow instance via JDBC to analyze available tables, installed applications, and components
+- Flexible Connection: REST API Only mode (no JDBC/Java required) or REST API + JDBC for full RaptorDB access
 - SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
-- Document Processing: Upload pricing documents, technical specifications, and reference materials (PDF, DOCX, XLSX, TXT, CSV)
+- Dual Document Store: ServiceNow Assets (shared reference material) + Customer Documents (engagement-specific) with source-tagged RAG retrieval
 - LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
 - Instance-Aware Recommendations: Provides presales-ready gap analysis based on your actual instance configuration
 - Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
@@ -364,7 +372,7 @@ project-virgil/
 │   │   ├── servicenow_connector.py    # RaptorDB JDBC connection
 │   │   ├── sn_utils_service.py        # SN Utils REST API client
 │   │   ├── llm_service.py             # LLM integration + prompt constraints
-│   │   ├── document_processor.py      # Document upload & vector search
+│   │   ├── document_processor.py      # Dual document store (SN Assets + Customer Docs)
 │   │   ├── diagram_generator.py       # Diagram generation
 │   │   └── web_search.py             # Web search integration
 │   ├── main.py             # FastAPI application
@@ -386,13 +394,12 @@ If you prefer to run without Docker, follow these steps:
 
 - Python 3.9.6 (tested and verified working version)
 - Node.js 16+
-- Java (OpenJDK 17+) for ServiceNow JDBC driver
+- ServiceNow instance (any edition — RaptorDB not required)
+- OpenAI API key, Anthropic API key, or Google Gemini API key
+- **(Optional, for JDBC mode only):** Java (OpenJDK 17+) + ServiceNow JDBC driver
   ```bash
   brew install openjdk@17
   ```
-- ServiceNow instance with RaptorDB access
-- OpenAI API key or Anthropic API key
-- ServiceNow JDBC driver (must be downloaded separately - see installation steps)
 
 ### Installation Steps
 

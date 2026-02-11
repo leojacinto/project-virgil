@@ -4,6 +4,35 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.4.2 (Backend + Frontend) - February 2026
+
+**Dual Document Store:**
+- ✅ **ServiceNow Assets Store**: Separate ChromaDB collection for platform reference material — architecture diagrams, best practice guides, capability matrices. Shared across engagements, loaded once.
+- ✅ **Customer Documents Store**: Separate ChromaDB collection for engagement-specific materials — RFPs, SOWs, pricing sheets, technical specs. Changes per customer.
+- ✅ Both stores searched during analysis with source tagging (`[ServiceNow Reference]` vs `[Customer Document]`)
+- ✅ `/api/upload` accepts `store` form field (`servicenow_assets` or `customer_documents`)
+- ✅ `/api/documents` accepts `?store=` query param for filtering
+- ✅ Tabbed frontend UI with purple (SN Assets) and blue (Customer Docs) themes, per-store dropzone and file list
+- ✅ Backward compatible — existing documents default to `customer_documents` store
+
+---
+
+## v1.4.1 (Backend + Frontend) - February 2026
+
+**REST API Only Connection Mode:**
+- ✅ **REST API Only**: No JDBC driver, no Java, no RaptorDB required — works with any ServiceNow instance using standard REST Table API
+- ✅ **REST API + JDBC**: Full access mode for customers with RaptorDB Pro and JDBC SQL API enabled
+- ✅ `ConnectionConfig` accepts `connection_mode`: `rest_only` or `rest_and_jdbc`
+- ✅ REST-only path creates `SNUtilsService` for instance data + lightweight connector stub for backward compatibility
+- ✅ JDBC+REST path creates full `ServiceNowConnector` + `SNUtilsService` enrichment
+- ✅ `/api/analyze` builds `servicenow_data` based on connection mode — REST-only uses SN Utils for apps/capabilities
+- ✅ `/api/connection/status` and `/api/servicenow/instance-summary` return `connection_mode`
+- ✅ Frontend: Connection mode toggle in Setup Wizard and Connection Panel (Wifi icon = REST Only, Server icon = REST+JDBC)
+- ✅ Default: REST API Only (lowest barrier to entry)
+- ✅ JDBC path field hidden when REST-only selected
+
+---
+
 ## v1.4.0 (Backend + Frontend) - February 2026
 
 **Diagram Pipeline Overhaul:**
