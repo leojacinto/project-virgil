@@ -193,6 +193,10 @@ async def get_available_tables():
         raise HTTPException(status_code=400, detail="Not connected to ServiceNow")
     
     try:
+        if connection_mode == 'rest_only' and sn_utils_service_instance:
+            total_count = sn_utils_service_instance.get_record_count('sys_db_object')
+            tables = sn_utils_service_instance.get_tables(limit=200)
+            return {"tables": [t.get('name', '') for t in tables], "count": total_count}
         tables = servicenow_connector.get_available_tables()
         return {"tables": tables, "count": len(tables)}
     except Exception as e:
@@ -215,6 +219,36 @@ async def get_components():
         raise HTTPException(status_code=400, detail="Not connected to ServiceNow")
     
     try:
+        if connection_mode == 'rest_only' and sn_utils_service_instance:
+            sn = sn_utils_service_instance
+            components = {}
+            # Workflows
+            wf_count = sn.get_record_count('wf_workflow', query='active=true')
+            wf_data = sn._make_request(
+                '/api/now/table/wf_workflow',
+                params={'sysparm_query': 'active=true', 'sysparm_fields': 'sys_id,name', 'sysparm_limit': 50}
+            )
+            components['workflows'] = wf_data.get('result', []) if wf_data else []
+            # Business rules
+            br_count = sn.get_record_count('sys_script', query='active=true')
+            br_data = sn._make_request(
+                '/api/now/table/sys_script',
+                params={'sysparm_query': 'active=true', 'sysparm_fields': 'sys_id,name', 'sysparm_limit': 50}
+            )
+            components['business_rules'] = br_data.get('result', []) if br_data else []
+            # Integrations (Flow Designer flows)
+            flow_count = sn.get_record_count('sys_hub_flow', query='active=true')
+            flow_data = sn._make_request(
+                '/api/now/table/sys_hub_flow',
+                params={'sysparm_query': 'active=true', 'sysparm_fields': 'sys_id,name', 'sysparm_limit': 50}
+            )
+            components['integrations'] = flow_data.get('result', []) if flow_data else []
+            components['counts'] = {
+                'workflows': wf_count,
+                'business_rules': br_count,
+                'integrations': flow_count,
+            }
+            return {"components": components}
         components = servicenow_connector.get_components()
         return {"components": components}
     except Exception as e:
@@ -470,6 +504,13 @@ async def get_assessment_rules():
         "summary": engine.get_rule_summary(),
         "rules": engine.get_all_rules(),
     }
+
+@app.get("/api/assess/knowledge-base")
+async def get_assessment_knowledge_base():
+    """Return structured knowledge base summaries for each rule source."""
+    from services.instance_scanner_rules import RuleEngine
+    engine = RuleEngine()
+    return {"sources": engine.get_knowledge_base()}
 
 @app.get("/api/health")
 async def health_check():

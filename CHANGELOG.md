@@ -4,6 +4,46 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.5.0 (Backend + Frontend) - February 2026
+
+**Instance Assessment (Nirvana):**
+- ✅ Deterministic rule engine with 49 rules across 6 categories (no LLM required)
+- ✅ IT4IT v3 Coverage rules (Ian Leu): S2P, R2D, R2F, D2C value stream gap detection
+- ✅ Integration Pattern rules (Jochen Geist): REST vs SOAP, MID Server, Flow Designer vs legacy Workflow
+- ✅ Architectural Health rules: CMDB without Discovery, customer portal anti-pattern, custom table sprawl, Agent Workspace, legacy workflows, domain separation, FedRAMP
+- ✅ Product Adoption Maturity rules (Wave 2): 9 module-pairing checks (Incident+Problem, ITSM+KB, Catalog+Virtual Agent, HRSD+Employee Center, CSM+Portal, Discovery+Service Mapping, CMDB+Asset, SIR+VR, SPM+GRC)
+- ✅ Security Posture rules (Wave 2): CSRF token protection, audit logging configuration, SecOps coverage for sensitive data
+- ✅ Platform Efficiency rules (Wave 2): Shelfware detection (HRSD, CSM, SecOps plugins with zero records), Flow Designer underutilization
+- ✅ `InstanceScanner` builds `InstanceModel` from live instance (plugins, tables, properties, MID servers, CMDB stats, integration flows)
+- ✅ Ontology mapper: maps scanned plugins/tables to 40-node ontology graph for architecture visualization
+- ✅ As-Is diagram: auto-generated Mermaid from active ontology nodes
+- ✅ Recommended diagram: as-is + rule-recommended nodes highlighted
+- ✅ Gap analysis payload: per-stream breakdown with health/gaps/uncovered status, integration, health, security, efficiency sections
+- ✅ Rule Knowledge Base: 6 expandable source sections (Ian Leu, Jochen Geist, Health, Adoption, Security, Efficiency) with principles and focus areas
+- ✅ `ENABLED = False` kill switch (disabled by default pending author approval)
+
+**Backend API:**
+- ✅ `POST /api/assess` - run full instance assessment
+- ✅ `GET /api/assess/rules` - rule catalog and summary (49 rules, 6 categories, 3 severity levels)
+- ✅ `GET /api/assess/knowledge-base` - structured knowledge base for all rule sources
+- ✅ `GET /api/servicenow/tables` - now returns true record count via `X-Total-Count` header
+- ✅ `GET /api/servicenow/components` - now returns true counts per component type
+
+**Frontend (InstanceInfo.js):**
+- ✅ Instance Assessment card with "Run Assessment" button and enabled/disabled state
+- ✅ Tab navigation: Gap Analysis, As-Is Diagram, Recommended Diagram, Findings, Knowledge Base
+- ✅ Gap Analysis: per-stream cards (S2P/R2D/R2F/D2C) with active capabilities, missing capabilities, and findings
+- ✅ Integration, Health, Security (rose), and Efficiency (slate) sections in Gap Analysis
+- ✅ Summary bar with counts for all categories
+- ✅ Mermaid diagram rendering for as-is and recommended architecture
+- ✅ Stat cards use real counts instead of capped array lengths
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.5.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.0`
+
+---
+
 ## v1.4.5 (Backend + Frontend) - February 2026
 
 **Subgraph Extraction Overhaul:**

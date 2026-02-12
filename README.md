@@ -121,43 +121,27 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.4.5 (February 2026)
+## 📦 Latest Release: v1.5.0 (February 2026)
 
-### v1.4.5 | Subgraph Extraction Overhaul
+### v1.5.0 | Instance Assessment (Nirvana)
 
-- ✅ Query-relevant subgraph now returns 6-18 nodes (was 35/40). Structural-only expansion, phrase matching, cleaned patterns
-- ✅ Color legend for architecture layers: UI/Portals, Applications, Orchestration, Platform, Foundation/Data, External
-- ✅ Footer credit spacing fixed
-
-### v1.4.4 | Run-Specific Ontology Rules
-
-- ✅ "Rules Applied to This Run" shows only what fired. "Full Constraint Reference" collapsed into accordion
-- ✅ Green "No corrections needed" when LLM output satisfied all rules
-
-### v1.4.3 | Documentation Overhaul
-
-- ✅ End-to-End Pipeline with Mermaid flowchart and detail table
-- ✅ Architecture Intelligence Stack with Mermaid pie chart and quality contribution table
-- ✅ Author credits with LinkedIn links in app footer
-
-### v1.4.2 | Dual Document Store
-
-- ✅ **ServiceNow Assets Store** (purple) + **Customer Documents Store** (blue) with dual RAG search
-- ✅ Tabbed UI with per-store upload, file list, and document counts
-
-### v1.4.1 | REST API Only Connection Mode
-
-- ✅ No JDBC/Java required. Works with any ServiceNow instance via standard REST API
-- ✅ Connection mode toggle (default: REST API Only)
-
-### v1.4.0 | Diagram Pipeline Overhaul
-
-- ✅ 5-stage pipeline: Baseline, Ontology Constraints, LLM Output, Syntax Sanitizer, Ontology Validator
-- ✅ Query-aware subgraph, 32 label replacement rules, reference diagram from ontology
+- ✅ **Deterministic Rule Engine**: 49 rules across 6 categories, no LLM required
+- ✅ **IT4IT v3 Coverage** (Ian Leu): Evaluates S2P, R2D, R2F, D2C value stream gaps
+- ✅ **Integration Pattern Analysis** (Jochen Geist): REST vs SOAP, MID Server, Flow Designer vs legacy
+- ✅ **Architectural Health**: CMDB hygiene, domain separation, custom table sprawl, Agent Workspace
+- ✅ **Product Adoption Maturity** (Wave 2): 9 module-pairing rules (Incident+Problem, ITSM+KB, Discovery+ServiceMapping, etc.)
+- ✅ **Security Posture** (Wave 2): CSRF protection, audit logging, SecOps coverage for sensitive data
+- ✅ **Platform Efficiency** (Wave 2): Shelfware detection (HRSD, CSM, SecOps), Flow Designer utilization
+- ✅ **Gap Analysis UI**: Per-stream breakdown with health/gaps/uncovered status, security + efficiency sections
+- ✅ **As-Is / Recommended Diagrams**: Auto-generated Mermaid from ontology mapping + rule recommendations
+- ✅ **Rule Knowledge Base**: 6 expandable source sections with principles, focus areas, and full rule catalog
+- ✅ **Ontology Mapper**: Maps scanned plugins/tables to 40-node ontology for architecture visualization
+- ✅ **True Record Counts**: X-Total-Count header for accurate table/component counts (no API limit cap)
+- ✅ **Kill Switch**: `ENABLED = False` toggle, disabled by default pending author approval
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.4.5`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.4.5`
+- Backend: `leofrancia08489/project-virgil-backend:v1.5.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.0`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -355,6 +339,7 @@ ChatGPT:
 ## Features
 
 - ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
+- Instance Assessment (Nirvana): Deterministic 49-rule engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
 - Flexible Connection: REST API Only mode (no JDBC/Java required) or REST API + JDBC for full RaptorDB access
 - SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
 - Dual Document Store: ServiceNow Assets (shared reference material) + Customer Documents (engagement-specific) with source-tagged RAG retrieval
@@ -371,6 +356,8 @@ project-virgil/
 ├── backend/                 # FastAPI Python backend
 │   ├── services/           # Core service modules
 │   │   ├── servicenow_ontology.py     # Graph-based SN knowledge model (40 nodes, 65 edges)
+│   │   ├── instance_scanner.py        # Instance Assessment scanner (builds InstanceModel, runs rules)
+│   │   ├── instance_scanner_rules.py  # 49 deterministic rules + RuleEngine (IT4IT, integration, health, adoption, security, efficiency)
 │   │   ├── architecture_validator.py  # Post-generation enforcement & diagram correction
 │   │   ├── servicenow_connector.py    # RaptorDB JDBC connection
 │   │   ├── sn_utils_service.py        # SN Utils REST API client
@@ -383,7 +370,7 @@ project-virgil/
 │   └── requirements.txt    # Python dependencies
 ├── frontend/               # React frontend
 │   ├── src/
-│   │   ├── components/    # React components
+│   │   ├── components/    # React components (InstanceInfo.js has Assessment UI)
 │   │   └── App.js         # Main application
 │   └── package.json       # Node dependencies
 └── README.md
@@ -542,6 +529,11 @@ The frontend will be available at `http://localhost:3000`
 - `GET /api/documents` - List uploaded documents
 - `DELETE /api/documents/{file_id}` - Delete document
 
+### Instance Assessment
+- `POST /api/assess` - Run deterministic instance assessment (49 rules, no LLM)
+- `GET /api/assess/rules` - Get rule catalog and summary
+- `GET /api/assess/knowledge-base` - Get structured knowledge base for all rule sources
+
 ### Analysis
 - `POST /api/analyze` - Generate architecture analysis and diagram
 
@@ -680,21 +672,17 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 
 Project Virgil's ontology and validation rules are built on curated, publicly documented ServiceNow architectural knowledge. The following resources and contributors have shaped the system's intelligence:
 
-<!--
 ### ServiceNow IT4IT v3 Blueprint
 - **Author:** [Ian Leu](https://www.linkedin.com/in/ian-leu)
-- Maps the entire ServiceNow platform against the IT4IT reference architecture (Plan, Build, Deliver, Fulfill, Consume, Run, Support, Assure value streams)
-- Provides product-to-value-stream mappings, CSDM alignment, and industry vertical extensions (Banking/BIAN, Insurance/ACCORD, Telecom/TM Forum, Healthcare/HL7)
-- Used to expand the ontology graph with product nodes, architectural layers, and cross-cutting capabilities
+- Maps the entire ServiceNow platform against the IT4IT reference architecture (S2P, R2D, R2F, D2C value streams)
+- Provides product-to-value-stream mappings, CSDM alignment, and industry vertical extensions
+- Used in the Instance Assessment rule engine for IT4IT coverage gap analysis
 
 ### ServiceNow Integration Pattern Decision Tree
 - **Author:** [Jochen Geist](https://www.linkedin.com/in/jochengeist)
 - **Reference:** [Integration Design: How to choose the best pattern to integrate ServiceNow with other systems](https://www.servicenow.com/community/architect-blog/integration-design-how-to-choose-the-best-pattern-to-integrate/ba-p/2874114)
 - Deterministic decision tree (v3.1) covering 6 integration categories: Web Services, Data Persistence, Event-Driven Architecture, AI Agents (MCP/A2A), UI-Level Integrations, and Fallback Solutions
-- Provides pattern selection rules: when to use spokes vs custom REST, MID Server requirements, Import Sets vs real-time, Table API vs Scripted REST
-- Color-coded recommendation strength: preferred (green), acceptable (orange), fallback/last resort (red)
-- Used to validate integration patterns in generated architecture diagrams
--->
+- Used in the Instance Assessment rule engine for integration pattern validation
 
 ### ServiceNow Platform Documentation
 - Official ServiceNow product documentation, CSDM framework, and platform architecture guides
@@ -708,18 +696,11 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 - Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
 - Eliminate manual ontology maintenance so the graph stays current with platform releases
 
-<!--
-### Integration Pattern Validation
-- Encode Jochen Geist's Integration Pattern Decision Tree as a traversable graph in the validator
-- Validate integration arrows against pattern rules (e.g., flag JDBC as fallback, recommend spokes when available)
-- MID Server requirement detection for on-premise integration targets
-
-### Expanded Ontology (IT4IT Alignment)
-- Expand ontology from 40 to 65+ nodes using IT4IT v3 Blueprint mappings
-- Add IT4IT value stream dimension (Plan→Build→Deliver→Fulfill→Consume→Run→Support→Assure)
-- CSDM layer enforcement in generated diagrams
-- Industry vertical extensions triggered by query context
--->
+### Instance Assessment Expansion
+- Wave 3 rules: licensing cost estimation, upgrade readiness, performance anti-patterns
+- IT4IT value stream scoring with maturity levels
+- Integration pattern decision tree as a traversable graph in the validator
+- Industry vertical rule packs (Banking/BIAN, Insurance/ACCORD, Telecom/TM Forum, Healthcare/HL7)
 
 ### Other Planned Enhancements
 - Unit and integration test coverage

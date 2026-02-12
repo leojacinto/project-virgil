@@ -91,6 +91,33 @@ class SNUtilsService:
             logger.error(f"API request exception: {str(e)}")
             return None
     
+    def get_record_count(self, table: str, query: str = None) -> int:
+        """
+        Get the true record count for a table using X-Total-Count header.
+        Fetches 0 records — only the count.
+        """
+        url = f"{self.base_url}/api/now/table/{table}"
+        params = {
+            'sysparm_limit': 1,
+            'sysparm_fields': 'sys_id',
+            'sysparm_suppress_pagination_header': 'false',
+        }
+        if query:
+            params['sysparm_query'] = query
+        try:
+            response = requests.get(
+                url,
+                auth=(self.username, self.password),
+                params=params,
+                timeout=15,
+            )
+            if response.status_code == 200:
+                count = int(response.headers.get('X-Total-Count', 0))
+                return count
+        except Exception as e:
+            logger.warning(f"Count query failed for {table}: {e}")
+        return 0
+
     def get_installed_applications(self) -> List[Dict[str, Any]]:
         """
         Get list of installed applications in the instance

@@ -15,6 +15,7 @@ import logging
 from services.instance_scanner_rules import (
     InstanceModel, RuleEngine, ENABLED as RULES_ENABLED
 )
+from services.servicenow_ontology import ServiceNowOntology
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +26,7 @@ class InstanceScanner:
     
     Usage:
         scanner = InstanceScanner(sn_utils_service)
-        model = scanner.scan()
-        engine = RuleEngine()
-        findings = engine.evaluate(model)
+        result = scanner.scan()  # includes as-is + recommended diagrams
     """
 
     def __init__(self, sn_utils_service):
@@ -37,6 +36,7 @@ class InstanceScanner:
         """
         self.sn = sn_utils_service
         self.engine = RuleEngine()
+        self.ontology = ServiceNowOntology()
 
     def scan(self) -> Dict[str, Any]:
         """
@@ -46,6 +46,9 @@ class InstanceScanner:
           - instance_model: structured data about the instance
           - rule_summary: what the rule engine contains
           - findings: rule evaluation results (empty if disabled)
+          - as_is_diagram: Mermaid diagram of current architecture
+          - recommended_diagram: Mermaid diagram with recommendations overlaid
+          - it4it_coverage: {S2P, R2D, R2F, D2C} booleans
           - status: 'disabled' | 'completed'
         """
         logger.info("Starting instance scan...")
@@ -53,8 +56,54 @@ class InstanceScanner:
         # Layer 1: Build the instance model from REST API data
         model = self._build_instance_model()
 
-        # Layer 2: Evaluate rules against the model
+        # Layer 2: Map scanner data to ontology nodes
+        mapping = self.ontology.map_instance_to_nodes(
+            model.installed_plugins, model.active_tables
+        )
+        active_ids = mapping["active_node_ids"]
+
+        # Layer 3: Evaluate rules against the model
         evaluation = self.engine.evaluate(model)
+
+        # Layer 4: Generate architecture diagrams
+        recommended_nodes = evaluation.get("recommended_node_ids", {})
+        recommended_ids = set(recommended_nodes.keys()) if isinstance(recommended_nodes, dict) else set()
+
+        as_is_diagram = self.ontology.generate_architecture_mermaid(active_ids)
+        recommended_diagram = self.ontology.generate_architecture_mermaid(
+            active_ids, recommended_ids, recommended_nodes
+        ) if recommended_ids else as_is_diagram
+
+        # Build active nodes list for frontend display
+        active_nodes = []
+        for nid in sorted(active_ids):
+            node = self.ontology._nodes.get(nid)
+            if node:
+                active_nodes.append({
+                    "id": nid,
+                    "label": node.label,
+                    "layer": node.layer,
+                    "it4it_streams": node.it4it_streams,
+                    "evidence": mapping["node_evidence"].get(nid, ""),
+                })
+
+        recommended_node_list = []
+        for nid, reason in recommended_nodes.items():
+            node = self.ontology._nodes.get(nid)
+            if node and nid not in active_ids:
+                recommended_node_list.append({
+                    "id": nid,
+                    "label": node.label,
+                    "layer": node.layer,
+                    "reason": reason,
+                })
+
+        # Layer 5: Build gap analysis
+        gap_analysis = self._build_gap_analysis(
+            active_nodes, recommended_node_list,
+            evaluation.get("findings", []),
+            mapping["it4it_coverage"],
+        )
 
         # Build the response
         result = {
@@ -63,12 +112,154 @@ class InstanceScanner:
             "rule_summary": self.engine.get_rule_summary(),
             "findings": evaluation.get("findings", []),
             "message": evaluation.get("message", ""),
+            "as_is_diagram": as_is_diagram,
+            "recommended_diagram": recommended_diagram,
+            "active_nodes": active_nodes,
+            "recommended_nodes": recommended_node_list,
+            "it4it_coverage": mapping["it4it_coverage"],
+            "active_node_count": len(active_ids),
+            "recommended_node_count": len(recommended_node_list),
+            "total_findings": len(evaluation.get("findings", [])),
+            "gap_analysis": gap_analysis,
         }
 
         logger.info(f"Instance scan complete. Status: {result['status']}, "
                      f"Plugins: {len(model.installed_plugins)}, "
-                     f"Flows: {len(model.integration_flows)}")
+                     f"Active nodes: {len(active_ids)}, "
+                     f"Recommendations: {len(recommended_node_list)}, "
+                     f"Findings: {len(result['findings'])}")
         return result
+
+    def _build_gap_analysis(
+        self,
+        active_nodes: List[Dict],
+        recommended_nodes: List[Dict],
+        findings: List[Dict],
+        it4it_coverage: Dict[str, bool],
+    ) -> Dict[str, Any]:
+        """
+        Build a deterministic gap analysis grouped by IT4IT value stream,
+        integration patterns, and health. Each section shows what's present,
+        what's missing, and the rules that flagged each gap.
+        """
+        # Map active nodes to their IT4IT streams
+        stream_active = {"S2P": [], "R2D": [], "R2F": [], "D2C": []}
+        for n in active_nodes:
+            for s in (n.get("it4it_streams") or []):
+                if s in stream_active:
+                    stream_active[s].append(n["label"])
+
+        # Map recommended nodes to streams
+        stream_recommended = {"S2P": [], "R2D": [], "R2F": [], "D2C": []}
+        for n in recommended_nodes:
+            node_obj = self.ontology._nodes.get(n["id"])
+            if node_obj:
+                for s in (node_obj.it4it_streams or []):
+                    if s in stream_recommended:
+                        stream_recommended[s].append({
+                            "label": n["label"],
+                            "reason": n.get("reason", ""),
+                        })
+
+        # Map findings to streams based on rule tags
+        stream_findings = {"S2P": [], "R2D": [], "R2F": [], "D2C": []}
+        integration_findings = []
+        health_findings = []
+        security_findings = []
+        efficiency_findings = []
+
+        def _finding_summary(f):
+            return {
+                "rule_id": f["rule_id"],
+                "rule_name": f["rule_name"],
+                "severity": f["severity"],
+                "message": f["message"],
+                "recommendation": f["recommendation"],
+            }
+
+        for f in findings:
+            cat = f.get("category", "")
+            # IT4IT coverage and adoption maturity both map to streams via tags
+            if cat in ("it4it_coverage", "adoption_maturity"):
+                rule = self.engine._rules_by_id.get(f.get("rule_id", ""))
+                if rule:
+                    for tag in rule.tags:
+                        if tag in stream_findings:
+                            stream_findings[tag].append(_finding_summary(f))
+            elif cat == "integration_pattern":
+                integration_findings.append(_finding_summary(f))
+            elif cat == "health":
+                health_findings.append(_finding_summary(f))
+            elif cat == "security":
+                security_findings.append(_finding_summary(f))
+            elif cat == "efficiency":
+                efficiency_findings.append(_finding_summary(f))
+
+        STREAM_META = {
+            "S2P": {"label": "Strategy to Portfolio", "description": "Demand management, portfolio prioritization, and governance."},
+            "R2D": {"label": "Requirement to Deploy", "description": "Change management, configuration tracking, and controlled releases."},
+            "R2F": {"label": "Request to Fulfill", "description": "Service catalog, self-service portal, and fulfillment workflows."},
+            "D2C": {"label": "Detect to Correct", "description": "Incident, problem, event management, and proactive monitoring."},
+        }
+
+        streams = []
+        for key in ["S2P", "R2D", "R2F", "D2C"]:
+            meta = STREAM_META[key]
+            active_caps = sorted(set(stream_active[key]))
+            missing = stream_recommended[key]
+            gap_findings = stream_findings[key]
+            covered = it4it_coverage.get(key, False)
+            # Determine health: green if covered + no findings, yellow if covered + findings, red if not covered
+            if covered and len(gap_findings) == 0:
+                health = "healthy"
+            elif covered:
+                health = "gaps"
+            else:
+                health = "uncovered"
+            streams.append({
+                "key": key,
+                "label": meta["label"],
+                "description": meta["description"],
+                "covered": covered,
+                "health": health,
+                "active_capabilities": active_caps,
+                "missing_capabilities": missing,
+                "findings": gap_findings,
+                "finding_count": len(gap_findings),
+            })
+
+        return {
+            "streams": streams,
+            "integration": {
+                "findings": integration_findings,
+                "finding_count": len(integration_findings),
+                "has_issues": len(integration_findings) > 0,
+            },
+            "health": {
+                "findings": health_findings,
+                "finding_count": len(health_findings),
+                "has_issues": len(health_findings) > 0,
+            },
+            "security": {
+                "findings": security_findings,
+                "finding_count": len(security_findings),
+                "has_issues": len(security_findings) > 0,
+            },
+            "efficiency": {
+                "findings": efficiency_findings,
+                "finding_count": len(efficiency_findings),
+                "has_issues": len(efficiency_findings) > 0,
+            },
+            "summary": {
+                "streams_covered": sum(1 for s in streams if s["covered"]),
+                "streams_total": 4,
+                "total_gaps": sum(s["finding_count"] for s in streams),
+                "integration_issues": len(integration_findings),
+                "health_issues": len(health_findings),
+                "security_issues": len(security_findings),
+                "efficiency_issues": len(efficiency_findings),
+            },
+        }
 
     def _build_instance_model(self) -> InstanceModel:
         """Query the instance and populate an InstanceModel."""

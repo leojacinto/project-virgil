@@ -5,7 +5,7 @@ Encodes table hierarchy, product modules, plugin dependencies,
 CMDB class structure, and architectural constraints.
 """
 
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Any, Dict, List, Set, Optional, Tuple
 import logging
 import re
 
@@ -468,6 +468,204 @@ class ServiceNowOntology:
             for e in self._edges if e.rel_type == "segregated_from"
         ]
     
+    # -------------------------------------------------------------------
+    # Instance Assessment (Nirvana) methods
+    # -------------------------------------------------------------------
+
+    def map_instance_to_nodes(self, installed_plugins: Dict[str, Dict],
+                               active_tables: Dict[str, int]) -> Dict[str, Any]:
+        """
+        Map scanner results to active ontology nodes.
+        
+        Args:
+            installed_plugins: {plugin_id: {name, version, active}} from scanner
+            active_tables: {table_name: record_count} from scanner
+        
+        Returns:
+            Dict with active_node_ids, inactive_node_ids, coverage details
+        """
+        plugin_ids = set(installed_plugins.keys())
+        active_node_ids = set()
+        inactive_node_ids = set()
+        node_evidence = {}  # node_id -> why it's active
+
+        for nid, node in self._nodes.items():
+            # Skip abstract/foundational — they're always included
+            if nid in ("platform", "task"):
+                active_node_ids.add(nid)
+                node_evidence[nid] = "foundational"
+                continue
+
+            matched = False
+            evidence = []
+
+            # Check by plugin
+            if node.plugin and node.plugin in plugin_ids:
+                matched = True
+                evidence.append(f"plugin: {node.plugin}")
+
+            # Check by table activity (records > 0)
+            if node.tables:
+                for tbl in node.tables:
+                    count = active_tables.get(tbl, -1)
+                    if count > 0:
+                        matched = True
+                        evidence.append(f"table: {tbl} ({count:,} records)")
+
+            if matched:
+                active_node_ids.add(nid)
+                node_evidence[nid] = "; ".join(evidence)
+            else:
+                inactive_node_ids.add(nid)
+
+        # Promote product nodes if any of their modules are active
+        for edge in self._edges:
+            if edge.rel_type == "depends_on":
+                if edge.target in active_node_ids and edge.source in inactive_node_ids:
+                    src_node = self._nodes.get(edge.source)
+                    if src_node and src_node.node_type == "product":
+                        active_node_ids.add(edge.source)
+                        inactive_node_ids.discard(edge.source)
+                        node_evidence[edge.source] = f"has active module: {edge.target}"
+
+        # Foundational data nodes are active if any app is active
+        app_active = any(
+            self._nodes[nid].node_type in ("product", "module") and self._nodes[nid].layer == "application"
+            for nid in active_node_ids if nid in self._nodes
+        )
+        if app_active:
+            for fid in ("cmdb", "user_mgmt", "knowledge_base", "audit"):
+                if fid in self._nodes:
+                    active_node_ids.add(fid)
+                    inactive_node_ids.discard(fid)
+                    if fid not in node_evidence:
+                        node_evidence[fid] = "foundational (apps active)"
+
+        # IT4IT coverage
+        active_streams = set()
+        for nid in active_node_ids:
+            node = self._nodes.get(nid)
+            if node:
+                active_streams.update(node.it4it_streams)
+
+        return {
+            "active_node_ids": active_node_ids,
+            "inactive_node_ids": inactive_node_ids,
+            "node_evidence": node_evidence,
+            "it4it_coverage": {
+                "S2P": "S2P" in active_streams,
+                "R2D": "R2D" in active_streams,
+                "R2F": "R2F" in active_streams,
+                "D2C": "D2C" in active_streams,
+            },
+            "active_streams": sorted(active_streams),
+        }
+
+    def generate_architecture_mermaid(self, active_ids: set,
+                                       recommended_ids: set = None,
+                                       recommendations: Dict[str, str] = None) -> str:
+        """
+        Generate a Mermaid diagram showing active and optionally recommended nodes.
+        
+        Args:
+            active_ids: set of node IDs currently active in the instance
+            recommended_ids: optional set of node IDs to add as recommendations
+            recommendations: optional {node_id: reason} for annotations
+        
+        Returns:
+            Mermaid diagram string
+        """
+        recommended_ids = recommended_ids or set()
+        recommendations = recommendations or {}
+        all_ids = active_ids | recommended_ids
+
+        # Filter to nodes that exist
+        all_ids = {nid for nid in all_ids if nid in self._nodes}
+
+        if not all_ids:
+            return "graph TD\n    EMPTY[No components detected]"
+
+        # Assign short IDs
+        id_map = {}
+        counter = 0
+        for nid in sorted(all_ids):
+            id_map[nid] = chr(65 + counter) if counter < 26 else f"N{counter}"
+            counter += 1
+
+        # Group by layer
+        layers = {}
+        for nid in sorted(all_ids):
+            node = self._nodes[nid]
+            layer = node.layer or "other"
+            layers.setdefault(layer, []).append(nid)
+
+        layer_order = ["ui", "application", "orchestration", "platform", "data", "external", "other"]
+        layer_labels = {
+            "ui": "Portals & UI",
+            "application": "Applications",
+            "orchestration": "Orchestration",
+            "platform": "Platform",
+            "data": "Foundation & Data",
+            "external": "External",
+            "other": "Other",
+        }
+
+        lines = ["graph TD"]
+
+        # Style classes
+        lines.append("    classDef active fill:#dbeafe,stroke:#3b82f6,stroke-width:2px,color:#1e40af")
+        lines.append("    classDef recommended fill:#fef3c7,stroke:#f59e0b,stroke-width:2px,stroke-dasharray:5 5,color:#92400e")
+        lines.append("    classDef foundational fill:#d1fae5,stroke:#10b981,stroke-width:2px,color:#065f46")
+
+        foundational_ids = {"platform", "cmdb", "user_mgmt", "knowledge_base", "audit", "task"}
+
+        for layer in layer_order:
+            nids = layers.get(layer, [])
+            if not nids:
+                continue
+            label = layer_labels.get(layer, layer.title())
+            lines.append(f"    subgraph {label}")
+            for nid in nids:
+                short = id_map[nid]
+                node_label = self._nodes[nid].label
+                if nid in recommended_ids and nid not in active_ids:
+                    node_label += " ⊕"
+                lines.append(f"        {short}[{node_label}]")
+            lines.append("    end")
+
+        # Edges — only between nodes in our set
+        rel_label_map = {
+            "runs_on": "runs on", "creates": "creates", "references": "refs",
+            "resolves_using": "resolves via", "consumes": "consumes",
+            "authenticates_via": "auth", "depends_on": "depends on",
+        }
+        edge_count = 0
+        for e in self._edges:
+            if e.source in all_ids and e.target in all_ids and e.rel_type != "segregated_from" and e.rel_type != "extends":
+                src = id_map.get(e.source)
+                tgt = id_map.get(e.target)
+                if src and tgt and edge_count < 20:
+                    lbl = rel_label_map.get(e.rel_type, e.rel_type.replace("_", " "))
+                    # Dashed edge if either end is recommended
+                    if (e.source in recommended_ids and e.source not in active_ids) or \
+                       (e.target in recommended_ids and e.target not in active_ids):
+                        lines.append(f"    {src} -.->|{lbl}| {tgt}")
+                    else:
+                        lines.append(f"    {src} -->|{lbl}| {tgt}")
+                    edge_count += 1
+
+        # Apply style classes
+        for nid in sorted(all_ids):
+            short = id_map[nid]
+            if nid in recommended_ids and nid not in active_ids:
+                lines.append(f"    class {short} recommended")
+            elif nid in foundational_ids:
+                lines.append(f"    class {short} foundational")
+            else:
+                lines.append(f"    class {short} active")
+
+        return "\n".join(lines)
+
     def get_relevant_subgraph(self, query: str, query_types: List[str]) -> Dict:
         """
         Extract the ontology subgraph relevant to a specific query.
