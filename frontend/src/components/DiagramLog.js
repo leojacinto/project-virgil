@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap, AlertOctagon, Network, BookOpen } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, ArrowRight, Code, Shield, Zap, AlertOctagon, Network, BookOpen, Download } from 'lucide-react';
+import { downloadMermaid } from '../utils/exportUtils';
 import mermaid from 'mermaid';
 
 function DiagramLog({ pipeline }) {
@@ -540,15 +541,26 @@ function DiagramLog({ pipeline }) {
                         {isBaseline && ' (unconstrained)'}
                         {isRawLLM && isCode && ' (before processing)'}
                       </span>
-                      {canToggle && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleView(index); }}
-                          className="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center space-x-1"
-                        >
-                          <Code className="h-3 w-3" />
-                          <span>{isCode ? 'Try Render' : 'Show Code'}</span>
-                        </button>
-                      )}
+                      <div className="flex items-center space-x-2">
+                        {hasMermaid && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); downloadMermaid(stage.mermaid, `pipeline_${stage.stage.replace(/\s+/g, '_').toLowerCase()}`); }}
+                            className="text-xs text-slate-400 hover:text-slate-700 flex items-center space-x-1 transition-colors"
+                            title="Download Mermaid syntax"
+                          >
+                            <Download className="h-3 w-3" />
+                          </button>
+                        )}
+                        {canToggle && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleView(index); }}
+                            className="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center space-x-1"
+                          >
+                            <Code className="h-3 w-3" />
+                            <span>{isCode ? 'Try Render' : 'Show Code'}</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {isCode ? (
                       <pre className={`p-4 text-xs overflow-auto max-h-80 font-mono leading-relaxed whitespace-pre-wrap break-words ${

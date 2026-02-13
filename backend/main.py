@@ -46,6 +46,7 @@ class LLMConfig(BaseModel):
     provider: str
     api_key: str
     model: Optional[str] = None
+    api_url: Optional[str] = None
 
 class ConnectionConfig(BaseModel):
     instance: str
@@ -78,7 +79,8 @@ async def configure_llm(config: LLMConfig):
         llm_service.configure(
             provider=config.provider,
             api_key=config.api_key,
-            model=config.model
+            model=config.model,
+            api_url=config.api_url
         )
         
         if llm_service.is_configured():

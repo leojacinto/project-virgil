@@ -4,6 +4,27 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.5.1 (Backend + Frontend) - February 2026
+
+**OneLLM Gateway Support:**
+- ✅ `ChatOneLLM` LangChain wrapper for ServiceNow OneLLM gateway (custom auth, Anthropic messages proxy via Vertex AI)
+- ✅ `api_url` field added to LLM configuration for custom endpoint URLs
+- ✅ SetupWizard: replaced Azure OpenAI provider with OneLLM, added API URL field for Claude and OneLLM providers
+- ✅ Renamed "Anthropic Claude" to "Claude" in provider list, updated model catalog
+
+**PDF Export & Mermaid Download:**
+- ✅ `exportUtils.js`: shared utility with `exportToPDF()` (html2canvas + jsPDF, multi-page A4 with title and timestamp) and `downloadMermaid()` (.mmd file download)
+- ✅ InstanceInfo: PDF export button in assessment header, hover-to-reveal download icon on as-is and recommended diagrams
+- ✅ ResultsDisplay: PDF export button at top of analysis results, hover-to-reveal download icon on architecture diagram
+- ✅ DiagramLog: hover-to-reveal download icon on each pipeline stage diagram (Baseline, LLM Output, Syntax Sanitizer, Ontology Validator)
+- ✅ New frontend dependencies: `jspdf` ^4.1.0, `html2canvas` ^1.4.1
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.5.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.1`
+
+---
+
 ## v1.5.0 (Backend + Frontend) - February 2026
 
 **Instance Assessment (Nirvana):**

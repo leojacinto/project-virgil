@@ -10,7 +10,8 @@ function SetupWizard({ onComplete }) {
   const [llmConfig, setLlmConfig] = useState({
     provider: 'openai',
     api_key: '',
-    model: ''
+    model: '',
+    api_url: ''
   });
   
   const [servicenowConfig, setServicenowConfig] = useState({
@@ -29,8 +30,8 @@ function SetupWizard({ onComplete }) {
       defaultModel: 'gpt-4-turbo-preview'
     },
     { 
-      id: 'anthropic', 
-      name: 'Anthropic Claude', 
+      id: 'claude', 
+      name: 'Claude', 
       models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
       defaultModel: 'claude-3-5-sonnet-20241022'
     },
@@ -41,10 +42,10 @@ function SetupWizard({ onComplete }) {
       defaultModel: 'gemini-2.5-flash'
     },
     { 
-      id: 'azure', 
-      name: 'Azure OpenAI', 
-      models: ['gpt-4', 'gpt-35-turbo'],
-      defaultModel: 'gpt-4'
+      id: 'onellm', 
+      name: 'One LLM', 
+      models: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-20241022'],
+      defaultModel: 'claude-3-7-sonnet-20250219'
     }
   ];
 
@@ -57,11 +58,15 @@ function SetupWizard({ onComplete }) {
     setError(null);
     
     try {
-      const response = await axios.post('/api/llm/configure', {
+      const payload = {
         provider: llmConfig.provider,
         api_key: llmConfig.api_key,
         model: llmConfig.model || selectedProvider.defaultModel
-      });
+      };
+      if (llmConfig.api_url) {
+        payload.api_url = llmConfig.api_url;
+      }
+      const response = await axios.post('/api/llm/configure', payload);
       
       if (response.data && response.data.status === 'configured') {
         // Use setTimeout to ensure state update happens
@@ -167,7 +172,7 @@ function SetupWizard({ onComplete }) {
                     {llmProviders.map((provider) => (
                       <button
                         key={provider.id}
-                        onClick={() => setLlmConfig({ ...llmConfig, provider: provider.id, model: '' })}
+                        onClick={() => setLlmConfig({ ...llmConfig, provider: provider.id, model: '', api_url: '' })}
                         className={`p-4 border-2 rounded-lg text-left transition-all ${
                           llmConfig.provider === provider.id
                             ? 'border-primary-500 bg-primary-50'
@@ -195,6 +200,31 @@ function SetupWizard({ onComplete }) {
                   />
                 </div>
 
+                {(llmConfig.provider === 'claude' || llmConfig.provider === 'onellm') && (
+                  <div>
+                    <label htmlFor="api_url" className="block text-sm font-medium text-slate-700 mb-2">
+                      API URL {llmConfig.provider === 'onellm' 
+                        ? <span className="text-red-500 font-normal">(Required)</span>
+                        : <span className="text-slate-400 font-normal">(Optional)</span>}
+                    </label>
+                    <input
+                      type="text"
+                      id="api_url"
+                      value={llmConfig.api_url}
+                      onChange={(e) => setLlmConfig({ ...llmConfig, api_url: e.target.value })}
+                      placeholder={llmConfig.provider === 'onellm' 
+                        ? 'https://apicid-dev.servicenow.com/v4/onellm/models/anthropic'
+                        : 'https://api.anthropic.com (default)'}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      {llmConfig.provider === 'onellm'
+                        ? 'Your OneLLM gateway endpoint'
+                        : 'Only set this if your organization uses a dedicated Claude endpoint'}
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label htmlFor="model" className="block text-sm font-medium text-slate-700 mb-2">
                     Model (Optional)
@@ -220,7 +250,7 @@ function SetupWizard({ onComplete }) {
 
                 <button
                   onClick={handleLlmSubmit}
-                  disabled={loading || !llmConfig.api_key}
+                  disabled={loading || !llmConfig.api_key || (llmConfig.provider === 'onellm' && !llmConfig.api_url)}
                   className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                 >
                   {loading ? (

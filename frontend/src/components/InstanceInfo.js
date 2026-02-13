@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Package, Workflow, Loader2, RefreshCw, Search, Lock, Shield, GitBranch, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, Info, Eye, Lightbulb, ClipboardList, BarChart3, BookOpen, ArrowRight } from 'lucide-react';
+import { Database, Package, Workflow, Loader2, RefreshCw, Search, Lock, Shield, GitBranch, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, Info, Eye, Lightbulb, ClipboardList, BarChart3, BookOpen, ArrowRight, Download, FileText } from 'lucide-react';
+import { downloadMermaid, exportToPDF } from '../utils/exportUtils';
 import axios from 'axios';
 import mermaid from 'mermaid';
 
@@ -20,6 +21,8 @@ function InstanceInfo() {
   const [knowledgeBase, setKnowledgeBase] = useState(null);
   const [kbExpanded, setKbExpanded] = useState(null);
   const diagramRef = useRef(null);
+  const assessContentRef = useRef(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadInstanceData();
@@ -268,6 +271,24 @@ function InstanceInfo() {
                     </p>
                   </div>
                 </div>
+                {assessResult && assessResult.status === 'completed' && (
+                  <button
+                    onClick={async () => {
+                      setExporting(true);
+                      try {
+                        await exportToPDF(assessContentRef.current, 'Instance_Assessment');
+                      } finally {
+                        setExporting(false);
+                      }
+                    }}
+                    disabled={exporting}
+                    className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                    title="Export assessment to PDF"
+                  >
+                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    <span>PDF</span>
+                  </button>
+                )}
                 <button
                   onClick={runAssessment}
                   disabled={assessLoading || (ruleSummary && !ruleSummary.enabled)}
@@ -316,7 +337,7 @@ function InstanceInfo() {
 
               {/* Assessment results with tabs */}
               {assessResult && assessResult.status === 'completed' && (
-                <div>
+                <div ref={assessContentRef}>
                   {/* IT4IT Coverage Bar */}
                   {assessResult.it4it_coverage && (
                     <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
@@ -681,7 +702,19 @@ function InstanceInfo() {
                           </span>
                         )}
                       </div>
-                      <div className="bg-slate-50 rounded-lg p-4 overflow-x-auto border border-slate-200">
+                      <div className="bg-slate-50 rounded-lg p-4 overflow-x-auto border border-slate-200 relative group">
+                        <button
+                          onClick={() => {
+                            const code = assessTab === 'recommended' && assessResult.recommended_diagram
+                              ? assessResult.recommended_diagram
+                              : assessResult.as_is_diagram;
+                            if (code) downloadMermaid(code, `assessment_${assessTab}_diagram`);
+                          }}
+                          className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10"
+                          title="Download Mermaid syntax"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
                         <div ref={diagramRef} className="flex justify-center" />
                       </div>
                       {assessTab === 'as-is' && assessResult.active_nodes?.length > 0 && (

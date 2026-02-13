@@ -104,9 +104,9 @@ You need at least one LLM API key:
    docker-compose up -d
    ```
    
-   This will automatically pull the latest images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:latest`
-   - `leofrancia08489/project-virgil-frontend:latest`
+   This will automatically pull the images from Docker Hub:
+   - `leofrancia08489/project-virgil-backend:v1.5.1`
+   - `leofrancia08489/project-virgil-frontend:v1.5.1`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -121,27 +121,19 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.5.0 (February 2026)
+## 📦 Latest Release: v1.5.1 (February 2026)
 
-### v1.5.0 | Instance Assessment (Nirvana)
+### v1.5.1 | OneLLM Gateway + Export
 
-- ✅ **Deterministic Rule Engine**: 49 rules across 6 categories, no LLM required
-- ✅ **IT4IT v3 Coverage** (Ian Leu): Evaluates S2P, R2D, R2F, D2C value stream gaps
-- ✅ **Integration Pattern Analysis** (Jochen Geist): REST vs SOAP, MID Server, Flow Designer vs legacy
-- ✅ **Architectural Health**: CMDB hygiene, domain separation, custom table sprawl, Agent Workspace
-- ✅ **Product Adoption Maturity** (Wave 2): 9 module-pairing rules (Incident+Problem, ITSM+KB, Discovery+ServiceMapping, etc.)
-- ✅ **Security Posture** (Wave 2): CSRF protection, audit logging, SecOps coverage for sensitive data
-- ✅ **Platform Efficiency** (Wave 2): Shelfware detection (HRSD, CSM, SecOps), Flow Designer utilization
-- ✅ **Gap Analysis UI**: Per-stream breakdown with health/gaps/uncovered status, security + efficiency sections
-- ✅ **As-Is / Recommended Diagrams**: Auto-generated Mermaid from ontology mapping + rule recommendations
-- ✅ **Rule Knowledge Base**: 6 expandable source sections with principles, focus areas, and full rule catalog
-- ✅ **Ontology Mapper**: Maps scanned plugins/tables to 40-node ontology for architecture visualization
-- ✅ **True Record Counts**: X-Total-Count header for accurate table/component counts (no API limit cap)
-- ✅ **Kill Switch**: `ENABLED = False` toggle, disabled by default pending author approval
+- ✅ **OneLLM Gateway**: LangChain-compatible `ChatOneLLM` wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy, custom auth)
+- ✅ **Custom API URL**: Configure custom LLM endpoint URLs for Claude and OneLLM providers
+- ✅ **PDF Export**: One-click export of assessment results and architecture analysis to multi-page A4 PDF (html2canvas + jsPDF)
+- ✅ **Mermaid Download**: Hover-to-reveal download icon on every diagram (assessment, pipeline stages, architecture) saves `.mmd` syntax file
+- ✅ **Provider Refresh**: Replaced Azure OpenAI with OneLLM in setup wizard, renamed Anthropic Claude to Claude
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.5.0`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.0`
+- Backend: `leofrancia08489/project-virgil-backend:v1.5.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.1`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -347,6 +339,9 @@ ChatGPT:
 - Instance-Aware Recommendations: Provides presales-ready gap analysis based on your actual instance configuration
 - Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
 - Auto-Fix & Enforcement: Syntax auto-fix, post-generation validator removes invalid arrows and prunes excess connections
+- OneLLM Gateway: LangChain-compatible wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy)
+- PDF Export: One-click export of assessments and architecture analysis to multi-page A4 PDF
+- Mermaid Download: Hover-to-reveal download on every diagram saves .mmd syntax file
 - Modern Web UI: React-based interface with TailwindCSS styling
 
 ## Architecture
@@ -371,6 +366,7 @@ project-virgil/
 ├── frontend/               # React frontend
 │   ├── src/
 │   │   ├── components/    # React components (InstanceInfo.js has Assessment UI)
+│   │   ├── utils/         # Shared utilities (exportUtils.js: PDF export, Mermaid download)
 │   │   └── App.js         # Main application
 │   └── package.json       # Node dependencies
 └── README.md
@@ -658,6 +654,8 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 - Lucide React: Icon library
 - Axios: HTTP client
 - React Dropzone: File upload component
+- Mermaid: Diagram rendering
+- jsPDF + html2canvas: PDF export
 
 ## Security Considerations
 

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Download, ExternalLink, ChevronDown, ChevronUp, CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Download, ExternalLink, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { downloadMermaid, exportToPDF } from '../utils/exportUtils';
 import ReactMarkdown from 'react-markdown';
 import mermaid from 'mermaid';
 
@@ -10,6 +11,8 @@ function ResultsDisplay({ result }) {
     recommendations: true,
     metadata: false
   });
+  const [exporting, setExporting] = useState(false);
+  const resultsRef = useRef(null);
 
   useEffect(() => {
     mermaid.initialize({ 
@@ -48,7 +51,27 @@ function ResultsDisplay({ result }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={resultsRef}>
+      {/* PDF Export bar */}
+      <div className="flex justify-end">
+        <button
+          onClick={async () => {
+            setExporting(true);
+            try {
+              await exportToPDF(resultsRef.current, 'Architecture_Analysis');
+            } finally {
+              setExporting(false);
+            }
+          }}
+          disabled={exporting}
+          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          title="Export analysis to PDF"
+        >
+          {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+          <span>Export PDF</span>
+        </button>
+      </div>
+
       {result.mermaid_diagram && (
         <div className="bg-white border border-slate-200 rounded-lg">
           <button
@@ -66,7 +89,14 @@ function ResultsDisplay({ result }) {
           </button>
           {expandedSections.diagram && (
             <div className="px-6 pb-6 border-t border-slate-200">
-              <div className="bg-slate-50 rounded-lg p-6 mt-4 overflow-x-auto">
+              <div className="bg-slate-50 rounded-lg p-6 mt-4 overflow-x-auto relative group">
+                <button
+                  onClick={() => downloadMermaid(result.mermaid_diagram, 'architecture_diagram')}
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10"
+                  title="Download Mermaid syntax"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                </button>
                 <div className="mermaid">
                   {result.mermaid_diagram}
                 </div>

@@ -5,6 +5,7 @@ import os
 class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     anthropic_api_key: Optional[str] = None
+    anthropic_api_url: Optional[str] = None
     
     servicenow_instance: Optional[str] = None
     servicenow_username: Optional[str] = None

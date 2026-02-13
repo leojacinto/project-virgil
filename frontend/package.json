@@ -6,6 +6,8 @@
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
     "axios": "^1.6.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.1.0",
     "lucide-react": "^0.316.0",
     "mermaid": "^11.12.2",
     "react": "^18.2.0",

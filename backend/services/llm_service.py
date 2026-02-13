@@ -1,19 +1,85 @@
 import os
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any, Iterator
 import logging
 import json
 import datetime
+import requests as http_requests
 
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema import HumanMessage, SystemMessage
+from langchain.schema import HumanMessage, SystemMessage, AIMessage
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import BaseMessage
+from langchain_core.outputs import ChatResult, ChatGeneration
 from pydantic import BaseModel, Field
 
 from config import settings
 from services.servicenow_ontology import ServiceNowOntology
 from services.architecture_validator import ArchitectureValidator
+
+
+class ChatOneLLM(BaseChatModel):
+    """LangChain-compatible wrapper for ServiceNow OneLLM gateway.
+    
+    OneLLM proxies Claude via Vertex AI with a custom auth scheme:
+      - Header: 'api-key' (not 'x-api-key')
+      - Path:   <base_url>//v1/messages
+      - Body:   standard Anthropic messages format
+    """
+    base_url: str
+    api_key: str
+    model_name: str = "claude-3-7-sonnet-20250219"
+    temperature: float = 0.7
+    max_tokens: int = 4096
+
+    @property
+    def _llm_type(self) -> str:
+        return "onellm"
+
+    def _generate(self, messages: List[BaseMessage], stop: Optional[List[str]] = None, **kwargs) -> ChatResult:
+        # Convert LangChain messages to Anthropic format
+        system_text = ""
+        api_messages = []
+        for msg in messages:
+            if isinstance(msg, SystemMessage):
+                system_text += msg.content + "\n"
+            elif isinstance(msg, HumanMessage):
+                api_messages.append({"role": "user", "content": msg.content})
+            elif isinstance(msg, AIMessage):
+                api_messages.append({"role": "assistant", "content": msg.content})
+            else:
+                api_messages.append({"role": "user", "content": msg.content})
+
+        url = self.base_url.rstrip("/") + "//v1/messages"
+        headers = {
+            "accept": "application/json",
+            "api-key": self.api_key,
+            "Content-Type": "application/json",
+        }
+        payload: Dict[str, Any] = {
+            "model": self.model_name,
+            "max_tokens": kwargs.get("max_tokens", self.max_tokens),
+            "messages": api_messages,
+        }
+        if system_text.strip():
+            payload["system"] = system_text.strip()
+        if stop:
+            payload["stop_sequences"] = stop
+
+        resp = http_requests.post(url, json=payload, headers=headers, timeout=120)
+        if resp.status_code != 200:
+            raise Exception(f"OneLLM API error {resp.status_code}: {resp.text[:500]}")
+
+        data = resp.json()
+        # Extract text from Anthropic-format response
+        content_blocks = data.get("content", [])
+        text = "".join(b.get("text", "") for b in content_blocks if b.get("type") == "text")
+
+        message = AIMessage(content=text)
+        generation = ChatGeneration(message=message)
+        return ChatResult(generations=[generation])
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -111,7 +177,7 @@ class LLMService:
         
         return fixed
     
-    def configure(self, provider: str, api_key: str, model: Optional[str] = None):
+    def configure(self, provider: str, api_key: str, model: Optional[str] = None, api_url: Optional[str] = None):
         provider_lower = provider.lower()
         
         try:
@@ -126,16 +192,21 @@ class LLMService:
                 self.model_name = model_name
                 logger.info(f"OpenAI model configured: {model_name}")
                 
-            elif provider_lower == "anthropic":
+            elif provider_lower == "claude":
                 model_name = model or "claude-3-5-sonnet-20241022"
-                self.active_model = ChatAnthropic(
-                    model=model_name,
-                    temperature=0.7,
-                    api_key=api_key
-                )
-                self.provider = "anthropic"
+                anthropic_kwargs = {
+                    "model": model_name,
+                    "temperature": 0.7,
+                    "api_key": api_key,
+                }
+                effective_url = api_url or settings.anthropic_api_url
+                if effective_url:
+                    anthropic_kwargs["anthropic_api_url"] = effective_url
+                    logger.info(f"Anthropic using custom API URL: {effective_url}")
+                self.active_model = ChatAnthropic(**anthropic_kwargs)
+                self.provider = "claude"
                 self.model_name = model_name
-                logger.info(f"Anthropic model configured: {model_name}")
+                logger.info(f"Claude model configured: {model_name}")
                 
             elif provider_lower == "google":
                 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -172,17 +243,19 @@ class LLMService:
                 if not configured:
                     raise Exception("Could not configure Google Gemini. Please verify your API key has Gemini API access enabled in Google AI Studio.")
                 
-            elif provider_lower == "azure":
-                from langchain_openai import AzureChatOpenAI
-                model_name = model or "gpt-4"
-                self.active_model = AzureChatOpenAI(
-                    azure_deployment=model_name,
+            elif provider_lower == "onellm":
+                if not api_url:
+                    raise ValueError("OneLLM requires an API URL (e.g. https://apicid-dev.servicenow.com/v4/onellm/models/anthropic)")
+                model_name = model or "claude-3-7-sonnet-20250219"
+                self.active_model = ChatOneLLM(
+                    base_url=api_url,
+                    api_key=api_key,
+                    model_name=model_name,
                     temperature=0.7,
-                    api_key=api_key
                 )
-                self.provider = "azure"
+                self.provider = "onellm"
                 self.model_name = model_name
-                logger.info(f"Azure OpenAI model configured: {model_name}")
+                logger.info(f"OneLLM configured: {model_name} via {api_url}")
                 
             else:
                 raise ValueError(f"Unsupported provider: {provider}")

@@ -54,6 +54,9 @@ logs/
 htmlcov/
 .pytest_cache/
 
+# Scratch / test scripts
+test_onellm_models.py
+
 # Distribution
 dist/
 build/
