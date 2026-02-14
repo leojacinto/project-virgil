@@ -128,7 +128,7 @@ class DocumentProcessor:
         
         return chunks
     
-    def add_to_vector_store(self, file_id: str, content: str, filename: str, store: str = STORE_CUSTOMER):
+    def add_to_vector_store(self, file_id: str, content: str, filename: str, store: str = STORE_CUSTOMER, instance_name: str = None):
         collection = self._get_collection(store)
         if not collection:
             logger.error(f"Vector store collection not initialized for store: {store}")
@@ -140,7 +140,8 @@ class DocumentProcessor:
             embeddings = self.embedding_model.encode(chunks).tolist()
             
             ids = [f"{file_id}_chunk_{i}" for i in range(len(chunks))]
-            metadatas = [{"file_id": file_id, "filename": filename, "chunk_index": i, "store": store} 
+            metadatas = [{"file_id": file_id, "filename": filename, "chunk_index": i, "store": store,
+                         "instance": instance_name or "unknown"} 
                         for i in range(len(chunks))]
             
             collection.add(
@@ -154,7 +155,8 @@ class DocumentProcessor:
                 "filename": filename,
                 "chunks": len(chunks),
                 "content_length": len(content),
-                "store": store
+                "store": store,
+                "instance": instance_name or "unknown"
             }
             self._save_metadata()
             
@@ -198,7 +200,8 @@ class DocumentProcessor:
                                 "file_id": metadata.get("file_id", "unknown"),
                                 "relevance_score": 1 - distance,
                                 "store": s,
-                                "source_label": source_label
+                                "source_label": source_label,
+                                "source_instance": metadata.get("instance", "unknown")
                             })
                 except Exception as search_err:
                     logger.warning(f"Error searching {s}: {str(search_err)}")

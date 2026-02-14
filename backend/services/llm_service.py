@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from config import settings
 from services.servicenow_ontology import ServiceNowOntology
 from services.architecture_validator import ArchitectureValidator
+from services.instance_scanner_rules import RuleEngine, InstanceModel, ENABLED as RULES_ENABLED
 
 
 class ChatOneLLM(BaseChatModel):
@@ -32,7 +33,7 @@ class ChatOneLLM(BaseChatModel):
     api_key: str
     model_name: str = "claude-3-7-sonnet-20250219"
     temperature: float = 0.7
-    max_tokens: int = 4096
+    max_tokens: int = 16384
 
     @property
     def _llm_type(self) -> str:
@@ -87,17 +88,17 @@ logger = logging.getLogger(__name__)
 # Pydantic models for structured output
 class Recommendation(BaseModel):
     """A single recommendation"""
-    title: str = Field(description="Title of the recommendation")
-    description: str = Field(description="Detailed description")
-    servicenow_components: List[str] = Field(description="List of ServiceNow components")
+    title: str = Field(description="Clear, actionable title")
+    description: str = Field(description="Detailed description explaining why, what, and how")
+    servicenow_components: List[str] = Field(description="ServiceNow products, modules, plugins, or tables involved")
     priority: str = Field(description="Priority: high, medium, or low")
 
 class ArchitectureAnalysis(BaseModel):
     """Complete architecture analysis response"""
-    analysis: str = Field(description="Detailed architecture analysis text")
-    recommendations: List[Recommendation] = Field(description="List of recommendations")
+    analysis: str = Field(description="Comprehensive markdown-formatted architecture analysis with headings")
+    recommendations: List[Recommendation] = Field(description="List of actionable recommendations ordered by priority")
     mermaid_diagram: str = Field(description="Mermaid diagram code showing architecture flow")
-    implementation_notes: str = Field(description="Key implementation considerations")
+    implementation_notes: str = Field(description="Implementation considerations including phasing, dependencies, and risks")
 
 class LLMService:
     def __init__(self):
@@ -106,6 +107,7 @@ class LLMService:
         self.model_name = None
         self.ontology = ServiceNowOntology()
         self.validator = ArchitectureValidator(self.ontology)
+        self.rule_engine = RuleEngine()
     
     def _sanitize_mermaid(self, mermaid: str) -> str:
         """Sanitize Mermaid diagram syntax to prevent rendering errors.
@@ -301,45 +303,16 @@ class LLMService:
         # Get specialized constraints based on query type
         specialized_constraints = self.ontology.get_specialized_constraints(query_types)
         
-        # Query instance metadata using SN Utils (if credentials available)
-        instance_summary = None
-        jdbc_metadata = None
-        try:
-            from config import settings
-            if settings.servicenow_instance and settings.servicenow_username and settings.servicenow_password:
-                from services.sn_utils_service import SNUtilsService
-                
-                sn_utils = SNUtilsService(
-                    settings.servicenow_instance,
-                    settings.servicenow_username,
-                    settings.servicenow_password
-                )
-                
-                instance_summary = sn_utils.get_instance_summary()
-                logger.info(f"Instance summary retrieved: {len(instance_summary.get('applications', []))} apps")
-                
-                # Get JDBC metadata for structural intelligence
-                try:
-                    from services.servicenow_connector import ServiceNowConnector
-                    connector = ServiceNowConnector(
-                        settings.servicenow_instance,
-                        settings.servicenow_username,
-                        settings.servicenow_password,
-                        settings.servicenow_jdbc_path
-                    )
-                    connector.connect()
-                    jdbc_metadata = connector.get_instance_metadata()
-                    connector.close()
-                    logger.info(f"JDBC metadata: {len(jdbc_metadata.get('relationships', []))} relationships, "
-                               f"{len(jdbc_metadata.get('plugins', []))} plugins, "
-                               f"{len(jdbc_metadata.get('usage_stats', []))} usage stats")
-                except Exception as jdbc_error:
-                    logger.warning(f"Could not retrieve JDBC metadata: {str(jdbc_error)}")
-                    jdbc_metadata = None
-        except Exception as e:
-            logger.warning(f"Could not retrieve instance summary: {str(e)}")
-            instance_summary = None
-            jdbc_metadata = None
+        # Run assessment rules against instance data for prompt enrichment
+        assessment_findings = self._get_assessment_findings(servicenow_data)
+        findings_prompt = self._format_findings_for_prompt(assessment_findings, query_types)
+        
+        # Use instance summary from the active connection (passed via servicenow_data)
+        instance_summary = servicenow_data.get("instance_summary")
+        jdbc_metadata = servicenow_data.get("jdbc_metadata")
+        if instance_summary:
+            logger.info(f"Instance summary from active connection: {instance_summary.get('instance', 'N/A')}, "
+                       f"{len(instance_summary.get('applications', []))} apps")
         
         # Get instance-aware recommendations
         installed_apps = servicenow_data.get("applications", [])
@@ -396,13 +369,31 @@ Customizations Detected:
 Use this structural data to provide specific, instance-aware recommendations.
 ''' if jdbc_metadata else ''}
 
-Your task is to analyze the user's requirements and provide:
-1. A comprehensive architectural analysis
-2. Specific recommendations based on available ServiceNow components
-3. Architecture components for diagram generation
-4. Implementation considerations and best practices
+{findings_prompt}
 
-Be specific, practical, and reference actual ServiceNow tables, applications, and components when available."""
+ANALYSIS DEPTH REQUIREMENTS:
+Your analysis must be thorough but CONCISE. Aim for focused insight, not length.
+Keep the total analysis under 1500 words — prioritize architectural decisions and trade-offs over background descriptions.
+For each major capability area mentioned in the query, address:
+- Current state: What exists today on this instance (installed apps, data volumes, gaps)
+- Target state: What the architecture should look like
+- Gap analysis: What's missing and needs to be implemented
+- Trade-offs: Key architectural decisions with pros/cons (e.g., single vs dual instance, domain separation vs ACLs, shared vs dedicated portals)
+- Dependencies: What must be in place before other components can be deployed
+
+When multiple ServiceNow products are involved (e.g., CSM + ITSM, HRSD + ITSM), explicitly address:
+- How they share foundational components (CMDB, User Management, Knowledge Base)
+- Data segregation between public-facing and internal operations
+- Workflow crossover points (e.g., a customer case escalating to an internal incident)
+- User experience separation (external customers vs internal agents)
+
+Your task is to provide:
+1. **Analysis**: A structured architectural analysis with markdown headings covering current state, proposed architecture, key decisions, data flows, compliance, and risks
+2. **Recommendations** (4-8 items): Specific, actionable recommendations with concrete ServiceNow products, tables, and configurations — not generic advice
+3. **Architecture Diagram**: Components for Mermaid diagram generation
+4. **Implementation Notes**: Phasing, dependencies, migration steps, testing strategy, and configuration decisions
+
+Be specific, practical, and reference actual ServiceNow tables, applications, and components. Avoid generic statements like "implement best practices" — instead specify WHICH practices and HOW."""
 
         servicenow_summary = self._summarize_servicenow_data(servicenow_data)
         documents_summary = self._summarize_documents(documents)
@@ -419,20 +410,25 @@ Relevant Documentation:
 Additional Context from Web Search:
 {web_summary}
 
-Please provide:
-1. **Analysis**: A detailed analysis of the requirements and how they map to ServiceNow capabilities
-2. **Recommendations**: Specific recommendations with ServiceNow products, tables, and components to use
-3. **Architecture Components**: A structured list of components for the architecture diagram
-4. **Implementation Notes**: Key considerations, risks, and best practices
+Please provide a THOROUGH response covering all aspects of this query.
+
+{self._build_analysis_guidance(query_types)}
+
+FORMAT YOUR ANALYSIS using markdown headings (## Current State Assessment, ## Proposed Architecture, ## Key Architectural Decisions, etc.)
+
+For RECOMMENDATIONS, provide 4-8 specific items. Each recommendation must explain:
+- WHY it is needed (the problem or gap it addresses)
+- WHAT to implement (specific ServiceNow product, plugin, or table)
+- HOW to implement it (configuration approach, not just "install it")
 
 Format your response as JSON with the following structure:
 {{
-    "analysis": "detailed analysis text",
+    "analysis": "markdown-formatted analysis with ## headings",
     "recommendations": [
         {{
-            "title": "recommendation title",
-            "description": "detailed description",
-            "servicenow_components": ["component1", "component2"],
+            "title": "clear actionable title",
+            "description": "description with WHY, WHAT, and HOW",
+            "servicenow_components": ["specific_product_or_table_1", "specific_product_or_table_2"],
             "priority": "high|medium|low"
         }}
     ],
@@ -445,8 +441,10 @@ Format your response as JSON with the following structure:
         }}
     ],
     "mermaid_diagram": "REQUIRED: Valid Mermaid flowchart syntax starting with 'graph TD' and using --> arrows between nodes. Example: graph TD\\n    A[Component1] --> B[Component2]\\n    B --> C[Component3]",
-    "implementation_notes": "key implementation considerations"
+    "implementation_notes": "phasing, dependencies, migration steps, testing strategy"
 }}
+
+CRITICAL JSON FORMATTING: You MUST escape all double quotes inside JSON string values with a backslash (e.g. \"example\"). Do NOT use unescaped quotes inside strings. This is essential for valid JSON output.
 
 CRITICAL MERMAID REQUIREMENTS:
 - MUST start with "graph TD" on first line
@@ -800,6 +798,18 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     if validation["warnings"]:
                         logger.info(f"Architecture validation warnings: {validation['warnings']}")
                 
+                # Post-validate recommendations: confidence tagging + ontology validation
+                try:
+                    recs = result.get("recommendations", [])
+                    recs = self._tag_recommendation_confidence(recs, assessment_findings)
+                    recs = self._validate_recommendation_components(recs, servicenow_data)
+                    result["recommendations"] = recs
+                    logger.info(f"Recommendation validation: {sum(1 for r in recs if r.get('confidence') == 'rule-backed')} rule-backed, "
+                               f"{sum(1 for r in recs if r.get('confidence') == 'ontology-validated')} ontology-validated, "
+                               f"{sum(1 for r in recs if r.get('confidence') == 'llm-generated')} llm-generated")
+                except Exception as tag_err:
+                    logger.warning(f"Recommendation tagging failed (non-critical): {tag_err}")
+                
                 # Log successful completion
                 success_log = f"/tmp/virgil_success_{timestamp}.txt"
                 try:
@@ -825,95 +835,75 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 
                 # Try to parse JSON from response
                 try:
-                    if "```json" in response_text:
-                        json_start = response_text.find("```json") + 7
-                        json_end = response_text.find("```", json_start)
-                        response_text = response_text[json_start:json_end].strip()
+                    json_text = response_text
+                    # Strip code fences if present
+                    if "```json" in json_text:
+                        start = json_text.find("```json") + 7
+                        end = json_text.find("```", start)
+                        if end > start:
+                            json_text = json_text[start:end].strip()
+                    elif not json_text.strip().startswith("{"):
+                        # Find the JSON object in the response
+                        brace_start = json_text.find("{")
+                        if brace_start >= 0:
+                            json_text = json_text[brace_start:]
                     
-                    result = json.loads(response_text, strict=False)
-                    
-                    # Save parsed result
-                    debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                    result = json.loads(json_text, strict=False)
+                    logger.info("Successfully parsed JSON response")
+                except (json.JSONDecodeError, Exception) as je:
+                    logger.warning(f"JSON parsing failed ({je}), using regex field extraction")
+                    result = self._extract_fields_from_text(response_text)
+                
+                # Save parsed result for debugging
+                debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                try:
                     with open(debug_file, 'w') as f:
                         json.dump(result, f, indent=2)
-                    logger.info(f"Parsed LLM response saved to: {debug_file}")
+                except Exception:
+                    pass
+                
+                if "mermaid_diagram" not in result:
+                    result["mermaid_diagram"] = ""
+                
+                # Sanitize and log Mermaid diagram from fallback path
+                fallback_pipeline = []
+                if baseline_stage:
+                    fallback_pipeline.append(baseline_stage)
+                fallback_pipeline.append(ontology_constraints)
+                mermaid = result.get("mermaid_diagram", "")
+                if mermaid:
+                    fallback_pipeline.append({"stage": "LLM Output", "description": "Raw diagram from the language model before any processing", "mermaid": mermaid, "changes": []})
                     
-                    if "mermaid_diagram" not in result:
-                        result["mermaid_diagram"] = ""
+                    fixed_mermaid = self._sanitize_mermaid(mermaid)
+                    sanitize_changes = ["Syntax errors corrected"] if fixed_mermaid != mermaid else ["No syntax issues found"]
+                    fallback_pipeline.append({"stage": "Syntax Sanitizer", "description": "Fixed Mermaid syntax issues", "mermaid": fixed_mermaid, "changes": sanitize_changes})
+                    result["mermaid_diagram"] = fixed_mermaid
                     
-                    logger.info("Successfully parsed JSON response")
-                    
-                    # Sanitize and log Mermaid diagram from fallback path
-                    fallback_pipeline = []
-                    if baseline_stage:
-                        fallback_pipeline.append(baseline_stage)
-                    fallback_pipeline.append(ontology_constraints)
-                    mermaid = result.get("mermaid_diagram", "")
-                    if mermaid:
-                        # Stage 1: Raw LLM output
-                        fallback_pipeline.append({"stage": "LLM Output", "description": "Raw diagram from the language model before any processing", "mermaid": mermaid, "changes": []})
-                        
-                        mermaid_file = f"/tmp/mermaid_original_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                        with open(mermaid_file, 'w') as f:
-                            f.write(mermaid)
-                        logger.info(f"Mermaid diagram (from fallback) saved to: {mermaid_file}")
-                        
-                        fixed_mermaid = self._sanitize_mermaid(mermaid)
-                        sanitize_changes = []
-                        if fixed_mermaid != mermaid:
-                            mermaid_fixed_file = f"/tmp/mermaid_fixed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                            with open(mermaid_fixed_file, 'w') as f:
-                                f.write(fixed_mermaid)
-                            logger.info(f"Fixed Mermaid (fallback path) saved to: {mermaid_fixed_file}")
-                            sanitize_changes.append("Syntax errors corrected")
+                    try:
+                        is_valid, validation_errors, corrected_diagram, rules_applied = self.validator.validate_mermaid_diagram(fixed_mermaid)
+                        validator_changes = []
+                        if not is_valid:
+                            validator_changes = validation_errors[:]
+                            if corrected_diagram:
+                                result["mermaid_diagram"] = corrected_diagram
                         else:
-                            sanitize_changes.append("No syntax issues found")
-                        
-                        # Stage 2: After sanitization
-                        fallback_pipeline.append({"stage": "Syntax Sanitizer", "description": "Fixed Mermaid syntax issues (special characters, arrow format, node IDs)", "mermaid": fixed_mermaid, "changes": sanitize_changes})
-                        result["mermaid_diagram"] = fixed_mermaid
-                        
-                        # Stage 3: Validator
-                        try:
-                            is_valid, validation_errors, corrected_diagram, rules_applied = self.validator.validate_mermaid_diagram(fixed_mermaid)
-                            validator_changes = []
-                            if not is_valid:
-                                validator_changes = validation_errors[:]
-                                if corrected_diagram:
-                                    result["mermaid_diagram"] = corrected_diagram
-                            else:
-                                validator_changes.append("Ontology rules already satisfied — prompt constraints prevented issues pre-generation")
-                            
-                            # Attach rules_applied to the ontology constraints stage
-                            ontology_constraints["rules_applied"] = rules_applied
-                            
-                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules: label vocabulary, arrow limits, anti-patterns, required relationships", "mermaid": result["mermaid_diagram"], "changes": validator_changes, "rules_applied": rules_applied})
-                        except Exception as val_err:
-                            logger.error(f"Fallback validation error: {str(val_err)}")
-                            fallback_pipeline.append({"stage": "Ontology Validator", "description": "Validation encountered an error", "mermaid": fixed_mermaid, "changes": [f"Validator error: {str(val_err)}"]})
-                    
-                    if fallback_pipeline:
-                        result["diagram_pipeline"] = fallback_pipeline
-                    
-                except json.JSONDecodeError as je:
-                    logger.error(f"Both structured output and JSON parsing failed: {str(je)}")
-                    logger.error(f"JSONDecodeError at position {je.pos}: {je.msg}")
-                    # Save the problematic text for debugging
-                    err_file = f"/tmp/llm_json_error_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-                    with open(err_file, 'w') as f:
-                        f.write(f"Error: {str(je)}\nPosition: {je.pos}\n\n---RAW TEXT---\n{response_text}")
-                    logger.error(f"Failed JSON saved to: {err_file}")
-                    result = {
-                        "analysis": response_text,
-                        "recommendations": [{
-                            "title": "Review Analysis",
-                            "description": "See detailed analysis above",
-                            "servicenow_components": [],
-                            "priority": "high"
-                        }],
-                        "mermaid_diagram": "graph TD\n    A[Analysis] --> B[See Details]",
-                        "implementation_notes": "See analysis for details"
-                    }
+                            validator_changes.append("Ontology rules already satisfied")
+                        ontology_constraints["rules_applied"] = rules_applied
+                        fallback_pipeline.append({"stage": "Ontology Validator", "description": "Enforced architectural rules", "mermaid": result["mermaid_diagram"], "changes": validator_changes, "rules_applied": rules_applied})
+                    except Exception as val_err:
+                        logger.error(f"Fallback validation error: {str(val_err)}")
+                
+                if fallback_pipeline:
+                    result["diagram_pipeline"] = fallback_pipeline
+                
+                # Post-validate recommendations (fallback path)
+                try:
+                    recs = result.get("recommendations", [])
+                    recs = self._tag_recommendation_confidence(recs, assessment_findings)
+                    recs = self._validate_recommendation_components(recs, servicenow_data)
+                    result["recommendations"] = recs
+                except Exception as tag_err:
+                    logger.warning(f"Recommendation tagging failed (non-critical): {tag_err}")
             
             return result
         except Exception as e:
@@ -945,13 +935,478 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
             summary.append(f"\nInstalled Applications ({len(apps)}): {', '.join(app_names)}")
             if len(apps) > 10:
                 summary.append(f"... and {len(apps) - 10} more applications")
+            
+            # Detect demo/test instance
+            demo_patterns = ["demo", "test", "sample", "example", "star wars", "90s rock",
+                           "make a wish", "dummy", "postman"]
+            demo_apps = [a.get("name", "") for a in apps
+                        if any(p in a.get("name", "").lower() or p in a.get("scope", "").lower()
+                              for p in demo_patterns)]
+            if demo_apps and len(demo_apps) / len(apps) > 0.15:
+                summary.append(f"\n⚠ INSTANCE TYPE WARNING: {len(demo_apps)} of {len(apps)} apps "
+                             f"({len(demo_apps)*100//len(apps)}%) are demo/test artifacts "
+                             f"(e.g., {', '.join(demo_apps[:3])}). "
+                             f"This appears to be a DEMO or SANDBOX instance — "
+                             f"the app inventory is NOT representative of production. "
+                             f"Clearly state this in your analysis and do not treat demo apps as custom development.")
+            
+            # Flag notable signals that might be missed
+            global_apps = [a.get("name", "") for a in apps if a.get("scope") == "global"]
+            if global_apps:
+                summary.append(f"\nGlobal-Scope Applications: {', '.join(global_apps)}")
         
         components = data.get("components", {})
         for comp_type, comp_list in components.items():
             if comp_list:
                 summary.append(f"\n{comp_type.replace('_', ' ').title()} ({len(comp_list)})")
         
+        # Flag REST-only data limitations
+        if data.get("connection_mode") == "rest_only":
+            summary.append("\n⚠ DATA LIMITATION: Connected via REST API only. "
+                         "Table-level record counts, usage statistics, plugin inventory, "
+                         "and custom table detection are NOT available. "
+                         "Acknowledge this limitation in your analysis.")
+        
         return "\n".join(summary) if summary else "No ServiceNow data available"
+    
+    def _extract_fields_from_text(self, text: str) -> Dict:
+        """Extract fields from JSON-like LLM output using field-boundary detection.
+        Uses str.find instead of regex to handle unescaped quotes in long text."""
+        result = {
+            "analysis": "",
+            "recommendations": [],
+            "mermaid_diagram": "",
+            "implementation_notes": ""
+        }
+        
+        # Strip code fences if present
+        clean = text
+        if "```" in clean:
+            fence_start = clean.find("```")
+            newline_after = clean.find("\n", fence_start)
+            if newline_after >= 0:
+                clean = clean[newline_after + 1:]
+            end_fence = clean.rfind("```")
+            if end_fence > 0:
+                clean = clean[:end_fence]
+        
+        # Find field positions by looking for "fieldname": pattern
+        field_names = ["analysis", "recommendations", "architecture_components",
+                       "mermaid_diagram", "implementation_notes"]
+        field_positions = []
+        for name in field_names:
+            pattern = f'"{name}"'
+            search_from = 0
+            while True:
+                pos = clean.find(pattern, search_from)
+                if pos < 0:
+                    break
+                # Verify it's a JSON key (followed by colon)
+                after = clean[pos + len(pattern):pos + len(pattern) + 10].lstrip()
+                if after.startswith(":"):
+                    field_positions.append((pos, name))
+                    break
+                search_from = pos + 1
+        
+        field_positions.sort()
+        
+        for i, (pos, name) in enumerate(field_positions):
+            # Find the colon and start of value
+            colon_pos = clean.find(":", pos + len(name) + 2)
+            if colon_pos < 0:
+                continue
+            value_start = colon_pos + 1
+            # Skip whitespace
+            while value_start < len(clean) and clean[value_start] in ' \t\n\r':
+                value_start += 1
+            
+            # Value ends just before the next field (or end of object)
+            if i + 1 < len(field_positions):
+                # Find the comma separator before the next field
+                next_pos = field_positions[i + 1][0]
+                raw_segment = clean[value_start:next_pos].rstrip()
+                # Strip trailing comma
+                if raw_segment.endswith(","):
+                    raw_segment = raw_segment[:-1].rstrip()
+            else:
+                # Last field — ends at closing brace
+                end_brace = clean.rfind("}")
+                raw_segment = clean[value_start:end_brace].rstrip() if end_brace > value_start else clean[value_start:].rstrip()
+                if raw_segment.endswith(","):
+                    raw_segment = raw_segment[:-1].rstrip()
+            
+            # Process based on field type
+            if name in ("analysis", "mermaid_diagram", "implementation_notes"):
+                # String value: strip surrounding quotes
+                if raw_segment.startswith('"'):
+                    raw_segment = raw_segment[1:]
+                if raw_segment.endswith('"'):
+                    raw_segment = raw_segment[:-1]
+                # Unescape JSON string escapes
+                raw_segment = (raw_segment
+                    .replace('\\n', '\n')
+                    .replace('\\t', '\t')
+                    .replace('\\"', '"')
+                    .replace('\\\\', '\\'))
+                result[name] = raw_segment
+            
+            elif name == "recommendations":
+                # Array value: try json.loads on the raw segment
+                try:
+                    result["recommendations"] = json.loads(raw_segment, strict=False)
+                except Exception:
+                    # If the array itself has unescaped quotes, extract individual objects
+                    recs = []
+                    # Find each {"title": ...} block
+                    obj_start = raw_segment.find("{")
+                    while obj_start >= 0:
+                        # Find matching } by counting braces
+                        depth = 0
+                        for j in range(obj_start, len(raw_segment)):
+                            if raw_segment[j] == "{":
+                                depth += 1
+                            elif raw_segment[j] == "}":
+                                depth -= 1
+                                if depth == 0:
+                                    obj_text = raw_segment[obj_start:j + 1]
+                                    try:
+                                        recs.append(json.loads(obj_text, strict=False))
+                                    except Exception:
+                                        pass
+                                    obj_start = raw_segment.find("{", j + 1)
+                                    break
+                        else:
+                            break
+                    if recs:
+                        result["recommendations"] = recs
+        
+        logger.info(f"Field extraction: analysis={len(result.get('analysis', ''))} chars, "
+                    f"recs={len(result.get('recommendations', []))}, "
+                    f"diagram={len(result.get('mermaid_diagram', ''))} chars")
+        return result
+    
+    def _build_analysis_guidance(self, query_types: List[str]) -> str:
+        """Build dynamic analysis guidance based on detected query types.
+        Tells the LLM exactly what dimensions to cover for the specific query."""
+        sections = []
+        
+        if len(query_types) > 1 and "general" not in query_types:
+            sections.append(
+                "This is a MULTI-DOMAIN query spanning: " + ", ".join(query_types).upper() + ".\n"
+                "Your analysis MUST address each domain individually AND their intersections."
+            )
+        
+        guidance = {
+            "itsm": (
+                "FOR ITSM, address:\n"
+                "- Which ITSM modules are needed (Incident, Problem, Change, Request, Knowledge)\n"
+                "- Service Catalog structure and request fulfillment workflows\n"
+                "- How CMDB CIs relate to incident/problem/change records\n"
+                "- Agent experience: Service Portal vs Agent Workspace vs classic UI\n"
+                "- SLA definitions and OLA/UC considerations"
+            ),
+            "csm": (
+                "FOR CSM, address:\n"
+                "- Customer Portal design and self-service capabilities\n"
+                "- Account-Contact-Case data model vs ITSM's User-Incident model\n"
+                "- Customer-facing Knowledge Base with ACL-controlled visibility\n"
+                "- Case escalation paths (when does a case become an internal incident?)\n"
+                "- Agent Workspace for CSM agents\n"
+                "- Entitlements and SLA management for customer contracts"
+            ),
+            "compliance": (
+                "FOR COMPLIANCE/FEDRAMP, address:\n"
+                "- FedRAMP authorization boundary and data classification (IL2/IL4/IL5)\n"
+                "- Single instance vs dual instance: present BOTH options with clear pros/cons\n"
+                "- Domain separation configuration if single instance\n"
+                "- ACL strategy for data segregation between public and internal data\n"
+                "- Audit trail requirements (sys_audit, transaction logs)\n"
+                "- Encryption requirements (at rest and in transit)\n"
+                "- Authentication: MFA, SSO/SAML for both internal and external users"
+            ),
+            "integration": (
+                "FOR INTEGRATION, address:\n"
+                "- Integration patterns: REST vs SOAP vs MID Server vs Integration Hub spokes\n"
+                "- Data synchronization direction and frequency\n"
+                "- Error handling and retry mechanisms\n"
+                "- Authentication for external system connections"
+            ),
+            "portal": (
+                "FOR PORTAL, address:\n"
+                "- Portal type: Service Portal vs Customer Portal vs Employee Center\n"
+                "- User experience design and branding\n"
+                "- Authentication flow for portal users\n"
+                "- Content management and knowledge article visibility"
+            ),
+            "hrsd": (
+                "FOR HRSD, address:\n"
+                "- Employee lifecycle management\n"
+                "- HR case types and assignment rules\n"
+                "- Employee Center portal configuration\n"
+                "- Integration with ITSM for IT-related onboarding tasks"
+            ),
+            "itom": (
+                "FOR ITOM, address:\n"
+                "- Discovery and Service Mapping configuration\n"
+                "- CMDB population strategy and CI class structure\n"
+                "- Event Management and alert correlation\n"
+                "- Health Log Analytics integration"
+            ),
+            "secops": (
+                "FOR SECOPS, address:\n"
+                "- Security Incident Response workflows\n"
+                "- Vulnerability Response integration with scanners\n"
+                "- Threat Intelligence integration\n"
+                "- SIEM integration patterns"
+            ),
+        }
+        
+        for qt in query_types:
+            if qt in guidance:
+                sections.append(guidance[qt])
+        
+        # Add cross-domain guidance when multiple types detected
+        cross_domain = []
+        if "csm" in query_types and "itsm" in query_types:
+            cross_domain.append(
+                "CSM ↔ ITSM INTERSECTION:\n"
+                "- How customer cases escalate to internal incidents\n"
+                "- Shared vs separate Knowledge Bases\n"
+                "- Shared CMDB for service-aware case routing\n"
+                "- Agent experience: do CSM and ITSM agents use same or different workspaces?\n"
+                "- Reporting across both domains"
+            )
+        if "compliance" in query_types and ("csm" in query_types or "itsm" in query_types):
+            cross_domain.append(
+                "COMPLIANCE ↔ SERVICE MANAGEMENT INTERSECTION:\n"
+                "- How FedRAMP requirements affect the CSM/ITSM architecture choice\n"
+                "- Data residency and sovereignty constraints\n"
+                "- Impact of compliance on portal design (public vs internal)\n"
+                "- Audit requirements for both customer-facing and internal operations"
+            )
+        
+        if cross_domain:
+            sections.append("CROSS-DOMAIN CONSIDERATIONS:\n" + "\n\n".join(cross_domain))
+        
+        return "\n\n".join(sections) if sections else ""
+    
+    def _get_assessment_findings(self, servicenow_data: Dict) -> List[Dict]:
+        """Run the rule engine against available instance data to get deterministic findings.
+        Returns a list of finding dicts, or empty list if rules are disabled or data is insufficient."""
+        if not RULES_ENABLED:
+            return []
+        
+        try:
+            # Build a lightweight InstanceModel from the servicenow_data already available
+            model = InstanceModel()
+            
+            # Map applications to plugin IDs
+            apps = servicenow_data.get("applications", [])
+            for app in apps:
+                scope = app.get("scope", "")
+                if scope:
+                    model.installed_plugins[scope] = {
+                        "name": app.get("name", ""),
+                        "active": True,
+                    }
+            
+            # Map key capabilities to known plugin IDs for rule matching
+            caps = servicenow_data.get("key_capabilities", {})
+            cap_to_plugin = {
+                "itsm": "com.snc.incident",
+                "csm": "com.sn_customerservice",
+                "hrsd": "com.sn_hr_core",
+                "itom": "com.snc.discovery",
+                "cmdb": "com.snc.cmdb",
+            }
+            for cap, plugin_id in cap_to_plugin.items():
+                if caps.get(cap) and plugin_id not in model.installed_plugins:
+                    model.installed_plugins[plugin_id] = {"name": cap.upper(), "active": True}
+            
+            # Run the rule engine
+            evaluation = self.rule_engine.evaluate(model)
+            findings = evaluation.get("findings", [])
+            logger.info(f"Assessment produced {len(findings)} findings for architecture query enrichment")
+            return findings
+        except Exception as e:
+            logger.warning(f"Assessment enrichment failed (non-critical): {e}")
+            return []
+    
+    def _format_findings_for_prompt(self, findings: List[Dict], query_types: List[str]) -> str:
+        """Format assessment findings as structured prompt context.
+        Filters to findings relevant to the detected query types."""
+        if not findings:
+            return ""
+        
+        # Map query types to relevant rule categories and tags
+        type_to_tags = {
+            "itsm": {"D2C", "itsm", "incident", "problem", "change"},
+            "csm": {"R2F", "csm", "customer", "portal"},
+            "hrsd": {"R2F", "hrsd", "employee"},
+            "itom": {"D2C", "itom", "discovery", "cmdb"},
+            "secops": {"D2C", "secops", "security"},
+            "compliance": {"security", "compliance", "audit", "fedramp"},
+            "integration": {"integration", "web_service", "mid_server"},
+            "portal": {"R2F", "portal", "self_service"},
+            "automation": {"workflow", "flow_designer", "orchestration"},
+            "data_flow": {"data_persistence", "integration"},
+        }
+        
+        relevant_tags = set()
+        for qt in query_types:
+            relevant_tags.update(type_to_tags.get(qt, set()))
+        
+        # If no specific query types matched, include all findings
+        if not relevant_tags:
+            relevant = findings
+        else:
+            relevant = []
+            for f in findings:
+                # Include finding if its category or any evidence overlaps with relevant tags
+                if f.get("category", "") in relevant_tags:
+                    relevant.append(f)
+                    continue
+                # Check rule_id prefix as fallback
+                rule_id = f.get("rule_id", "")
+                if any(tag.upper() in rule_id.upper() for tag in relevant_tags):
+                    relevant.append(f)
+        
+        # Also always include CRITICAL and HIGH severity findings regardless of relevance
+        for f in findings:
+            if f.get("severity") in ("critical", "high") and f not in relevant:
+                relevant.append(f)
+        
+        if not relevant:
+            return ""
+        
+        lines = ["VERIFIED INSTANCE FINDINGS (from deterministic rule engine):"]
+        for f in relevant[:15]:  # Cap at 15 to avoid prompt bloat
+            severity = f.get("severity", "info").upper()
+            lines.append(f"- [{severity}] {f.get('rule_name', '')}: {f.get('message', '')}")
+            lines.append(f"  Recommendation: {f.get('recommendation', '')}")
+        
+        lines.append("")
+        lines.append("Your analysis and recommendations MUST address these verified findings where relevant to the user's query.")
+        lines.append("Reference the specific finding when your recommendation aligns with one.")
+        
+        return "\n".join(lines)
+    
+    def _tag_recommendation_confidence(self, recommendations: List[Dict], 
+                                        findings: List[Dict]) -> List[Dict]:
+        """Tag each recommendation with a confidence source:
+        - 'rule-backed': recommendation aligns with a deterministic rule finding
+        - 'ontology-validated': recommended components exist in the ontology graph
+        - 'llm-generated': pure LLM output with no deterministic backing
+        """
+        # Build lookup structures
+        finding_keywords = set()
+        for f in findings:
+            # Extract key terms from finding messages and rule names
+            for word in f.get("rule_name", "").lower().split():
+                if len(word) > 3:
+                    finding_keywords.add(word)
+            for word in f.get("message", "").lower().split():
+                if len(word) > 3:
+                    finding_keywords.add(word)
+        
+        ontology_labels = set()
+        for node_id, node in self.ontology._nodes.items():
+            ontology_labels.add(node.label.lower())
+            ontology_labels.add(node_id.lower())
+            for alias in node.aliases:
+                ontology_labels.add(alias.lower())
+        
+        for rec in recommendations:
+            components = rec.get("servicenow_components", [])
+            title_lower = rec.get("title", "").lower()
+            desc_lower = rec.get("description", "").lower()
+            combined = title_lower + " " + desc_lower
+            
+            # Check if recommendation aligns with a rule finding
+            rule_match = False
+            matching_rules = []
+            for f in findings:
+                rule_name_lower = f.get("rule_name", "").lower()
+                message_lower = f.get("message", "").lower()
+                # Check for significant keyword overlap
+                rule_words = set(w for w in rule_name_lower.split() if len(w) > 3)
+                overlap = sum(1 for w in rule_words if w in combined)
+                if overlap >= 2:
+                    rule_match = True
+                    matching_rules.append(f.get("rule_id", ""))
+            
+            # Check if components exist in ontology
+            ontology_match = False
+            validated_components = []
+            unvalidated_components = []
+            for comp in components:
+                comp_lower = comp.lower()
+                if any(comp_lower in label or label in comp_lower for label in ontology_labels):
+                    ontology_match = True
+                    validated_components.append(comp)
+                else:
+                    unvalidated_components.append(comp)
+            
+            # Assign confidence tag
+            if rule_match:
+                rec["confidence"] = "rule-backed"
+                rec["confidence_detail"] = f"Backed by assessment rule(s): {', '.join(matching_rules[:3])}"
+            elif ontology_match:
+                rec["confidence"] = "ontology-validated"
+                rec["confidence_detail"] = "Components verified in ServiceNow ontology graph"
+            else:
+                rec["confidence"] = "llm-generated"
+                rec["confidence_detail"] = "Generated by LLM without deterministic validation"
+            
+            # Tag unvalidated components
+            if unvalidated_components:
+                rec["unvalidated_components"] = unvalidated_components
+        
+        return recommendations
+    
+    def _validate_recommendation_components(self, recommendations: List[Dict],
+                                             instance_data: Dict) -> List[Dict]:
+        """Post-validate recommendation components against the ontology graph
+        and instance data. Adds validation_notes to each recommendation."""
+        installed_apps = set()
+        if 'applications' in instance_data:
+            for app in instance_data['applications']:
+                installed_apps.add(app.get('name', '').lower())
+                installed_apps.add(app.get('scope', '').lower())
+        
+        ontology_labels = {}
+        for node_id, node in self.ontology._nodes.items():
+            ontology_labels[node.label.lower()] = node
+            for alias in node.aliases:
+                ontology_labels[alias.lower()] = node
+        
+        for rec in recommendations:
+            notes = []
+            components = rec.get("servicenow_components", [])
+            
+            for comp in components:
+                comp_lower = comp.lower()
+                
+                # Check if already installed
+                for installed in installed_apps:
+                    if comp_lower in installed or installed in comp_lower:
+                        notes.append(f"'{comp}' appears already installed on this instance")
+                        break
+                
+                # Check if component exists in ontology
+                found_in_ontology = False
+                for label, node in ontology_labels.items():
+                    if comp_lower in label or label in comp_lower:
+                        found_in_ontology = True
+                        break
+                
+                if not found_in_ontology:
+                    notes.append(f"'{comp}' is not in the ServiceNow ontology — verify this component exists")
+            
+            if notes:
+                rec["validation_notes"] = notes
+        
+        return recommendations
     
     def _summarize_documents(self, documents: List[Dict]) -> str:
         if not documents:
@@ -960,9 +1415,21 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
         summary = []
         for i, doc in enumerate(documents[:5], 1):
             filename = doc.get("filename", "Unknown")
-            content_preview = doc.get("content", "")[:200]
+            content = doc.get("content", "")
             relevance = doc.get("relevance_score", 0)
-            summary.append(f"{i}. {filename} (relevance: {relevance:.2f})\n   {content_preview}...")
+            source_label = doc.get("source_label", "Document")
+            source_instance = doc.get("source_instance", "unknown")
+            instance_tag = f" [uploaded for: {source_instance}]" if source_instance != "unknown" else ""
+            summary.append(f"{i}. [{source_label}]{instance_tag} {filename} (relevance: {relevance:.2f})\n   {content}")
+        
+        # Warn if documents are from a different instance
+        instances = set(doc.get("source_instance", "unknown") for doc in documents[:5])
+        instances.discard("unknown")
+        if len(instances) > 0:
+            summary.insert(0, f"NOTE: These documents were uploaded during connections to: {', '.join(instances)}. "
+                           f"They may reference a DIFFERENT instance or customer than the one currently connected. "
+                           f"Use document content for general requirements context, but verify instance-specific claims "
+                           f"against the CURRENT INSTANCE STATE data above.")
         
         return "\n\n".join(summary)
     

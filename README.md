@@ -105,8 +105,8 @@ You need at least one LLM API key:
    ```
    
    This will automatically pull the images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:v1.5.1`
-   - `leofrancia08489/project-virgil-frontend:v1.5.1`
+   - `leofrancia08489/project-virgil-backend:v1.6.0`
+   - `leofrancia08489/project-virgil-frontend:v1.6.0`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -121,19 +121,20 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.5.1 (February 2026)
+## 📦 Latest Release: v1.6.0 (February 2026)
 
-### v1.5.1 | OneLLM Gateway + Export
+### v1.6.0 | Analysis Intelligence + Instance Context
 
-- ✅ **OneLLM Gateway**: LangChain-compatible `ChatOneLLM` wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy, custom auth)
-- ✅ **Custom API URL**: Configure custom LLM endpoint URLs for Claude and OneLLM providers
-- ✅ **PDF Export**: One-click export of assessment results and architecture analysis to multi-page A4 PDF (html2canvas + jsPDF)
-- ✅ **Mermaid Download**: Hover-to-reveal download icon on every diagram (assessment, pipeline stages, architecture) saves `.mmd` syntax file
-- ✅ **Provider Refresh**: Replaced Azure OpenAI with OneLLM in setup wizard, renamed Anthropic Claude to Claude
+- ✅ **Deeper Analysis**: Structured depth requirements (current state, target, gaps, trade-offs), cross-domain guidance for multi-product queries (CSM+ITSM, Compliance+SM)
+- ✅ **Recommendation Intelligence**: Confidence tagging (rule-backed / ontology-validated / llm-generated), post-validation against ontology graph, assessment findings injected into LLM prompt
+- ✅ **Enhanced Ontology**: Expanded ITSM, CSM, and FedRAMP/SPP constraints with specific tables, plugins, compliance requirements, and domain separation guidance
+- ✅ **Instance Context Fix**: Analysis now uses the active connection (not stale config), demo instance detection, REST-only data limitation warnings
+- ✅ **Document Scoping**: Uploads tagged with instance name, cross-instance warnings in LLM prompt when documents reference a different engagement
+- ✅ **Robustness**: Increased `max_tokens` (4096→16384) to prevent truncation, field-boundary JSON extraction for malformed LLM output
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.5.1`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.5.1`
+- Backend: `leofrancia08489/project-virgil-backend:v1.6.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.0`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -260,12 +261,15 @@ This approach shifts from "usually good" to "reliably good". The guardrails are 
 Example Output:
 ```
 CURRENT INSTANCE STATE:
-- Instance: raptorprodbpeta4.service-now.com
+- Instance: your-instance.service-now.com
 - ITSM: Yes ✅
 - CSM: Yes ✅
 - Customer Portal: No ❌ (Gap identified)
+⚠ INSTANCE TYPE WARNING: 25 of 102 apps (24%) are demo/test artifacts
+⚠ DATA LIMITATION: Connected via REST API only
 
 Recommendation: Enable Customer Portal module (already licensed)
+  [ontology-validated] Components verified against ServiceNow ontology graph
 ```
 
 #### 3. Automated Diagram Generation & Validation
@@ -334,9 +338,11 @@ ChatGPT:
 - Instance Assessment (Nirvana): Deterministic 49-rule engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
 - Flexible Connection: REST API Only mode (no JDBC/Java required) or REST API + JDBC for full RaptorDB access
 - SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
-- Dual Document Store: ServiceNow Assets (shared reference material) + Customer Documents (engagement-specific) with source-tagged RAG retrieval
-- LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude to analyze requirements and generate architecture recommendations
-- Instance-Aware Recommendations: Provides presales-ready gap analysis based on your actual instance configuration
+- Dual Document Store: ServiceNow Assets (shared reference material) + Customer Documents (engagement-specific) with source-tagged RAG retrieval and instance-scoped uploads
+- LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude with structured depth requirements, cross-domain guidance, and enhanced ontology constraints
+- Instance-Aware Recommendations: Presales-ready gap analysis with confidence tagging (rule-backed, ontology-validated, llm-generated) and post-validation against ontology graph
+- Demo Instance Detection: Automatic flagging of demo/sandbox instances with >15% demo/test apps
+- Document Instance Scoping: Cross-instance warnings when uploaded documents reference a different engagement
 - Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
 - Auto-Fix & Enforcement: Syntax auto-fix, post-generation validator removes invalid arrows and prunes excess connections
 - OneLLM Gateway: LangChain-compatible wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy)

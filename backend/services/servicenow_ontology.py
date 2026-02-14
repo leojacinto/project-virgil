@@ -929,28 +929,44 @@ class ServiceNowOntology:
         if "itsm" in query_types:
             constraints.append(
                 "ITSM Architecture Constraints:\n"
-                "- CMDB is foundational for all ITSM processes\n"
+                "- CMDB is foundational for all ITSM processes — CI relationships drive impact analysis\n"
                 "- Incident → Problem → Change is the standard escalation flow\n"
-                "- Knowledge Base should feed into all ITSM modules\n"
-                "- Service Catalog requires workflow engine"
+                "- Knowledge Base should feed into all ITSM modules for resolution guidance\n"
+                "- Service Catalog requires workflow engine (Flow Designer or legacy Workflow)\n"
+                "- Key tables: incident, problem, change_request, sc_request, sc_req_item, kb_knowledge\n"
+                "- Key plugins: com.snc.incident, com.snc.problem, com.snc.change_management\n"
+                "- Service Portal (sp_portal) is the internal self-service entry point for IT requests\n"
+                "- If ITSM data volumes are high (millions of records), consider archiving strategy and performance indexing"
             )
         
         if "csm" in query_types:
             constraints.append(
                 "CSM Architecture Constraints:\n"
-                "- Customer Portal is the public-facing entry point\n"
-                "- Case Management is core, not Incident Management\n"
-                "- Customer Accounts separate from internal Users\n"
-                "- Knowledge Base should be accessible to customers"
+                "- Customer Portal (sn_csm_portal) is the public-facing entry point — separate from Service Portal\n"
+                "- Case Management (sn_customerservice_case) is core, NOT Incident Management\n"
+                "- Customer Accounts (customer_account) and Contacts (customer_contact) are separate from internal Users (sys_user)\n"
+                "- Knowledge Base should be accessible to customers via portal with ACL-controlled visibility\n"
+                "- CSM uses Account-Contact-Case model, not ITSM's User-Incident model\n"
+                "- Key plugins: com.sn_customerservice, com.sn_csm_portal\n"
+                "- If CSM coexists with ITSM: cases can escalate to internal incidents via escalation rules\n"
+                "- Agent Workspace (sn_csm_workspace) provides unified agent experience for case management"
             )
         
         if "compliance" in query_types:
             constraints.append(
-                "Compliance Architecture Constraints:\n"
-                "- All components must reside in FedRAMP/SPP compliant instance\n"
-                "- Use domain separation or ACLs for data segregation\n"
-                "- Audit logging required for all operations\n"
-                "- Single instance preferred over multiple for compliance"
+                "Compliance / FedRAMP / SPP Architecture Constraints:\n"
+                "- All components processing government data MUST reside in a FedRAMP-authorized instance (IL2/IL4/IL5 as applicable)\n"
+                "- ServiceNow Government Community Cloud (GCC) or SPP instances are required for FedRAMP compliance\n"
+                "- CRITICAL DECISION: Single instance with domain separation vs. dual instance — analyze both options:\n"
+                "  * Single instance: easier integration, shared CMDB, lower cost, but requires strict ACLs and domain separation\n"
+                "  * Dual instance: stronger isolation for public vs internal, but requires integration middleware and data sync\n"
+                "- Domain Separation: if single instance, enable glide.sys.domain for data partitioning between public-facing and internal data\n"
+                "- ACL requirements: row-level and field-level ACLs to enforce least-privilege across CSM (public) and ITSM (internal) data\n"
+                "- Audit and logging: sys_audit, sys_journal_field, and transaction logs must be enabled for all sensitive operations\n"
+                "- Encryption: column-level encryption for PII/PHI fields, TLS 1.2+ for all integrations\n"
+                "- MID Server placement: MID Servers connecting to on-premise systems must reside in the agency's security boundary\n"
+                "- User segregation: external customer accounts (sys_user with appropriate roles) must be isolated from internal agent accounts\n"
+                "- Portal segregation: Customer Portal (public-facing) must be separate from Service Portal (internal) with independent authentication flows"
             )
         
         if "data_flow" in query_types:

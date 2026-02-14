@@ -328,7 +328,8 @@ async def upload_document(
             f.write(content)
         
         processed_content = document_processor.process_document(file_path)
-        document_processor.add_to_vector_store(file_id, processed_content, file.filename, store=store)
+        current_instance = servicenow_connector.instance if servicenow_connector else "unknown"
+        document_processor.add_to_vector_store(file_id, processed_content, file.filename, store=store, instance_name=current_instance)
         
         return {
             "file_id": file_id,
@@ -396,7 +397,8 @@ async def analyze_architecture(request: ArchitectureRequest):
                 "applications": rest_apps,
                 "components": {},
                 "connection_mode": "rest_only",
-                "key_capabilities": rest_capabilities
+                "key_capabilities": rest_capabilities,
+                "instance_summary": summary if sn_utils_service_instance else {}
             }
         else:
             # Full JDBC + REST mode
@@ -411,6 +413,7 @@ async def analyze_architecture(request: ArchitectureRequest):
                 try:
                     summary = sn_utils_service_instance.get_instance_summary() or {}
                     servicenow_data["key_capabilities"] = summary.get('key_capabilities', {})
+                    servicenow_data["instance_summary"] = summary
                     # Merge REST apps if JDBC apps are empty
                     if not servicenow_data["applications"]:
                         servicenow_data["applications"] = sn_utils_service_instance.get_installed_applications() or []

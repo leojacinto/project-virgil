@@ -4,6 +4,43 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.6.0 (Backend + Frontend) - February 2026
+
+**Analysis Quality & Prompt Engineering:**
+- ✅ Enriched system prompt with structured analysis depth requirements (current state, target state, gap analysis, trade-offs, dependencies)
+- ✅ Cross-domain analysis guidance: automatic detection of multi-domain queries (CSM+ITSM, Compliance+SM) with domain-specific checklists
+- ✅ Dynamic `_build_analysis_guidance()` generates per-query-type analysis dimensions and cross-domain intersection prompts
+- ✅ JSON escaping instruction in user prompt to prevent unescaped quotes breaking `json.loads`
+- ✅ Increased OneLLM `max_tokens` from 4096 to 16384 to prevent response truncation on detailed analyses
+
+**Ontology Constraints (servicenow_ontology.py):**
+- ✅ Enhanced ITSM constraints: specific tables (`incident`, `problem`, `change_request`), plugins (`com.snc.itsm.plugin`), data model details
+- ✅ Enhanced CSM constraints: Account-Contact-Case data model, portal names (`sn_csm_portal`), agent workspace, CSM-specific tables
+- ✅ Enhanced FedRAMP/SPP constraints: GCC/SPP requirements, single vs dual instance trade-offs, domain separation (`glide.sys.domain`), ACL strategy, audit logging, encryption, MID server placement, user/portal segregation
+
+**Recommendation Intelligence:**
+- ✅ Assessment findings → architecture queries: new `_get_assessment_findings()` and `_format_findings_for_prompt()` inject rule engine results into LLM prompt as "VERIFIED INSTANCE FINDINGS"
+- ✅ Confidence tagging: `_tag_recommendation_confidence()` labels each recommendation as `rule-backed`, `ontology-validated`, or `llm-generated` with `confidence_detail` explanation
+- ✅ Post-validation: `_validate_recommendation_components()` checks components against ontology graph and installed apps, adds `validation_notes`
+- ✅ Frontend: confidence badges (emerald/blue/amber), confidence legend, unvalidated component warnings, validation notes display
+
+**Instance Context Fixes:**
+- ✅ **Fixed stale instance data**: removed duplicate `SNUtilsService` creation from static `settings` in `llm_service.py`; now uses active connection data passed from `main.py` via `servicenow_data["instance_summary"]`
+- ✅ Demo instance detection: flags instances with >15% demo/test apps, instructs LLM not to treat demo apps as custom development
+- ✅ REST-only data limitation warning: alerts LLM when table counts, plugin inventory, and usage stats are unavailable
+- ✅ Global-scope app surfacing: lists global-scope applications (e.g., ITOM components) that might otherwise be missed
+
+**Document Scoping:**
+- ✅ Instance-tagged uploads: documents stored with `instance_name` metadata in ChromaDB chunks
+- ✅ Cross-instance warning: document summaries show `[uploaded for: instance_name]` per document and header warning when docs may reference a different instance
+- ✅ Full document content: removed `[:200]` truncation in `_summarize_documents`, full chunk content (up to 1000 chars) now reaches the LLM
+
+**Robustness:**
+- ✅ `_extract_fields_from_text()`: field-boundary detection using `str.find` instead of regex, handles unescaped quotes in 25K+ char LLM output without backtracking issues
+- ✅ Fallback JSON parsing: simple `json.loads` + code fence stripping + `_extract_fields_from_text` safety net (replaced overengineered 5-strategy parser)
+
+---
+
 ## v1.5.1 (Backend + Frontend) - February 2026
 
 **OneLLM Gateway Support:**

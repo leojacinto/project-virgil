@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, ExternalLink, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, FileText, Loader2 } from 'lucide-react';
+import { Download, ExternalLink, ChevronDown, ChevronUp, CheckCircle, AlertTriangle, FileText, Loader2, ShieldCheck, Brain, Network } from 'lucide-react';
 import { downloadMermaid, exportToPDF } from '../utils/exportUtils';
 import ReactMarkdown from 'react-markdown';
 import mermaid from 'mermaid';
@@ -41,6 +41,31 @@ function ResultsDisplay({ result }) {
         return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-slate-100 text-slate-800 border-slate-200';
+    }
+  };
+
+  const getConfidenceBadge = (confidence) => {
+    switch (confidence) {
+      case 'rule-backed':
+        return {
+          color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          icon: <ShieldCheck className="h-3 w-3" />,
+          label: 'Rule-Backed'
+        };
+      case 'ontology-validated':
+        return {
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          icon: <Network className="h-3 w-3" />,
+          label: 'Ontology-Validated'
+        };
+      case 'llm-generated':
+        return {
+          color: 'bg-amber-100 text-amber-800 border-amber-200',
+          icon: <Brain className="h-3 w-3" />,
+          label: 'LLM-Generated'
+        };
+      default:
+        return null;
     }
   };
 
@@ -162,6 +187,31 @@ function ResultsDisplay({ result }) {
                 </div>
               </div>
             </div>
+            {result.recommendations && result.recommendations.some(r => r.confidence) && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-slate-900 mb-2">Confidence Source:</p>
+                <div className="flex flex-wrap gap-4 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 text-xs font-medium rounded border bg-emerald-100 text-emerald-800 border-emerald-200 flex items-center space-x-1">
+                      <ShieldCheck className="h-3 w-3" /><span>Rule-Backed</span>
+                    </span>
+                    <span className="text-slate-600">Verified by deterministic rule engine</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 text-xs font-medium rounded border bg-blue-100 text-blue-800 border-blue-200 flex items-center space-x-1">
+                      <Network className="h-3 w-3" /><span>Ontology-Validated</span>
+                    </span>
+                    <span className="text-slate-600">Components exist in ontology graph</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="px-2 py-1 text-xs font-medium rounded border bg-amber-100 text-amber-800 border-amber-200 flex items-center space-x-1">
+                      <Brain className="h-3 w-3" /><span>LLM-Generated</span>
+                    </span>
+                    <span className="text-slate-600">No deterministic backing</span>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="space-y-4">
               {result.recommendations && result.recommendations.length > 0 ? (
                 result.recommendations.map((rec, index) => (
@@ -174,15 +224,26 @@ function ResultsDisplay({ result }) {
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span>{rec.title}</span>
                       </h4>
-                      {rec.priority && (
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded border ${getPriorityColor(
-                            rec.priority
-                          )}`}
-                        >
-                          {rec.priority.toUpperCase()}
-                        </span>
-                      )}
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                        {rec.confidence && getConfidenceBadge(rec.confidence) && (
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded border flex items-center space-x-1 ${getConfidenceBadge(rec.confidence).color}`}
+                            title={rec.confidence_detail || ''}
+                          >
+                            {getConfidenceBadge(rec.confidence).icon}
+                            <span>{getConfidenceBadge(rec.confidence).label}</span>
+                          </span>
+                        )}
+                        {rec.priority && (
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded border ${getPriorityColor(
+                              rec.priority
+                            )}`}
+                          >
+                            {rec.priority.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <p className="text-slate-700 text-sm mb-3">{rec.description}</p>
                     {rec.servicenow_components && rec.servicenow_components.length > 0 && (
@@ -191,15 +252,31 @@ function ResultsDisplay({ result }) {
                           ServiceNow Components:
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {rec.servicenow_components.map((component, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded border border-primary-200"
-                            >
-                              {component}
-                            </span>
-                          ))}
+                          {rec.servicenow_components.map((component, idx) => {
+                            const isUnvalidated = rec.unvalidated_components && rec.unvalidated_components.includes(component);
+                            return (
+                              <span
+                                key={idx}
+                                className={`px-2 py-1 text-xs rounded border ${
+                                  isUnvalidated
+                                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                    : 'bg-primary-50 text-primary-700 border-primary-200'
+                                }`}
+                                title={isUnvalidated ? 'Not found in ServiceNow ontology — verify this component' : ''}
+                              >
+                                {component}{isUnvalidated && ' *'}
+                              </span>
+                            );
+                          })}
                         </div>
+                      </div>
+                    )}
+                    {rec.validation_notes && rec.validation_notes.length > 0 && (
+                      <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                        <p className="font-medium mb-1">Validation Notes:</p>
+                        {rec.validation_notes.map((note, idx) => (
+                          <p key={idx} className="ml-2">- {note}</p>
+                        ))}
                       </div>
                     )}
                   </div>
