@@ -5,6 +5,7 @@
   "dependencies": {
     "@headlessui/react": "^1.7.18",
     "@heroicons/react": "^2.1.1",
+    "@tailwindcss/typography": "^0.5.19",
     "axios": "^1.6.5",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",

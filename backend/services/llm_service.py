@@ -101,6 +101,15 @@ class ArchitectureAnalysis(BaseModel):
     implementation_notes: str = Field(description="Implementation considerations including phasing, dependencies, and risks")
 
 class LLMService:
+    ANALYSIS_STEPS = [
+        "Preparing analysis context",
+        "Generating baseline diagram",
+        "Querying LLM",
+        "Parsing response",
+        "Validating architecture",
+        "Finalizing results",
+    ]
+
     def __init__(self):
         self.active_model = None
         self.provider = None
@@ -108,6 +117,13 @@ class LLMService:
         self.ontology = ServiceNowOntology()
         self.validator = ArchitectureValidator(self.ontology)
         self.rule_engine = RuleEngine()
+        self._progress = {"step": 0, "total": len(self.ANALYSIS_STEPS), "label": "", "active": False}
+
+    def get_progress(self) -> dict:
+        return dict(self._progress)
+
+    def _set_progress(self, step: int):
+        self._progress = {"step": step, "total": len(self.ANALYSIS_STEPS), "label": self.ANALYSIS_STEPS[step - 1] if step else "", "active": step > 0}
     
     def _sanitize_mermaid(self, mermaid: str) -> str:
         """Sanitize Mermaid diagram syntax to prevent rendering errors.
@@ -261,6 +277,16 @@ class LLMService:
                 
             else:
                 raise ValueError(f"Unsupported provider: {provider}")
+            
+            # Validate API key with a minimal test call
+            try:
+                test_response = self.active_model.invoke([HumanMessage(content="Reply with OK")])
+                logger.info(f"API key validated for {provider}")
+            except Exception as val_err:
+                self.active_model = None
+                self.provider = None
+                self.model_name = None
+                raise Exception(f"API key validation failed: {val_err}")
                 
         except Exception as e:
             logger.error(f"Error configuring {provider}: {str(e)}")
@@ -295,6 +321,8 @@ class LLMService:
         
         if not self.is_configured():
             raise Exception("No LLM model configured. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY")
+        
+        self._set_progress(1)  # Step 1: Preparing analysis context
         
         # Detect query type for specialized handling
         query_types = self.ontology.detect_query_type(query)
@@ -568,6 +596,8 @@ Remember:
             ]
         }
 
+        self._set_progress(2)  # Step 2: Generating baseline diagram
+        
         # --- Baseline: Unconstrained LLM call (no guardrails) ---
         baseline_stage = None
         try:
@@ -605,6 +635,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
         except Exception as p0_err:
             logger.warning(f"Baseline generation failed (non-critical): {str(p0_err)}")
 
+        self._set_progress(3)  # Step 3: Querying LLM
+        
         try:
             messages = [
                 SystemMessage(content=system_prompt),
@@ -633,6 +665,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 }
                 
                 logger.info("Successfully generated structured response")
+                
+                self._set_progress(5)  # Step 5: Validating architecture
                 
                 # Write full response to debug file
                 debug_file = f"/tmp/llm_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -798,6 +832,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     if validation["warnings"]:
                         logger.info(f"Architecture validation warnings: {validation['warnings']}")
                 
+                self._set_progress(6)  # Step 6: Finalizing results
+                
                 # Post-validate recommendations: confidence tagging + ontology validation
                 try:
                     recs = result.get("recommendations", [])
@@ -824,14 +860,31 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
             except Exception as e:
                 # Fallback to regular response if structured output not supported
                 logger.warning(f"Structured output failed, falling back to JSON parsing: {str(e)}")
+                self._set_progress(3)  # Still on step 3 in fallback
                 response = self.active_model.invoke(messages)
-                response_text = response.content
+                # response.content is Union[str, List[Union[str, Dict]]]
+                if isinstance(response.content, str):
+                    response_text = response.content
+                elif isinstance(response.content, list):
+                    parts = []
+                    for part in response.content:
+                        if isinstance(part, str):
+                            parts.append(part)
+                        elif isinstance(part, dict):
+                            parts.append(part.get("text", ""))
+                        else:
+                            parts.append(str(part))
+                    response_text = "".join(parts)
+                else:
+                    response_text = str(response.content)
                 
                 # Save raw response for debugging
                 raw_file = f"/tmp/llm_raw_response_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
                 with open(raw_file, 'w') as f:
                     f.write(response_text)
                 logger.info(f"Raw LLM response saved to: {raw_file}")
+                
+                self._set_progress(4)  # Step 4: Parsing response
                 
                 # Try to parse JSON from response
                 try:
@@ -865,6 +918,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 if "mermaid_diagram" not in result:
                     result["mermaid_diagram"] = ""
                 
+                self._set_progress(5)  # Step 5: Validating architecture
+                
                 # Sanitize and log Mermaid diagram from fallback path
                 fallback_pipeline = []
                 if baseline_stage:
@@ -896,6 +951,8 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                 if fallback_pipeline:
                     result["diagram_pipeline"] = fallback_pipeline
                 
+                self._set_progress(6)  # Step 6: Finalizing results
+                
                 # Post-validate recommendations (fallback path)
                 try:
                     recs = result.get("recommendations", [])
@@ -914,11 +971,12 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     if cut > 0:
                         analysis = analysis[:cut].rstrip()
                         break
-                # Convert bold-only lines to markdown headings
-                result["analysis"] = self._format_analysis_markdown(analysis)
+                result["analysis"] = analysis
             
+            self._set_progress(0)  # Done
             return result
         except Exception as e:
+            self._set_progress(0)  # Reset on error
             import traceback
             error_log = f"/tmp/virgil_error_{timestamp}.txt"
             error_details = f"Error: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
@@ -1096,22 +1154,6 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     f"recs={len(result.get('recommendations', []))}, "
                     f"diagram={len(result.get('mermaid_diagram', ''))} chars")
         return result
-    
-    def _format_analysis_markdown(self, text: str) -> str:
-        """Convert bold-only lines to markdown headings for better rendering.
-        LLMs often use **Bold Label** instead of ## Heading — this fixes that."""
-        lines = text.split('\n')
-        result = []
-        for line in lines:
-            stripped = line.strip()
-            # Match lines that are ONLY bold text (nothing after the closing **)
-            m = re.match(r'^\*\*(.+?)\*\*:?\s*$', stripped)
-            if m:
-                heading = m.group(1).rstrip(':')
-                result.append(f'\n## {heading}\n')
-            else:
-                result.append(line)
-        return '\n'.join(result)
     
     def _build_analysis_guidance(self, query_types: List[str]) -> str:
         """Build dynamic analysis guidance based on detected query types.

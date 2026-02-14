@@ -35,12 +35,13 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 - ✅ Cross-instance warning: document summaries show `[uploaded for: instance_name]` per document and header warning when docs may reference a different instance
 - ✅ Full document content: removed `[:200]` truncation in `_summarize_documents`, full chunk content (up to 1000 chars) now reaches the LLM
 
-**Robustness:**
-- ✅ `_extract_fields_from_text()`: field-boundary detection using `str.find` instead of regex, handles unescaped quotes in 25K+ char LLM output without backtracking issues
-- ✅ Fallback JSON parsing: simple `json.loads` + code fence stripping + `_extract_fields_from_text` safety net (replaced overengineered 5-strategy parser)
-- ✅ Fence stripping fix: `find` → `rfind` for closing fence, prevents triple backticks inside analysis content from truncating the JSON response
-- ✅ Analysis text cleanup: strips embedded JSON blocks (`{"recommendations":...}`) that the LLM sometimes dumps into analysis prose
-- ✅ `_format_analysis_markdown()`: converts bold-only lines (`**Heading**`) to proper `## Heading` for ReactMarkdown rendering
+**Robustness & UX:**
+- ✅ Robust LLM response parsing: `str.find` field extraction, `rfind` fence stripping, embedded JSON cleanup
+- ✅ Handles `AIMessage.content` as `Union[str, List]` (Gemini/Anthropic compatibility)
+- ✅ API key validation on configure — fails fast instead of at analysis time
+- ✅ `@tailwindcss/typography` for proper markdown rendering (headings, lists, bold)
+- ✅ Analysis progress indicator: 6-step pipeline with polling progress bar (Step 1/6 — Preparing context → Finalizing results)
+- ✅ Non-blocking analysis via `asyncio.to_thread()` so progress polls aren't blocked
 
 ---
 

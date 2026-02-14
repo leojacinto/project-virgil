@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Search, Globe, FileText, X } from 'lucide-react';
 import axios from 'axios';
 
@@ -9,8 +9,21 @@ function QueryInterface({ onAnalysisComplete }) {
     include_web_search: true,
     include_pricing: true
   });
+  const [progress, setProgress] = useState(null);
   const abortControllerRef = useRef(null);
   const taskIdRef = useRef(null);
+
+  useEffect(() => {
+    if (!loading) { setProgress(null); return; }
+    const poll = setInterval(async () => {
+      try {
+        const res = await axios.get('/api/analyze/progress');
+        if (res.data.active) setProgress(res.data);
+        else setProgress(null);
+      } catch (_) {}
+    }, 1500);
+    return () => clearInterval(poll);
+  }, [loading]);
 
   const exampleQueries = [
     "How do I address a customer service workflow requirement?",
@@ -157,6 +170,25 @@ function QueryInterface({ onAnalysisComplete }) {
               </button>
             )}
           </div>
+
+          {loading && progress && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-700">
+                  Step {progress.step}/{progress.total} — {progress.label}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {Math.round((progress.step / progress.total) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-1.5">
+                <div
+                  className="bg-primary-600 h-1.5 rounded-full transition-all duration-500"
+                  style={{ width: `${(progress.step / progress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </form>
       </div>
 

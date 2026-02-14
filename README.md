@@ -125,12 +125,12 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ### v1.6.0 | Analysis Intelligence + Instance Context
 
-- ✅ **Deeper Analysis**: Structured depth requirements (current state, target, gaps, trade-offs), cross-domain guidance for multi-product queries (CSM+ITSM, Compliance+SM)
-- ✅ **Recommendation Intelligence**: Confidence tagging (rule-backed / ontology-validated / llm-generated), post-validation against ontology graph, assessment findings injected into LLM prompt
-- ✅ **Enhanced Ontology**: Expanded ITSM, CSM, and FedRAMP/SPP constraints with specific tables, plugins, compliance requirements, and domain separation guidance
-- ✅ **Instance Context Fix**: Analysis now uses the active connection (not stale config), demo instance detection, REST-only data limitation warnings
-- ✅ **Document Scoping**: Uploads tagged with instance name, cross-instance warnings in LLM prompt when documents reference a different engagement
-- ✅ **Robustness**: Increased `max_tokens` (4096→16384) to prevent truncation, field-boundary JSON extraction for malformed LLM output
+- ✅ **Analysis Intelligence**: Cross-domain guidance, recommendation confidence tagging, assessment findings in LLM prompt
+- ✅ **Instance Context**: Active connection data, demo instance detection, document scoping per instance
+- ✅ **Progress Indicator**: 6-step pipeline progress bar during analysis
+- ✅ **Markdown Rendering**: Proper headings, lists, and bold via `@tailwindcss/typography`
+- ✅ **API Key Validation**: Fails fast on configure instead of at analysis time
+- ✅ **Robustness**: Non-blocking analysis, multi-provider response handling, resilient JSON parsing
 
 **Docker Hub Images:**
 - Backend: `leofrancia08489/project-virgil-backend:v1.6.0`

@@ -8,6 +8,7 @@ import os
 import uuid
 from datetime import datetime
 import threading
+import asyncio
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -360,6 +361,10 @@ async def delete_document(file_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting document: {str(e)}")
 
+@app.get("/api/analyze/progress")
+async def analyze_progress():
+    return llm_service.get_progress()
+
 @app.post("/api/analyze")
 async def analyze_architecture(request: ArchitectureRequest):
     if not servicenow_connector or not servicenow_connector.is_connected():
@@ -431,7 +436,8 @@ async def analyze_architecture(request: ArchitectureRequest):
             web_context = web_search_service.search(request.query)
         
         check_cancelled()
-        analysis = llm_service.analyze_architecture(
+        analysis = await asyncio.to_thread(
+            llm_service.analyze_architecture,
             query=request.query,
             servicenow_data=servicenow_data,
             documents=relevant_docs,
