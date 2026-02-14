@@ -38,6 +38,9 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 **Robustness:**
 - ✅ `_extract_fields_from_text()`: field-boundary detection using `str.find` instead of regex, handles unescaped quotes in 25K+ char LLM output without backtracking issues
 - ✅ Fallback JSON parsing: simple `json.loads` + code fence stripping + `_extract_fields_from_text` safety net (replaced overengineered 5-strategy parser)
+- ✅ Fence stripping fix: `find` → `rfind` for closing fence, prevents triple backticks inside analysis content from truncating the JSON response
+- ✅ Analysis text cleanup: strips embedded JSON blocks (`{"recommendations":...}`) that the LLM sometimes dumps into analysis prose
+- ✅ `_format_analysis_markdown()`: converts bold-only lines (`**Heading**`) to proper `## Heading` for ReactMarkdown rendering
 
 ---
 

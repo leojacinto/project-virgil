@@ -839,7 +839,7 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     # Strip code fences if present
                     if "```json" in json_text:
                         start = json_text.find("```json") + 7
-                        end = json_text.find("```", start)
+                        end = json_text.rfind("```")
                         if end > start:
                             json_text = json_text[start:end].strip()
                     elif not json_text.strip().startswith("{"):
@@ -904,6 +904,18 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     result["recommendations"] = recs
                 except Exception as tag_err:
                     logger.warning(f"Recommendation tagging failed (non-critical): {tag_err}")
+            
+            # Post-process analysis text
+            if "analysis" in result and result["analysis"]:
+                analysis = result["analysis"]
+                # Strip embedded JSON the LLM sometimes dumps into analysis text
+                for marker in ['{\n    "recommendations"', '{"recommendations"', '{\n  "title"']:
+                    cut = analysis.find(marker)
+                    if cut > 0:
+                        analysis = analysis[:cut].rstrip()
+                        break
+                # Convert bold-only lines to markdown headings
+                result["analysis"] = self._format_analysis_markdown(analysis)
             
             return result
         except Exception as e:
@@ -1084,6 +1096,22 @@ Return ONLY the Mermaid diagram code, nothing else. Start with 'graph TD'."""
                     f"recs={len(result.get('recommendations', []))}, "
                     f"diagram={len(result.get('mermaid_diagram', ''))} chars")
         return result
+    
+    def _format_analysis_markdown(self, text: str) -> str:
+        """Convert bold-only lines to markdown headings for better rendering.
+        LLMs often use **Bold Label** instead of ## Heading — this fixes that."""
+        lines = text.split('\n')
+        result = []
+        for line in lines:
+            stripped = line.strip()
+            # Match lines that are ONLY bold text (nothing after the closing **)
+            m = re.match(r'^\*\*(.+?)\*\*:?\s*$', stripped)
+            if m:
+                heading = m.group(1).rstrip(':')
+                result.append(f'\n## {heading}\n')
+            else:
+                result.append(line)
+        return '\n'.join(result)
     
     def _build_analysis_guidance(self, query_types: List[str]) -> str:
         """Build dynamic analysis guidance based on detected query types.
