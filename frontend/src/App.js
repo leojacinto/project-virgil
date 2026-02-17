@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Database, FileText, Search, Settings, Loader2, GitBranch } from 'lucide-react';
+import { Database, FileText, Search, Settings, Loader2, GitBranch, Sun, Moon } from 'lucide-react';
+import { useTheme } from './ThemeContext';
 import SetupWizard from './components/SetupWizard';
 import DocumentUpload from './components/DocumentUpload';
 import QueryInterface from './components/QueryInterface';
@@ -14,6 +15,12 @@ function App() {
   const [activeTab, setActiveTab] = useState('query');
   const [connectionInfo, setConnectionInfo] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [query, setQuery] = useState('');
+  const [queryOptions, setQueryOptions] = useState({
+    include_web_search: true,
+    include_pricing: true
+  });
+  const { darkMode, toggleTheme } = useTheme();
 
   useEffect(() => {
     checkStatus();
@@ -59,11 +66,11 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 text-primary-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 font-medium">Waiting for backend server...</p>
-          <p className="text-slate-500 text-sm mt-2">Installing dependencies if needed</p>
+          <p className="text-slate-600 dark:text-slate-300 font-medium">Waiting for backend server...</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-2">Installing dependencies if needed</p>
         </div>
       </div>
     );
@@ -74,8 +81,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <header className="bg-white shadow-sm border-b border-slate-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+      <header className="bg-white dark:bg-slate-800 shadow-sm border-b border-slate-200 dark:border-slate-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -83,23 +90,30 @@ function App() {
                 <Database className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
                   ServiceNow Architecture Generator
                 </h1>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   AI-Powered Solution Design & Diagram Generation
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               {connectionInfo && (
-                <div className="flex items-center space-x-2 bg-green-50 px-3 py-2 rounded-lg">
+                <div className="flex items-center space-x-2 bg-green-50 dark:bg-green-900/30 px-3 py-2 rounded-lg">
                   <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-green-700">
+                  <span className="text-sm font-medium text-green-700 dark:text-green-400">
                     Connected to {connectionInfo.instance}
                   </span>
                 </div>
               )}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </button>
             </div>
           </div>
         </div>
@@ -108,15 +122,15 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {setupComplete && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-slate-200">
-              <div className="border-b border-slate-200">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+              <div className="border-b border-slate-200 dark:border-slate-700">
                 <nav className="flex space-x-8 px-6" aria-label="Tabs">
                   <button
                     onClick={() => setActiveTab('query')}
                     className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'query'
                         ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -129,7 +143,7 @@ function App() {
                     className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'documents'
                         ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -142,7 +156,7 @@ function App() {
                     className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
                       activeTab === 'instance'
                         ? 'border-primary-500 text-primary-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                        : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
                     }`}
                   >
                     <div className="flex items-center space-x-2">
@@ -185,7 +199,13 @@ function App() {
 
               <div className="p-6">
                 {activeTab === 'query' && (
-                  <QueryInterface onAnalysisComplete={handleAnalysis} />
+                  <QueryInterface
+                    onAnalysisComplete={handleAnalysis}
+                    query={query}
+                    setQuery={setQuery}
+                    options={queryOptions}
+                    setOptions={setQueryOptions}
+                  />
                 )}
                 {activeTab === 'documents' && <DocumentUpload />}
                 {activeTab === 'instance' && <InstanceInfo />}
@@ -201,10 +221,10 @@ function App() {
         )}
       </main>
 
-      <footer className="mt-12 border-t border-slate-200 bg-white">
+      <footer className="mt-12 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col items-center space-y-3">
-            <p className="text-sm font-medium text-slate-700">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Project Virgil — AI-Powered ServiceNow Architecture Generator
             </p>
             {/* Knowledge Sources — uncomment when Ian Leu and Jochen Geist approve
@@ -218,7 +238,7 @@ function App() {
               </a>
             </div>
             */}
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               Built by{' '}
               <a href="https://www.linkedin.com/in/leojmfrancia" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 transition-colors">Leo Francia</a>
               {' & '}

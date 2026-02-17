@@ -118,8 +118,8 @@ function DocumentUpload() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Document Stores</h3>
-        <p className="text-sm text-slate-600 mb-4">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Document Stores</h3>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
           Two separate stores provide context during architecture analysis. <strong>ServiceNow Assets</strong> contain
           platform reference material shared across engagements. <strong>Customer Documents</strong> hold
           engagement-specific materials like RFPs and technical specs. Both stores are searched during analysis,
@@ -127,7 +127,7 @@ function DocumentUpload() {
         </p>
       </div>
 
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200 dark:border-slate-700">
         {Object.entries(STORES).map(([key, cfg]) => {
           const Icon = cfg.icon;
           const count = key === 'servicenow_assets' ? snCount : custCount;
@@ -139,7 +139,7 @@ function DocumentUpload() {
               className={`flex items-center space-x-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
                 isActive
                   ? `border-${cfg.color}-600 text-${cfg.color}-700`
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -155,9 +155,9 @@ function DocumentUpload() {
       </div>
 
       <div className={`p-4 rounded-lg border ${
-        storeCfg.color === 'purple' ? 'bg-purple-50 border-purple-200' : 'bg-blue-50 border-blue-200'
+        storeCfg.color === 'purple' ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
       }`}>
-        <p className={`text-sm ${storeCfg.color === 'purple' ? 'text-purple-800' : 'text-blue-800'}`}>
+        <p className={`text-sm ${storeCfg.color === 'purple' ? 'text-purple-800 dark:text-purple-300' : 'text-blue-800 dark:text-blue-300'}`}>
           {storeCfg.description}
         </p>
       </div>
@@ -167,7 +167,7 @@ function DocumentUpload() {
         className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
           dropzone.isDragActive
             ? `border-${storeCfg.color}-500 bg-${storeCfg.color}-50`
-            : 'border-slate-300 hover:border-primary-400 hover:bg-slate-50'
+            : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 hover:bg-slate-50 dark:hover:bg-slate-700'
         }`}
       >
         <input {...dropzone.getInputProps()} />
@@ -183,10 +183,10 @@ function DocumentUpload() {
             <p className="text-primary-600 font-medium">Drop files here...</p>
           ) : (
             <>
-              <p className="text-slate-700 font-medium">
+              <p className="text-slate-700 dark:text-slate-300 font-medium">
                 Drag & drop files to <span className="font-semibold">{storeCfg.label}</span>
               </p>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Supported: PDF, DOCX, XLSX, TXT, CSV (Max 50MB)
               </p>
             </>
@@ -203,34 +203,34 @@ function DocumentUpload() {
 
       {uploadStatus && (
         <div className={`flex items-start space-x-3 p-4 rounded-lg ${
-          uploadStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+          uploadStatus.success ? 'bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
         }`}>
           {uploadStatus.success
             ? <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             : <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />}
-          <p className={`text-sm ${uploadStatus.success ? 'text-green-800' : 'text-red-800'}`}>
+          <p className={`text-sm ${uploadStatus.success ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'}`}>
             {uploadStatus.message}
           </p>
         </div>
       )}
 
       <div>
-        <h4 className="text-md font-semibold text-slate-900 mb-3">
+        <h4 className="text-md font-semibold text-slate-900 dark:text-white mb-3">
           {storeCfg.label} ({storeDocs.length})
         </h4>
 
         {storeDocs.length === 0 ? (
-          <div className="text-center py-12 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="text-center py-12 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
             <StoreIcon className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-            <p className="text-slate-600">{storeCfg.emptyText}</p>
-            <p className="text-sm text-slate-500 mt-1">{storeCfg.emptyHint}</p>
+            <p className="text-slate-600 dark:text-slate-400">{storeCfg.emptyText}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{storeCfg.emptyHint}</p>
           </div>
         ) : (
           <div className="space-y-2">
             {storeDocs.map((doc) => (
               <div
                 key={doc.file_id}
-                className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-sm transition-shadow"
+                className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:shadow-sm transition-shadow"
               >
                 <div className="flex items-center space-x-3 flex-1">
                   <div className={`p-2 rounded ${
@@ -241,10 +241,10 @@ function DocumentUpload() {
                     }`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{doc.filename}</p>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{doc.filename}</p>
                     <div className="flex items-center space-x-4 mt-1">
-                      <p className="text-xs text-slate-500">{doc.chunks} chunks</p>
-                      <p className="text-xs text-slate-500">{formatFileSize(doc.content_length)}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{doc.chunks} chunks</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{formatFileSize(doc.content_length)}</p>
                       {!doc.exists && (
                         <span className="text-xs text-amber-600 font-medium">File missing</span>
                       )}

@@ -89,7 +89,7 @@ function ResultsDisplay({ result }) {
             }
           }}
           disabled={exporting}
-          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          className="flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
           title="Export analysis to PDF"
         >
           {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
@@ -98,12 +98,12 @@ function ResultsDisplay({ result }) {
       </div>
 
       {result.mermaid_diagram && (
-        <div className="bg-white border border-slate-200 rounded-lg">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
           <button
             onClick={() => toggleSection('diagram')}
-            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
               Architecture Diagram
             </h3>
             {expandedSections.diagram ? (
@@ -113,11 +113,11 @@ function ResultsDisplay({ result }) {
             )}
           </button>
           {expandedSections.diagram && (
-            <div className="px-6 pb-6 border-t border-slate-200">
-              <div className="bg-slate-50 rounded-lg p-6 mt-4 overflow-x-auto relative group">
+            <div className="px-6 pb-6 border-t border-slate-200 dark:border-slate-700">
+              <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-6 mt-4 overflow-x-auto relative group">
                 <button
                   onClick={() => downloadMermaid(result.mermaid_diagram, 'architecture_diagram')}
-                  className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 border border-slate-200 text-slate-400 hover:text-slate-700 hover:bg-white transition-all opacity-0 group-hover:opacity-100 z-10"
+                  className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-all opacity-0 group-hover:opacity-100 z-10"
                   title="Download Mermaid syntax"
                 >
                   <Download className="h-3.5 w-3.5" />
@@ -131,12 +131,12 @@ function ResultsDisplay({ result }) {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-lg">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
         <button
           onClick={() => toggleSection('analysis')}
-          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Architecture Analysis
           </h3>
           {expandedSections.analysis ? (
@@ -146,20 +146,20 @@ function ResultsDisplay({ result }) {
           )}
         </button>
         {expandedSections.analysis && (
-          <div className="px-6 pb-6 border-t border-slate-200">
-            <div className="prose prose-slate max-w-none mt-4">
+          <div className="px-6 pb-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="prose prose-slate dark:prose-invert max-w-none mt-4">
               <ReactMarkdown>{result.analysis}</ReactMarkdown>
             </div>
           </div>
         )}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
         <button
           onClick={() => toggleSection('recommendations')}
-          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
-          <h3 className="text-lg font-semibold text-slate-900">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Recommendations ({result.recommendations?.length || 0})
           </h3>
           {expandedSections.recommendations ? (
@@ -169,45 +169,45 @@ function ResultsDisplay({ result }) {
           )}
         </button>
         {expandedSections.recommendations && (
-          <div className="px-6 pb-6 border-t border-slate-200">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4 mb-4">
-              <p className="text-sm font-medium text-blue-900 mb-2">Priority Levels:</p>
+          <div className="px-6 pb-6 border-t border-slate-200 dark:border-slate-700">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mt-4 mb-4">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">Priority Levels:</p>
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center space-x-2">
                   <span className="px-2 py-1 text-xs font-medium rounded border bg-red-100 text-red-800 border-red-200">HIGH</span>
-                  <span className="text-blue-800">Critical - implement first</span>
+                  <span className="text-blue-800 dark:text-blue-300">Critical - implement first</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="px-2 py-1 text-xs font-medium rounded border bg-yellow-100 text-yellow-800 border-yellow-200">MEDIUM</span>
-                  <span className="text-blue-800">Important - implement second</span>
+                  <span className="text-blue-800 dark:text-blue-300">Important - implement second</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="px-2 py-1 text-xs font-medium rounded border bg-green-100 text-green-800 border-green-200">LOW</span>
-                  <span className="text-blue-800">Nice-to-have - if time allows</span>
+                  <span className="text-blue-800 dark:text-blue-300">Nice-to-have - if time allows</span>
                 </div>
               </div>
             </div>
             {result.recommendations && result.recommendations.some(r => r.confidence) && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-4">
-                <p className="text-sm font-medium text-slate-900 mb-2">Confidence Source:</p>
+              <div className="bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                <p className="text-sm font-medium text-slate-900 dark:text-white mb-2">Confidence Source:</p>
                 <div className="flex flex-wrap gap-4 text-sm">
                   <div className="flex items-center space-x-2">
                     <span className="px-2 py-1 text-xs font-medium rounded border bg-emerald-100 text-emerald-800 border-emerald-200 flex items-center space-x-1">
                       <ShieldCheck className="h-3 w-3" /><span>Rule-Backed</span>
                     </span>
-                    <span className="text-slate-600">Verified by deterministic rule engine</span>
+                    <span className="text-slate-600 dark:text-slate-400">Verified by deterministic rule engine</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="px-2 py-1 text-xs font-medium rounded border bg-blue-100 text-blue-800 border-blue-200 flex items-center space-x-1">
                       <Network className="h-3 w-3" /><span>Ontology-Validated</span>
                     </span>
-                    <span className="text-slate-600">Components exist in ontology graph</span>
+                    <span className="text-slate-600 dark:text-slate-400">Components exist in ontology graph</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="px-2 py-1 text-xs font-medium rounded border bg-amber-100 text-amber-800 border-amber-200 flex items-center space-x-1">
                       <Brain className="h-3 w-3" /><span>LLM-Generated</span>
                     </span>
-                    <span className="text-slate-600">No deterministic backing</span>
+                    <span className="text-slate-600 dark:text-slate-400">No deterministic backing</span>
                   </div>
                 </div>
               </div>
@@ -217,10 +217,10 @@ function ResultsDisplay({ result }) {
                 result.recommendations.map((rec, index) => (
                   <div
                     key={index}
-                    className="border border-slate-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
+                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:shadow-sm transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-slate-900 flex items-center space-x-2">
+                      <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                         <span>{rec.title}</span>
                       </h4>
@@ -245,10 +245,10 @@ function ResultsDisplay({ result }) {
                         )}
                       </div>
                     </div>
-                    <p className="text-slate-700 text-sm mb-3">{rec.description}</p>
+                    <p className="text-slate-700 dark:text-slate-300 text-sm mb-3">{rec.description}</p>
                     {rec.servicenow_components && rec.servicenow_components.length > 0 && (
                       <div className="mt-3">
-                        <p className="text-xs font-medium text-slate-600 mb-2">
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
                           ServiceNow Components:
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -282,19 +282,19 @@ function ResultsDisplay({ result }) {
                   </div>
                 ))
               ) : (
-                <p className="text-slate-600 text-sm">No recommendations available</p>
+                <p className="text-slate-600 dark:text-slate-400 text-sm">No recommendations available</p>
               )}
             </div>
           </div>
         )}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg">
         <button
           onClick={() => toggleSection('metadata')}
-          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+          className="w-full flex items-center justify-between p-6 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
-          <h3 className="text-lg font-semibold text-slate-900">Analysis Metadata</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Analysis Metadata</h3>
           {expandedSections.metadata ? (
             <ChevronUp className="h-5 w-5 text-slate-500" />
           ) : (
@@ -302,38 +302,38 @@ function ResultsDisplay({ result }) {
           )}
         </button>
         {expandedSections.metadata && result.metadata && (
-          <div className="px-6 pb-6 border-t border-slate-200">
+          <div className="px-6 pb-6 border-t border-slate-200 dark:border-slate-700">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 mb-1">ServiceNow Instance</p>
-                <p className="text-sm font-semibold text-slate-900">
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">ServiceNow Instance</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {result.metadata.servicenow_instance}
                 </p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 mb-1">Tables Analyzed</p>
-                <p className="text-sm font-semibold text-slate-900">
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Tables Analyzed</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {result.metadata.tables_analyzed}
                 </p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 mb-1">Apps Analyzed</p>
-                <p className="text-sm font-semibold text-slate-900">
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Apps Analyzed</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {result.metadata.apps_analyzed}
                 </p>
               </div>
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <p className="text-xs text-slate-600 mb-1">Documents Used</p>
-                <p className="text-sm font-semibold text-slate-900">
+              <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-lg">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mb-1">Documents Used</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">
                   {result.metadata.documents_used}
                 </p>
               </div>
             </div>
-            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800">
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-xs text-blue-800 dark:text-blue-300">
                 <strong>Query:</strong> {result.metadata.query}
               </p>
-              <p className="text-xs text-blue-600 mt-2">
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
                 Generated at: {new Date(result.metadata.timestamp).toLocaleString()}
               </p>
             </div>

@@ -105,8 +105,8 @@ You need at least one LLM API key:
    ```
    
    This will automatically pull the images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:v1.6.0`
-   - `leofrancia08489/project-virgil-frontend:v1.6.0`
+   - `leofrancia08489/project-virgil-backend:v1.6.1`
+   - `leofrancia08489/project-virgil-frontend:v1.6.1`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -121,20 +121,17 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.6.0 (February 2026)
+## 📦 Latest Release: v1.6.1 (February 2026)
 
-### v1.6.0 | Analysis Intelligence + Instance Context
+### v1.6.1 | Dark Mode + Document Safety
 
-- ✅ **Analysis Intelligence**: Cross-domain guidance, recommendation confidence tagging, assessment findings in LLM prompt
-- ✅ **Instance Context**: Active connection data, demo instance detection, document scoping per instance
-- ✅ **Progress Indicator**: 6-step pipeline progress bar during analysis
-- ✅ **Markdown Rendering**: Proper headings, lists, and bold via `@tailwindcss/typography`
-- ✅ **API Key Validation**: Fails fast on configure instead of at analysis time
-- ✅ **Robustness**: Non-blocking analysis, multi-provider response handling, resilient JSON parsing
+- ✅ **Dark Mode**: Light/dark theme toggle with system preference detection and localStorage persistence
+- ✅ **Document Safety Warning**: Confirmation modal listing attached files before sending to LLM
+- ✅ **Query Persistence**: Query text and options survive tab switches
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.6.0`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.0`
+- Backend: `leofrancia08489/project-virgil-backend:v1.6.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.1`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -348,6 +345,8 @@ ChatGPT:
 - OneLLM Gateway: LangChain-compatible wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy)
 - PDF Export: One-click export of assessments and architecture analysis to multi-page A4 PDF
 - Mermaid Download: Hover-to-reveal download on every diagram saves .mmd syntax file
+- Dark Mode: Light/dark theme toggle with system preference detection and localStorage persistence
+- Document Safety Warning: Confirmation modal before LLM analysis when documents are attached
 - Modern Web UI: React-based interface with TailwindCSS styling
 
 ## Architecture

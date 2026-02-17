@@ -4,6 +4,21 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.6.1 (Frontend) - February 2026
+
+**Dark Mode:**
+- ✅ Light/dark theme toggle with system preference detection and `localStorage` persistence
+- ✅ Tailwind CSS `class` strategy with `ThemeContext` provider — applied across all components (App, SetupWizard, ConnectionPanel, QueryInterface, DocumentUpload, ResultsDisplay, InstanceInfo, DiagramLog)
+
+**Document Safety Warning:**
+- ✅ Confirmation modal before analysis when documents are attached — lists all files by store with LLM provider verification reminder
+- ✅ Graceful fallback when document list is unavailable — warns rather than silently proceeding
+
+**UX:**
+- ✅ Query text and options persist across tab switches (lifted state to App.js)
+
+---
+
 ## v1.6.0 (Backend + Frontend) - February 2026
 
 **Analysis Quality & Prompt Engineering:**
