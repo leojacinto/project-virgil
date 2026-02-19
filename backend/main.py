@@ -10,6 +10,9 @@ from datetime import datetime
 import threading
 import asyncio
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,6 +74,22 @@ class AnalysisResponse(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "ServiceNow Architecture Diagram Generator API", "status": "running"}
+
+@app.get("/api/env-defaults")
+async def get_env_defaults():
+    """Return .env defaults so the SetupWizard can pre-fill fields."""
+    return {
+        "llm": {
+            "provider": "onellm" if os.getenv("ONELLM_API_KEY") else "",
+            "api_key": os.getenv("ONELLM_API_KEY", ""),
+            "api_url": os.getenv("ONELLM_BASE_URL", ""),
+        },
+        "servicenow": {
+            "instance": os.getenv("SN_INSTANCE", ""),
+            "username": os.getenv("SN_USER", ""),
+            "password": os.getenv("SN_PASSWORD", ""),
+        }
+    }
 
 @app.post("/api/llm/configure")
 async def configure_llm(config: LLMConfig):

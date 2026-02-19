@@ -4,11 +4,19 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.6.2 (Backend + Frontend) - February 2026
+
+**Environment & Setup:**
+- ✅ `.env` support: backend loads environment variables via `python-dotenv`; SetupWizard auto-fills LLM and ServiceNow fields from `/api/env-defaults`
+- ✅ Security documentation: README now details current auth model (Basic Auth), recommended practices, and roadmap items (OAuth 2.0, app-level auth, audit logging)
+
+---
+
 ## v1.6.1 (Frontend) - February 2026
 
 **Dark Mode:**
 - ✅ Light/dark theme toggle with system preference detection and `localStorage` persistence
-- ✅ Tailwind CSS `class` strategy with `ThemeContext` provider — applied across all components (App, SetupWizard, ConnectionPanel, QueryInterface, DocumentUpload, ResultsDisplay, InstanceInfo, DiagramLog)
+- ✅ Tailwind CSS `class` strategy with `ThemeContext` provider — applied across all components
 
 **Document Safety Warning:**
 - ✅ Confirmation modal before analysis when documents are attached — lists all files by store with LLM provider verification reminder

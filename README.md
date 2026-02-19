@@ -105,8 +105,8 @@ You need at least one LLM API key:
    ```
    
    This will automatically pull the images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:v1.6.1`
-   - `leofrancia08489/project-virgil-frontend:v1.6.1`
+   - `leofrancia08489/project-virgil-backend:v1.6.2`
+   - `leofrancia08489/project-virgil-frontend:v1.6.2`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -121,17 +121,16 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.6.1 (February 2026)
+## 📦 Latest Release: v1.6.2 (February 2026)
 
-### v1.6.1 | Dark Mode + Document Safety
+### v1.6.2 | Environment Pre-fill + Security Documentation
 
-- ✅ **Dark Mode**: Light/dark theme toggle with system preference detection and localStorage persistence
-- ✅ **Document Safety Warning**: Confirmation modal listing attached files before sending to LLM
-- ✅ **Query Persistence**: Query text and options survive tab switches
+- ✅ **`.env` Pre-fill**: SetupWizard auto-fills LLM and ServiceNow fields from environment variables
+- ✅ **Security Documentation**: Auth model, recommended practices, and OAuth/audit roadmap
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.6.1`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.1`
+- Backend: `leofrancia08489/project-virgil-backend:v1.6.2`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.2`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -664,12 +663,21 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 
 ## Security Considerations
 
-- Store credentials in `.env` file (never commit to version control)
-- Use HTTPS in production
-- Implement authentication/authorization for production use
-- Regularly update dependencies
-- Sanitize user inputs
-- Implement rate limiting
+**Current authentication model:**
+- ServiceNow connections use **HTTP Basic Auth** over HTTPS. Credentials are sent per-request and held in memory only — they are not persisted to disk or logged.
+- LLM API keys are stored in memory for the session duration. The `.env` file provides pre-fill convenience but is optional.
+
+**Recommended practices:**
+- **`.env` file**: Never commit to version control. The `.gitignore` already excludes it, but verify before pushing to shared repositories.
+- **ServiceNow accounts**: Use a dedicated integration user with the minimum required roles (`itil`, `rest_service`, read access to relevant tables). Avoid using personal admin credentials in shared environments.
+- **Network**: Run behind a reverse proxy with TLS termination in any environment beyond localhost. The backend binds to all interfaces by default.
+- **LLM data exposure**: The document safety warning prompts before sending files to the LLM, but all query text, instance metadata, and document content are transmitted to the configured LLM provider. Verify your provider's data retention policy.
+
+**Not yet supported (consider for production use):**
+- **OAuth 2.0 / Token-based auth** for ServiceNow — currently Basic Auth only. ServiceNow supports OAuth; adding it would eliminate password storage entirely.
+- **Application-level authentication** — the Virgil UI itself has no login. Anyone with network access to port 3000 can use it. Add a reverse proxy with SSO or basic auth if deploying beyond a local machine.
+- **Rate limiting** — not implemented. Add at the reverse proxy layer if exposed to multiple users.
+- **Audit logging** — API calls are logged at INFO level but there is no structured audit trail for who queried what.
 
 ## Knowledge Sources & Acknowledgments
 

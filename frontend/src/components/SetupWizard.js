@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronLeft, CheckCircle, Loader2, Database, Brain, Zap, Wifi, Server } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,6 +21,28 @@ function SetupWizard({ onComplete }) {
     jdbc_path: '',
     connection_mode: 'rest_only'
   });
+
+  useEffect(() => {
+    axios.get('/api/env-defaults').then(res => {
+      const { llm, servicenow } = res.data;
+      if (llm.api_key) {
+        setLlmConfig(prev => ({
+          ...prev,
+          provider: llm.provider || prev.provider,
+          api_key: llm.api_key,
+          api_url: llm.api_url || prev.api_url,
+        }));
+      }
+      if (servicenow.instance) {
+        setServicenowConfig(prev => ({
+          ...prev,
+          instance: servicenow.instance || prev.instance,
+          username: servicenow.username || prev.username,
+          password: servicenow.password || prev.password,
+        }));
+      }
+    }).catch(() => {});
+  }, []);
 
   const llmProviders = [
     { 

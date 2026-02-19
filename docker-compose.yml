@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: leofrancia08489/project-virgil-backend:v1.6.1
+    image: leofrancia08489/project-virgil-backend:v1.6.2
     ports:
       - "8000:8000"
     environment:
@@ -21,7 +21,7 @@ services:
       retries: 3
 
   frontend:
-    image: leofrancia08489/project-virgil-frontend:v1.6.1
+    image: leofrancia08489/project-virgil-frontend:v1.6.2
     ports:
       - "3000:3000"
     depends_on:
