@@ -725,6 +725,7 @@ ServiceNow acquired [data.world](https://data.world) in late 2024, bringing ente
 
 - **[Leo Francia](https://www.linkedin.com/in/leojmfrancia)**
 - **[Robert Ninness](https://www.linkedin.com/in/rninne)**
+- **[Claude](https://claude.ai)** — AI pair programmer (Anthropic). Co-developed backend services, ontology validation, analysis pipeline, and frontend components.
 
 ## License
 
