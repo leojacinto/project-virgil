@@ -1,6 +1,10 @@
-# ServiceNow Architecture Diagram Generator
+# Project Virgil - ServiceNow Architecture & Pricing Intelligence
 
-An AI-powered application that generates architecture diagrams and provides solution recommendations based on ServiceNow instance data, uploaded documents, and LLM analysis.
+A presales intelligence platform for ServiceNow with three engines:
+
+- **Virgil** (Architecture Chat) - LLM-powered architecture analysis, diagram generation, and solution recommendations from instance data, uploaded documents, and ontology constraints
+- **Minos** (Instance Assessment) - Deterministic 49-rule engine that scans a live instance and produces IT4IT gap analysis, findings, and architecture diagrams with zero LLM dependency
+- **Plutus** (WDF Credit Sizing) - Auto-detects Workflow Data Fabric capability usage, annualizes from execution logs, calculates credit consumption, and exports to Excel
 
 ---
 
@@ -105,8 +109,8 @@ You need at least one LLM API key:
    ```
    
    This will automatically pull the images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:v1.6.2`
-   - `leofrancia08489/project-virgil-frontend:v1.6.2`
+   - `leofrancia08489/project-virgil-backend:v1.7.0`
+   - `leofrancia08489/project-virgil-frontend:v1.7.0`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -121,26 +125,105 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.6.2 (February 2026)
+## 📦 Latest Release: v1.7.0 (February 2026)
 
-### v1.6.2 | Environment Pre-fill + Security Documentation
+### v1.7.0 | Plutus WDF Credit Sizing + Annualized Usage + Excel Export
 
-- ✅ **`.env` Pre-fill**: SetupWizard auto-fills LLM and ServiceNow fields from environment variables
-- ✅ **Security Documentation**: Auth model, recommended practices, and OAuth/audit roadmap
+- ✅ **Plutus**: Auto-detect WDF capabilities (Integration Hub, Stream Connect, ZCC SQL, AI Data Explorer, RPA), annualize usage from execution logs, calculate credits, export to Excel
+- ✅ **Annualized Usage**: Usage/Year (actual, >= 365 days of data) vs Usage/Year Est. (extrapolated via avg daily rate x 365)
+- ✅ **Rate Card Management**: Add/remove capabilities, editable labels, STD/PRO tier toggle, persist to YAML
+- ✅ **Excel Export**: 3-sheet workbook (Usage Breakdown, Rate Card, How Usage is Measured) via SheetJS
+- ✅ **Minos**: Rule engine enabled (ENABLED = True), 49 deterministic rules across 6 categories
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.6.2`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.6.2`
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.0`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-## How It Works
+## Three Engines
 
-Project Virgil is an AI-powered ServiceNow architecture advisor that combines multiple intelligence layers to provide semantically correct, instance-aware architectural guidance. Unlike generic LLM tools, it's a purpose-built system that understands ServiceNow's architectural patterns and validates recommendations against real-world constraints.
+Project Virgil is a presales intelligence platform with three distinct engines, two of which are fully deterministic (no LLM required).
 
-### End-to-End Pipeline
+### Minos - Instance Assessment (No LLM)
+
+Minos scans a live ServiceNow instance via REST API and evaluates it against 49 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
+
+**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (49 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
+
+**What it produces:**
+- **IT4IT Coverage**: Gap analysis across 4 value streams (S2P, R2D, R2F, D2C) with per-stream health status
+- **Findings**: Each finding includes severity, evidence dict with actual instance values, condition that triggered it, and a specific recommendation
+- **Architecture Diagrams**: As-is (what you have) and Recommended (what you should add) — both generated deterministically from the ontology graph
+- **Integration Analysis**: REST vs SOAP patterns, MID Server presence, Flow Designer utilization
+- **Health Checks**: CMDB without Discovery, customer portal anti-patterns, custom table sprawl, shelfware detection
+- **Security Posture**: CSRF protection, audit logging, SecOps coverage
+
+**Rule categories (49 rules across 6 categories):**
+
+| Category | Rules | Source |
+|----------|-------|--------|
+| IT4IT v3 Coverage | IT4IT value stream gap detection | Ian Leu |
+| Integration Patterns | REST/SOAP, MID Server, Flow Designer | Jochen Geist |
+| Architectural Health | CMDB, Discovery, portals, legacy workflows | Best practices |
+| Product Adoption Maturity | 9 module-pairing checks (e.g. ITSM+KB, CSM+Portal) | Best practices |
+| Security Posture | CSRF, audit logging, SecOps for sensitive data | Best practices |
+| Platform Efficiency | Shelfware detection, Flow Designer underutilization | Best practices |
+
+**Key design principle:** Every finding says *"you should have X because your instance has ABC conditions"* — not *"you should have X because a document says so."*
+
+**API:** `POST /api/assess`
+
+---
+
+### Plutus - WDF Credit Sizing (No LLM)
+
+Plutus scans execution logs to auto-detect which Workflow Data Fabric capabilities are in use, estimates annualized usage, and calculates credit consumption against the WDF v2 rate card.
+
+**Pipeline:** Minos Scan (reused) → Execution Log Queries → Auto-Detection → Data Span Detection → Annualization → Credit Calculation → Excel Export
+
+**What it produces:**
+- **Auto-detection** of 7 WDF capabilities from execution data:
+  - Integration Hub (outbound HTTP log count)
+  - Stream Connect (single-source high-frequency pattern)
+  - Zero Copy Connectors SQL (JDBC data sources + REST messages to supported DBs)
+  - AI Data Explorer (report + dashboard count)
+  - RPA Bots (execution records)
+  - API Access Volume (outbound HTTP volume)
+  - External Content Connectors (manual)
+- **Annualized usage** with two columns:
+  - **Usage/Year** — actual data when >= 365 days of logs exist
+  - **Usage/Year (Est.)** — extrapolated via average daily rate x 365 when < 365 days of data
+- **Credit calculation** from annualized values against the rate card
+- **Tier recommendation**: Standard (1 pack, $100k/yr) or Professional (4 packs, $400k/yr)
+- **Excel export**: 3-sheet workbook (Usage Breakdown with summary cards, Rate Card, How Usage is Measured)
+
+**Rate card management:**
+- Editable capability labels, credits per unit, STD/PRO tier toggle
+- Add/remove capabilities in the UI
+- Persists to YAML and triggers re-scan
+
+**Exclude/restore:** Dismiss detected capabilities from the estimate with one click; restore with original scan evidence preserved.
+
+**API:** `POST /api/plutus/scan`, `POST /api/plutus/recalculate`
+
+---
+
+### Virgil Chat - Architecture Analysis (Requires LLM)
+
+Virgil Chat is the LLM-powered engine for free-form architecture queries. It combines instance data, uploaded documents, ontology constraints, and assessment findings to produce reasoned architectural recommendations with validated Mermaid diagrams.
+
+**When to use it:** Complex, multi-constraint questions like *"What's the best architecture for CSM + ITSM for a public sector customer with a public-facing website, internal ITSM, and FedRAMP/SPP requirements — single or dual instance?"*
+
+**What it adds over Minos:**
+- Natural language synthesis of complex trade-offs
+- Novel architecture composition beyond the fixed ontology
+- RAG over uploaded documents (RFPs, SOWs, pricing sheets)
+- Instance-specific reasoning that combines multiple findings into a coherent recommendation
+
+### End-to-End Pipeline (Virgil Chat)
 
 When a user submits a query, the system executes the following pipeline:
 
@@ -330,22 +413,27 @@ ChatGPT:
 
 ## Features
 
+**Deterministic Engines (No LLM):**
+- Minos Instance Assessment: 49-rule YAML-driven engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
+- Plutus WDF Credit Sizing: Auto-detect 7 WDF capabilities from execution logs, annualize usage, calculate credits, recommend tier, export to Excel
+- Plutus Rate Card Editor: Add/remove capabilities, editable labels and credits, STD/PRO tier toggle, persist to YAML
 - ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
-- Instance Assessment (Nirvana): Deterministic 49-rule engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
-- Flexible Connection: REST API Only mode (no JDBC/Java required) or REST API + JDBC for full RaptorDB access
-- SN Utils REST API: Query live instance metadata for installed apps, capabilities, and gap analysis
-- Dual Document Store: ServiceNow Assets (shared reference material) + Customer Documents (engagement-specific) with source-tagged RAG retrieval and instance-scoped uploads
-- LLM-Powered Analysis: Uses Gemini 2.5 Flash, GPT-4, or Claude with structured depth requirements, cross-domain guidance, and enhanced ontology constraints
-- Instance-Aware Recommendations: Presales-ready gap analysis with confidence tagging (rule-backed, ontology-validated, llm-generated) and post-validation against ontology graph
-- Demo Instance Detection: Automatic flagging of demo/sandbox instances with >15% demo/test apps
-- Document Instance Scoping: Cross-instance warnings when uploaded documents reference a different engagement
-- Architecture Diagram Generation: Automatically generates validated Mermaid diagrams with semantic relationships
-- Auto-Fix & Enforcement: Syntax auto-fix, post-generation validator removes invalid arrows and prunes excess connections
+- Architecture Diagrams: As-is and Recommended diagrams generated deterministically from ontology + rule findings
+
+**LLM-Powered (Virgil Chat):**
+- Architecture Analysis: Gemini 2.5 Flash, GPT-4, or Claude with structured depth requirements, cross-domain guidance, and ontology constraints
+- Instance-Aware Recommendations: Confidence tagging (rule-backed, ontology-validated, llm-generated) and post-validation against ontology graph
+- Dual Document Store: ServiceNow Assets + Customer Documents with source-tagged RAG retrieval
+- Auto-Fix & Enforcement: Syntax auto-fix, validator removes invalid arrows and prunes excess connections
 - OneLLM Gateway: LangChain-compatible wrapper for ServiceNow OneLLM (Anthropic via Vertex AI proxy)
+
+**Platform:**
+- Flexible Connection: REST API Only (no JDBC/Java required) or REST API + JDBC for full RaptorDB access
+- Excel Export: 3-sheet workbook from Plutus (Usage Breakdown, Rate Card, How Usage is Measured)
 - PDF Export: One-click export of assessments and architecture analysis to multi-page A4 PDF
 - Mermaid Download: Hover-to-reveal download on every diagram saves .mmd syntax file
-- Dark Mode: Light/dark theme toggle with system preference detection and localStorage persistence
-- Document Safety Warning: Confirmation modal before LLM analysis when documents are attached
+- Dark Mode: Light/dark theme toggle with system preference detection
+- Demo Instance Detection: Automatic flagging of demo/sandbox instances
 - Modern Web UI: React-based interface with TailwindCSS styling
 
 ## Architecture
@@ -353,26 +441,34 @@ ChatGPT:
 ```
 project-virgil/
 ├── backend/                 # FastAPI Python backend
-│   ├── services/           # Core service modules
-│   │   ├── servicenow_ontology.py     # Graph-based SN knowledge model (40 nodes, 65 edges)
-│   │   ├── instance_scanner.py        # Instance Assessment scanner (builds InstanceModel, runs rules)
-│   │   ├── instance_scanner_rules.py  # 49 deterministic rules + RuleEngine (IT4IT, integration, health, adoption, security, efficiency)
-│   │   ├── architecture_validator.py  # Post-generation enforcement & diagram correction
-│   │   ├── servicenow_connector.py    # RaptorDB JDBC connection
-│   │   ├── sn_utils_service.py        # SN Utils REST API client
-│   │   ├── llm_service.py             # LLM integration + prompt constraints
-│   │   ├── document_processor.py      # Dual document store (SN Assets + Customer Docs)
-│   │   ├── diagram_generator.py       # Diagram generation
-│   │   └── web_search.py             # Web search integration
-│   ├── main.py             # FastAPI application
+│   ├── services/
+│   │   ├── instance_scanner.py        # Minos: REST scan → InstanceModel → rule evaluation → diagrams
+│   │   ├── instance_scanner_rules.py  # Minos: 49 deterministic rules + RuleEngine
+│   │   ├── rules.yaml                 # Minos: rule definitions (IT4IT, integration, health, adoption, security, efficiency)
+│   │   ├── plutus_scanner.py          # Plutus: WDF capability detection, annualization, credit calc
+│   │   ├── plutus_pricing.yaml        # Plutus: rate card, tiers, pack definitions
+│   │   ├── servicenow_ontology.py     # Shared: graph-based SN knowledge model (40 nodes, 65 edges)
+│   │   ├── architecture_validator.py  # Virgil Chat: post-generation enforcement & diagram correction
+│   │   ├── llm_service.py             # Virgil Chat: LLM integration + prompt constraints
+│   │   ├── sn_utils_service.py        # Shared: SN Utils REST API client
+│   │   ├── servicenow_connector.py    # Shared: RaptorDB JDBC connection
+│   │   ├── document_processor.py      # Virgil Chat: dual document store (SN Assets + Customer Docs)
+│   │   ├── diagram_generator.py       # Virgil Chat: diagram generation
+│   │   └── web_search.py              # Virgil Chat: web search integration
+│   ├── main.py             # FastAPI application (all API endpoints)
 │   ├── config.py           # Configuration management
 │   └── requirements.txt    # Python dependencies
-├── frontend/               # React frontend
+├── frontend/
 │   ├── src/
-│   │   ├── components/    # React components (InstanceInfo.js has Assessment UI)
+│   │   ├── components/
+│   │   │   ├── InstanceInfo.js        # Minos: assessment UI, gap analysis, diagrams, findings
+│   │   │   ├── PlutusPricing.js       # Plutus: usage table, rate card editor, Excel export
+│   │   │   ├── ResultsDisplay.js      # Virgil Chat: analysis results, confidence badges
+│   │   │   ├── RuleEditor.js          # Minos: YAML rule editor
+│   │   │   └── ModeSelector.js        # Engine selection (Virgil/Minos/Plutus)
 │   │   ├── utils/         # Shared utilities (exportUtils.js: PDF export, Mermaid download)
 │   │   └── App.js         # Main application
-│   └── package.json       # Node dependencies
+│   └── package.json       # Node dependencies (includes xlsx for Excel export)
 └── README.md
 ```
 
@@ -529,12 +625,20 @@ The frontend will be available at `http://localhost:3000`
 - `GET /api/documents` - List uploaded documents
 - `DELETE /api/documents/{file_id}` - Delete document
 
-### Instance Assessment
+### Minos (Instance Assessment)
 - `POST /api/assess` - Run deterministic instance assessment (49 rules, no LLM)
 - `GET /api/assess/rules` - Get rule catalog and summary
 - `GET /api/assess/knowledge-base` - Get structured knowledge base for all rule sources
+- `GET /api/rules/yaml` - Get full YAML rule data for the editor
+- `POST /api/rules/save` - Save modified rules and hot-reload
 
-### Analysis
+### Plutus (WDF Credit Sizing)
+- `POST /api/plutus/scan` - Run WDF credit sizing scan (auto-detect capabilities, annualize, calculate credits)
+- `POST /api/plutus/recalculate` - Recalculate credits with user overrides (preserves original scan evidence)
+- `GET /api/plutus/config` - Get the full Plutus pricing YAML for the rate card editor
+- `POST /api/plutus/config` - Save updated rate card to YAML
+
+### Virgil Chat (Analysis)
 - `POST /api/analyze` - Generate architecture analysis and diagram
 
 ### Diagrams
@@ -660,6 +764,7 @@ ServiceNow may have custom ACLs that override role-based access. Check:
 - React Dropzone: File upload component
 - Mermaid: Diagram rendering
 - jsPDF + html2canvas: PDF export
+- SheetJS (xlsx): Client-side Excel export for Plutus
 
 ## Security Considerations
 
@@ -701,25 +806,28 @@ Project Virgil's ontology and validation rules are built on curated, publicly do
 
 ## Roadmap
 
-### data.world Integration (Primary)
-ServiceNow acquired [data.world](https://data.world) in late 2024, bringing enterprise knowledge graph, ontology management, and metadata catalog capabilities into the Now Platform. This is the natural evolution path for Project Virgil:
-- Replace custom ontology with data.world's knowledge graph API for live table relationships, class hierarchy, and plugin dependencies
-- Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
-- Eliminate manual ontology maintenance so the graph stays current with platform releases
+### Plutus Enhancements
+- Pricing model comparison: compare WDF credit cost to existing ServiceNow licensing model (business case justification)
+- Template-based sizing report generation from Plutus data (no LLM required)
+- Historical trend tracking: store and compare scans over time
 
-### Instance Assessment Expansion
+### Minos Enhancements
 - Wave 3 rules: licensing cost estimation, upgrade readiness, performance anti-patterns
 - IT4IT value stream scoring with maturity levels
 - Integration pattern decision tree as a traversable graph in the validator
 - Industry vertical rule packs (Banking/BIAN, Insurance/ACCORD, Telecom/TM Forum, Healthcare/HL7)
 
-### Other Planned Enhancements
+### data.world Integration
+ServiceNow acquired [data.world](https://data.world) in late 2024, bringing enterprise knowledge graph, ontology management, and metadata catalog capabilities into the Now Platform. This is the natural evolution path for Project Virgil:
+- Replace custom ontology with data.world's knowledge graph API for live table relationships, class hierarchy, and plugin dependencies
+- Instance-specific metadata: actual customizations, business rules, and integration spokes from the catalog
+- Eliminate manual ontology maintenance so the graph stays current with platform releases
+
+### Platform
 - Unit and integration test coverage
-- Diagram persistence and version history
 - Multi-user authentication
-- Richer REST API pipeline to compensate for JDBC access limitations
 - Export to PlantUML, draw.io, and PowerPoint formats
-- Cost estimation from uploaded pricing documents
+- Diagram persistence and version history
 
 ## Authors
 
