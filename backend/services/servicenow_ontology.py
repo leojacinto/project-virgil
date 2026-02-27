@@ -18,18 +18,25 @@ logger = logging.getLogger(__name__)
 
 class OntologyNode:
     """A node in the ServiceNow ontology graph."""
-    __slots__ = ('id', 'label', 'node_type', 'aliases', 'tables', 'plugin', 'layer', 'it4it_streams')
+    __slots__ = ('id', 'label', 'node_type', 'aliases', 'tables', 'plugins', 'layer', 'it4it_streams')
     
     def __init__(self, id: str, label: str, node_type: str, *,
                  aliases: List[str] = None, tables: List[str] = None,
-                 plugin: str = None, layer: str = None,
+                 plugin: str = None, plugins: List[str] = None,
+                 layer: str = None,
                  it4it_streams: List[str] = None):
         self.id = id
         self.label = label
         self.node_type = node_type        # product | module | table | platform | data | ui | orchestration
         self.aliases = aliases or []
         self.tables = tables or []         # actual SN table names
-        self.plugin = plugin               # SN plugin scope / id
+        # Accept single plugin= or list plugins=; store as list
+        if plugins:
+            self.plugins = plugins
+        elif plugin:
+            self.plugins = [plugin]
+        else:
+            self.plugins = []
         self.layer = layer                 # architecture layer: users | ui | application | orchestration | platform | data
         self.it4it_streams = it4it_streams or []  # IT4IT v3 value streams: S2P | R2D | R2F | D2C
     
@@ -161,7 +168,8 @@ class ServiceNowOntology:
         # === ITSM MODULES ===
         self._add_node(OntologyNode("itsm", "ITSM", "product",
             aliases=["IT Service Management", "ITSM", "IT Service"],
-            plugin="com.snc.itsm", layer="application", it4it_streams=["R2F", "D2C"]))
+            plugins=["com.snc.itsm", "com.snc.itsm.workspace"],
+            layer="application", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("incident", "Incident Management", "module",
             aliases=["Incident", "Incident Management"],
             tables=["incident", "incident_task"],
@@ -173,7 +181,8 @@ class ServiceNowOntology:
         self._add_node(OntologyNode("change", "Change Management", "module",
             aliases=["Change", "Change Management", "Change Request"],
             tables=["change_request", "change_task"],
-            plugin="com.snc.change_management", layer="application", it4it_streams=["R2D"]))
+            plugins=["com.snc.change_management", "com.snc.change_management.standard_change_catalog"],
+            layer="application", it4it_streams=["R2D"]))
         self._add_node(OntologyNode("service_catalog", "Service Catalog", "module",
             aliases=["Service Catalog", "Catalog", "Request Management"],
             tables=["sc_catalog", "sc_cat_item", "sc_request", "sc_req_item", "sc_task"],
@@ -181,7 +190,8 @@ class ServiceNowOntology:
         self._add_node(OntologyNode("asset", "Asset Management", "module",
             aliases=["Asset", "Asset Management", "IT Asset Management", "ITAM", "HAM", "SAM"],
             tables=["alm_asset", "alm_hardware", "alm_license"],
-            plugin="com.snc.asset_management", layer="application", it4it_streams=["R2D", "D2C"]))
+            plugins=["com.snc.asset_management", "com.snc.ham", "com.snc.sam"],
+            layer="application", it4it_streams=["R2D", "D2C"]))
         
         # === CSM MODULES ===
         self._add_node(OntologyNode("csm", "CSM", "product",
@@ -211,12 +221,14 @@ class ServiceNowOntology:
             layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("discovery", "Discovery", "module",
             aliases=["Discovery", "Network Discovery"],
-            tables=["discovery_status", "sa_m_pattern"],
-            plugin="com.snc.discovery", layer="application", it4it_streams=["D2C"]))
+            tables=["discovery_status"],
+            plugins=["com.snc.discovery", "com.snc.itom.discovery"],
+            layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("service_mapping", "Service Mapping", "module",
             aliases=["Service Mapping"],
             tables=["svc_ci_assoc"],
-            plugin="com.snc.service_mapping", layer="application", it4it_streams=["D2C"]))
+            plugins=["com.snc.service_mapping", "com.snc.service-mapping"],
+            layer="application", it4it_streams=["D2C"]))
         self._add_node(OntologyNode("event_mgmt", "Event Management", "module",
             aliases=["Event Management", "Event"],
             tables=["em_event", "em_alert"],
@@ -239,6 +251,7 @@ class ServiceNowOntology:
         self._add_node(OntologyNode("grc", "GRC", "product",
             aliases=["Governance Risk Compliance", "GRC", "Risk Management",
                      "Integrated Risk Management", "IRM"],
+            plugins=["com.sn_grc", "com.sn_audit"],
             layer="application", it4it_streams=["S2P"]))
         self._add_node(OntologyNode("policy_compliance", "Policy and Compliance", "module",
             aliases=["Policy", "Compliance"],
@@ -252,11 +265,15 @@ class ServiceNowOntology:
         # === SPM / ITBM ===
         self._add_node(OntologyNode("spm", "Strategic Portfolio Management", "product",
             aliases=["SPM", "ITBM", "IT Business Management", "Portfolio Management"],
+            plugins=["com.snc.it_business_management", "com.snc.financial_planning_pmo",
+                     "com.snc.alignment", "com.snc.sdlc"],
+            tables=["pm_project", "pm_portfolio", "planned_task"],
             layer="application", it4it_streams=["S2P"]))
         self._add_node(OntologyNode("ppm", "Project Portfolio Management", "module",
             aliases=["PPM", "Project Management"],
-            tables=["pm_project", "pm_portfolio", "pm_project_task"],
-            plugin="com.snc.project_management", layer="application", it4it_streams=["S2P"]))
+            tables=["pm_project", "pm_portfolio", "pm_project_task", "pm_program"],
+            plugins=["com.snc.project_management", "com.snc.it_business_management"],
+            layer="application", it4it_streams=["S2P"]))
         
         # === ORCHESTRATION LAYER ===
         self._add_node(OntologyNode("integration_hub", "Integration Hub", "orchestration",
@@ -273,6 +290,7 @@ class ServiceNowOntology:
             layer="orchestration", it4it_streams=["R2F", "D2C"]))
         self._add_node(OntologyNode("virtual_agent", "Virtual Agent", "orchestration",
             aliases=["Virtual Agent", "VA", "Chatbot"],
+            tables=["cb_topic", "cb_topic_goal"],
             plugin="com.glide.cs.chatbot", layer="orchestration", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("notifications", "Notifications", "orchestration",
             aliases=["Notifications", "Email", "Push Notifications"],
@@ -290,6 +308,7 @@ class ServiceNowOntology:
             plugin="com.sn_customerservice", layer="ui", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("employee_center", "Employee Center", "ui",
             aliases=["Employee Center", "EC"],
+            tables=["sn_ec_content", "sn_ec_taxonomy_topic"],
             plugin="com.sn_employee_center", layer="ui", it4it_streams=["R2F"]))
         self._add_node(OntologyNode("now_mobile", "Now Mobile", "ui",
             aliases=["Now Mobile", "Mobile", "Mobile App"],
@@ -453,9 +472,9 @@ class ServiceNowOntology:
         return node.layer if node else None
     
     def get_plugin(self, node_id: str) -> Optional[str]:
-        """Get the ServiceNow plugin id for a node."""
+        """Get the primary ServiceNow plugin id for a node."""
         node = self._nodes.get(node_id)
-        return node.plugin if node else None
+        return node.plugins[0] if (node and node.plugins) else None
     
     def get_children(self, node_id: str) -> List[str]:
         """Get nodes that extend this node (table inheritance)."""
@@ -467,9 +486,16 @@ class ServiceNowOntology:
             (e.source, e.target, e.constraint or "")
             for e in self._edges if e.rel_type == "segregated_from"
         ]
+
+    def get_all_referenced_tables(self) -> Set[str]:
+        """Return every table name referenced by any ontology node."""
+        tables: Set[str] = set()
+        for node in self._nodes.values():
+            tables.update(node.tables)
+        return tables
     
     # -------------------------------------------------------------------
-    # Instance Assessment (Nirvana) methods
+    # Instance Assessment (Minos) methods
     # -------------------------------------------------------------------
 
     def map_instance_to_nodes(self, installed_plugins: Dict[str, Dict],
@@ -499,10 +525,12 @@ class ServiceNowOntology:
             matched = False
             evidence = []
 
-            # Check by plugin
-            if node.plugin and node.plugin in plugin_ids:
-                matched = True
-                evidence.append(f"plugin: {node.plugin}")
+            # Check by plugin (any of the node's plugin IDs)
+            for pid in node.plugins:
+                if pid in plugin_ids:
+                    matched = True
+                    evidence.append(f"plugin: {pid}")
+                    break
 
             # Check by table activity (records > 0)
             if node.tables:

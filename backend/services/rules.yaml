@@ -1,0 +1,1281 @@
+# ============================================================================
+# Project Virgil — Deterministic Rule Engine (YAML-Driven)
+# ============================================================================
+# Rules derived from:
+#   - IT4IT v3 Blueprint (Ian Leu) — Value stream coverage analysis
+#   - Integration Pattern Decision Tree (Jochen Geist) — Integration best practices
+#   - ServiceNow architectural best practices — Instance health checks
+#
+# Each rule has an `eval` block that IS the executable logic. The Python
+# engine interprets these declaratively — no per-rule hardcoded code.
+#
+# Eval primitives:
+#   node_absent: <id>             — ontology node not active (checks plugins + tables + promotion)
+#   node_active: <id>             — ontology node is active
+#   plugin_absent: <id>           — raw plugin not in installed_plugins (prefer node_absent)
+#   plugin_present: <id>          — raw plugin in installed_plugins (prefer node_active)
+#   table_lte: {table, value}     — table_count(table) <= value
+#   table_eq:  {table, value}     — table_count(table) == value
+#   table_gt:  {table, value}     — table_count(table) > value
+#   table_between: {table, min, below} — min <= count < below
+#   table_exceeds: {table, other} — count(table) > count(other)
+#   table_ratio_below: {table, other, ratio} — count(table) < count(other)*ratio
+#   cmdb_below: {field, value}    — cmdb_stats[field] < value
+#   cmdb_gt:    {field, value}    — cmdb_stats[field] > value
+#   cmdb_flag_false: <field>      — not cmdb_stats[field]
+#   property_neq: {property, value} — property != value
+#   property_prefix_absent: <pfx> — no properties starting with pfx
+#   mid_server_eq: <n>            — len(mid_servers) == n
+#   flow_count_eq: <n>            — len(integration_flows) == n
+#
+# Combinators:
+#   all: [...]  — AND (all must be true)
+#   any: [...]  — OR  (any must be true)
+#
+# Special:
+#   streams_covered_below: {threshold, streams} — IT4IT value stream counter
+#
+# Rules with eval: null require Instance Scanner data not yet available.
+#
+# NOTE: When rules are saved via the Rule Editor UI, comments are stripped
+# by the YAML serializer. The structural data is fully preserved.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Knowledge Base Sources (displayed in Nirvana mode UI)
+# ---------------------------------------------------------------------------
+
+knowledge_base:
+
+  - id: ian_leu
+    author: Ian Leu
+    title: IT4IT v3 Blueprint
+    rules_key: it4it_rules
+    description: >
+      Deterministic rules derived from the IT4IT Reference Architecture v3.
+      Evaluates which of the four IT value streams — Strategy to Portfolio (S2P),
+      Requirement to Deploy (R2D), Request to Fulfill (R2F), and Detect to Correct
+      (D2C) — are covered by the instance's installed capabilities.
+    focus_areas:
+      - key: S2P
+        label: Strategy to Portfolio
+        description: Demand management, portfolio prioritization, investment planning, and governance.
+      - key: R2D
+        label: Requirement to Deploy
+        description: Change management, configuration tracking, and controlled deployment processes.
+      - key: R2F
+        label: Request to Fulfill
+        description: Service catalog, self-service portal, knowledge base, and fulfillment workflows.
+      - key: D2C
+        label: Detect to Correct
+        description: Incident, problem, event management, discovery, and proactive monitoring.
+    key_principles:
+      - Every IT organization should cover all four value streams for operational maturity.
+      - "Gaps in a value stream create blind spots — e.g., no D2C means purely reactive operations."
+      - Cross-stream orchestration (Integration Hub) multiplies the value of individual streams.
+      - CMDB is foundational to both R2D (config tracking) and D2C (impact analysis).
+
+  - id: jochen_geist
+    author: Jochen Geist
+    title: Integration Pattern Decision Tree
+    rules_key: integration_rules
+    description: >
+      Rules based on Jochen Geist's integration pattern decision tree methodology.
+      Evaluates integration patterns found in the instance and recommends approaches
+      based on data flow direction, volume, timing, and error handling requirements.
+    focus_areas:
+      - key: web_service
+        label: Web Service Patterns
+        description: REST vs SOAP vs JDBC pattern selection for real-time integrations.
+      - key: data_persistence
+        label: Data Persistence Patterns
+        description: Import sets, transform maps, batch processing for bulk data operations.
+      - key: event_driven
+        label: Event-Driven Patterns
+        description: Webhooks, business rules, and Flow Designer triggers vs polling.
+      - key: error_handling
+        label: Error Handling & Reliability
+        description: MID Servers, error policies, retry logic, and connection management.
+      - key: legacy
+        label: Legacy & Anti-Patterns
+        description: Workflow Engine migration, email-based integrations, UI-level fallbacks.
+    key_principles:
+      - "Choose the integration pattern based on data volume, timing, and direction — not convenience."
+      - Integration Hub spokes are preferred over custom scripted integrations for maintainability.
+      - "MID Server is required for any on-premise integration — never expose internal endpoints directly."
+      - "Legacy Workflow Engine is in maintenance mode — new automations should use Flow Designer."
+      - "UI-level integration (iFrame) is a fallback, not a primary integration pattern."
+
+  - id: best_practices
+    author: ServiceNow
+    title: Architectural Health
+    rules_key: health_rules
+    description: >
+      General architectural health checks derived from ServiceNow platform best
+      practices. Evaluates CMDB hygiene, domain separation, custom table sprawl,
+      compliance posture, and modernization of agent experience.
+    focus_areas:
+      - key: cmdb
+        label: CMDB Hygiene
+        description: Automated discovery, data freshness, and CI accuracy.
+      - key: segregation
+        label: Tenant & Data Segregation
+        description: Domain separation, public vs internal workloads, FedRAMP boundaries.
+      - key: modernization
+        label: Platform Modernization
+        description: Agent Workspace adoption, Flow Designer migration, custom table reduction.
+      - key: compliance
+        label: Compliance & Audit
+        description: Audit logging, FedRAMP/SPP configuration, security properties.
+    key_principles:
+      - "CMDB without Discovery is a liability — manual maintenance leads to stale data."
+      - "Public-facing requests should flow through CSM, not directly into ITSM tables."
+      - "Custom table sprawl increases upgrade complexity — prefer extending standard tables."
+      - "Agent Workspace is the strategic direction — classic UI misses AI-assisted features."
+
+  - id: adoption_maturity
+    author: ServiceNow
+    title: Product Adoption Maturity
+    rules_key: adoption_rules
+    description: >
+      Rules that detect module pairing gaps — where one product is installed
+      but its natural companion is missing. Based on ServiceNow's product
+      architecture and recommended adoption paths. Each pairing represents a
+      well-documented best practice for maximizing platform value.
+    focus_areas:
+      - key: itsm_pairing
+        label: ITSM Module Pairing
+        description: Incident + Problem, ITSM + Knowledge Base, Catalog + Virtual Agent.
+      - key: hrsd_pairing
+        label: HRSD Module Pairing
+        description: HR Service Delivery + Employee Center for unified employee experience.
+      - key: itom_pairing
+        label: ITOM Module Pairing
+        description: Discovery + Service Mapping, CMDB + Asset Management for full lifecycle.
+      - key: secops_pairing
+        label: SecOps Module Pairing
+        description: Security Incident Response + Vulnerability Response for proactive security.
+    key_principles:
+      - "Each ServiceNow product has natural companions — deploying one without the other leaves gaps."
+      - "Incident without Problem means reactive-only operations — no root cause analysis loop."
+      - Discovery without Service Mapping finds CIs but misses the service context needed for impact analysis.
+      - CMDB without Asset Management tracks what you have but not what it costs or when to replace it.
+      - Every portal product (CSM, HRSD) needs a self-service channel to achieve deflection ROI.
+
+  - id: security_posture
+    author: ServiceNow
+    title: Security Posture
+    rules_key: security_rules
+    description: >
+      Security hardening checks based on ServiceNow's platform security
+      best practices and OWASP guidelines. Evaluates CSRF protection, audit
+      logging configuration, and security operations coverage for instances
+      processing sensitive data.
+    focus_areas:
+      - key: web_security
+        label: Web Application Security
+        description: CSRF protection, session management, and input validation.
+      - key: audit_forensics
+        label: Audit & Forensics
+        description: Comprehensive audit logging for compliance and incident investigation.
+      - key: data_protection
+        label: Data Protection
+        description: SecOps coverage for instances processing PII and sensitive data.
+    key_principles:
+      - "CSRF protection is a baseline security control — required for FedRAMP and recommended by OWASP."
+      - "Audit logging must cover all sensitive tables — without it, compliance is impossible."
+      - Instances processing PII (ITSM, CSM, HRSD) should have Security Operations for threat detection.
+
+  - id: efficiency
+    author: ServiceNow
+    title: Platform Efficiency
+    rules_key: efficiency_rules
+    description: >
+      Rules that detect underutilized licenses (shelfware), missed optimization
+      opportunities, and modern automation gaps. Helps identify where licensed
+      capabilities are not generating ROI.
+    focus_areas:
+      - key: shelfware
+        label: License Utilization (Shelfware)
+        description: Plugins installed but not producing records — potential wasted spend.
+      - key: automation
+        label: Automation Modernization
+        description: Flow Designer adoption vs legacy Workflow Engine usage ratio.
+    key_principles:
+      - "A licensed plugin with zero records is shelfware — significant annual cost with zero ROI."
+      - "Flow Designer is ServiceNow's strategic automation platform — legacy Workflow is maintenance-only."
+      - "Shelfware detection should trigger either onboarding (use it) or decommissioning (stop paying)."
+
+
+# ---------------------------------------------------------------------------
+# IT4IT v3 Value Stream Coverage (Source: Ian Leu)
+# ---------------------------------------------------------------------------
+
+it4it_rules:
+
+  - id: IT4IT-S2P-001
+    name: No Strategic Portfolio Management
+    description: >
+      Instance has no SPM/ITBM capability for Strategy to Portfolio value stream.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      SPM plugin (com.snc.project_management) is not installed or inactive
+    recommendation: >
+      Consider enabling Strategic Portfolio Management (SPM) to cover the
+      Strategy to Portfolio (S2P) value stream. This enables demand management,
+      portfolio prioritization, and investment planning.
+    tags: [S2P, spm, itbm, portfolio]
+    eval:
+      all:
+        - node_absent: spm
+    message: "No Strategic Portfolio Management detected. S2P value stream uncovered."
+    recommended_nodes:
+      spm: "S2P coverage"
+      ppm: "S2P coverage"
+
+  - id: IT4IT-S2P-002
+    name: No Governance Risk Compliance
+    description: >
+      Instance has no GRC capability. Strategy to Portfolio requires governance oversight.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      GRC plugins (com.sn_compliance, com.sn_risk) are not installed or inactive
+    recommendation: >
+      Enable GRC (Integrated Risk Management) to provide governance, risk assessment,
+      and compliance monitoring as part of the S2P value stream.
+    tags: [S2P, grc, compliance, risk]
+    eval:
+      all:
+        - node_absent: grc
+    message: "No GRC capability detected. Governance oversight missing from S2P."
+    recommended_nodes:
+      grc: "S2P governance"
+
+  - id: IT4IT-R2D-001
+    name: No Change Management Process
+    description: >
+      Instance has no active Change Management. R2D requires controlled deployment.
+    source: it4it
+    severity: high
+    category: it4it_coverage
+    condition_description: >
+      Change Management plugin (com.snc.change_management) is not installed or
+      change_request table has zero records
+    recommendation: >
+      Enable Change Management to provide controlled release and deployment
+      processes as required by the Requirement to Deploy (R2D) value stream.
+    tags: [R2D, change, deployment]
+    eval:
+      all:
+        - node_absent: change
+    message: "No Change Management process detected. R2D value stream at risk."
+    recommended_nodes:
+      change: "R2D deployment control"
+
+  - id: IT4IT-R2D-002
+    name: No CMDB for Configuration Tracking
+    description: >
+      CMDB is not populated. R2D requires configuration item tracking for deployments.
+    source: it4it
+    severity: high
+    category: it4it_coverage
+    condition_description: >
+      cmdb_ci table has fewer than 100 records or Discovery is not active
+    recommendation: >
+      Populate the CMDB via Discovery or Service Mapping to track configuration items
+      that are affected by deployments. A well-maintained CMDB is critical for R2D.
+    tags: [R2D, cmdb, discovery, configuration]
+    eval:
+      all:
+        - cmdb_below: {field: total_cis, value: 100}
+        - cmdb_flag_false: has_discovery
+    message: "CMDB has only {total_cis} CIs and no Discovery. R2D lacks configuration tracking."
+    recommended_nodes:
+      discovery: "R2D config tracking"
+      service_mapping: "R2D service topology"
+
+  - id: IT4IT-R2F-001
+    name: No Service Catalog
+    description: >
+      Instance has no Service Catalog. R2F requires a request intake mechanism.
+    source: it4it
+    severity: high
+    category: it4it_coverage
+    condition_description: >
+      Service Catalog plugin (com.glideapp.servicecatalog) is not installed
+      or sc_cat_item table has zero active items
+    recommendation: >
+      Enable Service Catalog to provide a structured request intake and fulfillment
+      mechanism as required by the Request to Fulfill (R2F) value stream.
+    tags: [R2F, catalog, request, fulfillment]
+    eval:
+      all:
+        - node_absent: service_catalog
+    message: "No Service Catalog detected. R2F has no structured request intake."
+    recommended_nodes:
+      service_catalog: "R2F request intake"
+
+  - id: IT4IT-R2F-002
+    name: No Self-Service Portal
+    description: >
+      Instance has no portal for self-service. R2F requires user-facing request channel.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      Service Portal plugin (com.glide.service-portal) is not installed
+      and Employee Center (com.sn_employee_center) is not installed
+    recommendation: >
+      Deploy Service Portal or Employee Center to provide end-users with a
+      self-service channel for submitting and tracking requests.
+    tags: [R2F, portal, self-service]
+    eval:
+      all:
+        - node_absent: service_portal
+        - node_absent: employee_center
+    message: "No self-service portal detected. R2F lacks user-facing request channel."
+    recommended_nodes:
+      service_portal: "R2F self-service"
+
+  - id: IT4IT-R2F-003
+    name: No Knowledge Base for Self-Resolution
+    description: >
+      Knowledge Base is not active. R2F benefits from self-resolution to reduce ticket volume.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      Knowledge plugin (com.glideapp.knowledge) is not installed
+      or kb_knowledge table has fewer than 10 published articles
+    recommendation: >
+      Enable and populate the Knowledge Base to allow end-users to self-resolve
+      common issues, reducing ticket volume in the R2F stream.
+    tags: [R2F, knowledge, self-service]
+    eval:
+      any:
+        - node_absent: knowledge_base
+        - table_between: {table: kb_knowledge, min: 0, below: 10}
+    message: "Knowledge Base has {kb_knowledge_count} articles. Self-resolution limited."
+    recommended_nodes:
+      knowledge_base: "R2F self-resolution"
+
+  - id: IT4IT-D2C-001
+    name: No Incident Management
+    description: >
+      Instance has no Incident Management. D2C requires issue detection and resolution.
+    source: it4it
+    severity: critical
+    category: it4it_coverage
+    condition_description: >
+      Incident Management plugin (com.snc.incident) is not installed
+    recommendation: >
+      Incident Management is foundational to the Detect to Correct (D2C) value stream.
+      Enable it to track, prioritize, and resolve service disruptions.
+    tags: [D2C, incident, detection, resolution]
+    eval:
+      all:
+        - node_absent: incident
+    message: "No Incident Management detected. D2C has no issue resolution capability."
+    recommended_nodes:
+      incident: "D2C issue resolution"
+      itsm: "D2C foundation"
+
+  - id: IT4IT-D2C-002
+    name: No Problem Management
+    description: >
+      Instance has no Problem Management. D2C requires root cause analysis capability.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      Problem Management plugin (com.snc.problem) is not installed
+      or problem table has zero records
+    recommendation: >
+      Enable Problem Management to perform root cause analysis and prevent
+      recurring incidents as part of the D2C value stream.
+    tags: [D2C, problem, root-cause]
+    eval:
+      all:
+        - node_absent: problem
+    message: "No Problem Management activity. Root cause analysis not being performed."
+    recommended_nodes:
+      problem: "D2C root cause"
+
+  - id: IT4IT-D2C-003
+    name: No Event Management or Monitoring
+    description: >
+      Instance has no proactive detection. D2C is reactive without event correlation.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      Event Management plugin (com.glide.itom.em) is not installed
+      and no active monitoring integrations detected
+    recommendation: >
+      Enable ITOM Event Management or integrate with external monitoring tools
+      to shift from reactive incident handling to proactive detection.
+    tags: [D2C, event, monitoring, itom, proactive]
+    eval:
+      all:
+        - node_absent: event_mgmt
+    message: "No Event Management or monitoring integration. D2C is purely reactive."
+    recommended_nodes:
+      event_mgmt: "D2C proactive detection"
+      itom: "D2C operations"
+
+  - id: IT4IT-D2C-004
+    name: No Discovery or Service Mapping
+    description: >
+      CMDB is not automatically populated. D2C requires accurate infrastructure data.
+    source: it4it
+    severity: high
+    category: it4it_coverage
+    condition_description: >
+      Discovery (com.snc.discovery) and Service Mapping (com.snc.service_mapping)
+      are both not installed or inactive
+    recommendation: >
+      Enable Discovery and/or Service Mapping to automatically populate and maintain
+      the CMDB. Manual CMDB maintenance leads to stale data and poor D2C outcomes.
+    tags: [D2C, discovery, service_mapping, cmdb]
+    eval:
+      all:
+        - node_absent: discovery
+        - node_absent: service_mapping
+    message: "No Discovery or Service Mapping. CMDB relies on manual maintenance."
+    recommended_nodes:
+      discovery: "D2C auto-discovery"
+      service_mapping: "D2C service topology"
+
+  - id: IT4IT-XS-001
+    name: Single Value Stream Coverage
+    description: >
+      Instance only covers one IT4IT value stream. Mature organizations cover all four.
+    source: it4it
+    severity: low
+    category: it4it_coverage
+    condition_description: >
+      Active plugins only map to a single IT4IT value stream (S2P, R2D, R2F, or D2C)
+    recommendation: >
+      Consider expanding ServiceNow usage across additional IT4IT value streams
+      to maximize platform ROI and operational maturity.
+    tags: [S2P, R2D, R2F, D2C, maturity]
+    eval:
+      streams_covered_below:
+        threshold: 2
+        streams:
+          S2P:
+            any:
+              - node_active: spm
+              - node_active: grc
+          R2D:
+            any:
+              - node_active: change
+              - table_gt: {table: change_request, value: 0}
+          R2F:
+            any:
+              - node_active: service_catalog
+              - node_active: service_portal
+          D2C:
+            any:
+              - node_active: incident
+              - node_active: event_mgmt
+    message: "Only {covered_count} IT4IT value stream(s) covered: {covered_streams}."
+    recommended_nodes: {}
+
+  - id: IT4IT-XS-002
+    name: No Integration Hub for Cross-Stream Orchestration
+    description: >
+      Integration Hub is not active. Cross-stream automation requires orchestration capability.
+    source: it4it
+    severity: medium
+    category: it4it_coverage
+    condition_description: >
+      Integration Hub plugin (com.glide.hub.integration_hub) is not installed
+    recommendation: >
+      Enable Integration Hub to orchestrate workflows across value streams and
+      integrate with external systems without custom scripting.
+    tags: [R2D, R2F, D2C, integration, orchestration]
+    eval:
+      all:
+        - node_absent: integration_hub
+    message: "No Integration Hub detected. Cross-stream orchestration relies on custom scripts."
+    recommended_nodes:
+      integration_hub: "cross-stream orchestration"
+
+
+# ---------------------------------------------------------------------------
+# Integration Pattern Decision Tree (Source: Jochen Geist)
+# ---------------------------------------------------------------------------
+
+integration_rules:
+
+  - id: INT-PAT-001
+    name: Direct JDBC Instead of REST API
+    description: >
+      Instance uses JDBC connections where REST API would be more appropriate.
+    source: integration
+    severity: high
+    category: integration_pattern
+    condition_description: >
+      Active JDBC data sources found — consider REST API where feasible
+    recommendation: >
+      Prefer REST API (Scripted REST or Standard REST) over JDBC for real-time
+      integrations. JDBC should only be used for bulk data operations where
+      REST is not feasible. REST is the preferred Web Service pattern.
+    tags: [web_service, jdbc, rest, pattern_selection]
+    eval:
+      all:
+        - table_gt: {table: sys_data_source, value: 0}
+    message: "{sys_data_source_count} JDBC data sources detected. Review whether REST API would be more appropriate."
+    recommended_nodes: {}
+
+  - id: INT-PAT-002
+    name: SOAP When REST Available
+    description: >
+      Instance uses SOAP web services where REST endpoints may be available.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      Active SOAP messages found — modern integrations should prefer REST
+    recommendation: >
+      Migrate SOAP integrations to REST where the target system supports it.
+      REST is lighter weight, easier to maintain, and the preferred pattern
+      for modern ServiceNow integrations.
+    tags: [web_service, soap, rest, modernization]
+    eval:
+      all:
+        - table_gt: {table: sys_soap_message, value: 0}
+    message: "{sys_soap_message_count} SOAP message configurations detected. Consider migrating to REST."
+    recommended_nodes: {}
+
+  - id: INT-PAT-003
+    name: No Integration Hub for External Connections
+    description: >
+      Instance connects to external systems via custom scripts instead of Integration Hub.
+    source: integration
+    severity: high
+    category: integration_pattern
+    condition_description: >
+      Custom REST messages or scripted integrations exist but Integration Hub
+      spokes are available for the same target systems
+    recommendation: >
+      Use Integration Hub spokes instead of custom scripted integrations.
+      Spokes provide built-in error handling, retry logic, connection management,
+      and are maintained by ServiceNow or spoke vendors.
+    tags: [integration_hub, spokes, custom_script, best_practice]
+    eval:
+      all:
+        - node_absent: integration_hub
+        - flow_count_eq: 0
+    message: "No Integration Hub spokes detected. External integrations likely use custom scripts."
+    recommended_nodes:
+      integration_hub: "managed integrations"
+
+  - id: INT-DIR-001
+    name: Bidirectional Sync Without Conflict Resolution
+    description: >
+      Two-way data sync detected — both inbound (import sets) and outbound
+      (REST/SOAP messages) integrations exist, suggesting bidirectional sync.
+    source: integration
+    severity: critical
+    category: integration_pattern
+    condition_description: >
+      Import sets and outbound REST/SOAP both exist, suggesting bidirectional
+      sync without a clear data master
+    recommendation: >
+      Define a clear system of record for each data entity. Use coalesce fields
+      on import sets and implement conflict resolution rules. Bidirectional sync
+      without a defined master leads to data inconsistencies.
+    tags: [data_persistence, bidirectional, conflict, data_master]
+    eval:
+      all:
+        - table_gt: {table: sys_import_set, value: 0}
+        - any:
+            - table_gt: {table: sys_rest_message, value: 0}
+            - table_gt: {table: sys_soap_message, value: 0}
+    message: "Bidirectional integration detected: {sys_import_set_count} import sets + outbound REST/SOAP messages. Verify conflict resolution strategy."
+    recommended_nodes: {}
+
+  - id: INT-DIR-002
+    name: Inbound Data Without Transform Maps
+    description: >
+      Import sets exist without corresponding transform maps for data cleansing.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      sys_import_set records exist but sys_transform_map is empty
+    recommendation: >
+      Always use transform maps with import sets to validate, cleanse, and
+      map incoming data to target tables. Direct table imports bypass data
+      quality controls.
+    tags: [data_persistence, import_set, transform, data_quality]
+    eval:
+      all:
+        - table_gt: {table: sys_import_set, value: 0}
+        - table_lte: {table: sys_transform_map, value: 0}
+    message: "{sys_import_set_count} import sets found but no transform maps. Inbound data bypasses quality controls."
+    recommended_nodes: {}
+
+  - id: INT-VOL-002
+    name: Heavy Scheduled Job Usage (Potential Polling)
+    description: >
+      Instance has a high number of scheduled script executions, suggesting
+      polling-based integration patterns instead of event-driven.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      More than 50 scheduled scripts configured, suggesting polling patterns
+    recommendation: >
+      Replace polling-based integrations with event-driven patterns where possible.
+      Use Business Rules, Flow Designer triggers, or inbound webhooks to react
+      to changes in real-time without unnecessary polling overhead.
+    tags: [event_driven, polling, webhook, efficiency]
+    eval:
+      all:
+        - table_gt: {table: sysauto_script, value: 50}
+    message: "{sysauto_script_count} scheduled scripts detected. Review for polling patterns that could be replaced with event-driven triggers."
+    recommended_nodes: {}
+
+  - id: INT-ERR-002
+    name: No MID Server for On-Premise Integration
+    description: >
+      Instance integrates with on-premise systems without a MID Server.
+    source: integration
+    severity: critical
+    category: integration_pattern
+    condition_description: >
+      Outbound integrations target private/internal IP ranges but no active
+      MID Server is configured
+    recommendation: >
+      Deploy a MID Server for all on-premise integrations. Direct connections
+      from cloud to on-premise bypass security controls and are unreliable.
+      MID Server provides secure, managed connectivity.
+    tags: [mid_server, on_premise, security, connectivity]
+    eval:
+      all:
+        - mid_server_eq: 0
+    message: "No active MID Servers detected. On-premise integrations have no secure channel."
+    recommended_nodes: {}
+
+  - id: INT-LEG-001
+    name: Legacy Workflow Instead of Flow Designer
+    description: >
+      Instance uses legacy Workflow Engine where Flow Designer should be used.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      Active legacy workflows (wf_workflow) found that could be migrated
+      to Flow Designer
+    recommendation: >
+      Migrate legacy workflows to Flow Designer. Flow Designer provides better
+      error handling, Integration Hub support, and is ServiceNow's strategic
+      direction for process automation. Legacy Workflow is in maintenance mode.
+    tags: [legacy, workflow, flow_designer, modernization]
+    eval:
+      all:
+        - table_gt: {table: wf_workflow, value: 0}
+        - any:
+            - table_lte: {table: sys_hub_flow, value: 0}
+            - table_exceeds: {table: wf_workflow, other: sys_hub_flow}
+    message: "Legacy Workflow Engine has {wf_workflow_count} workflows vs {sys_hub_flow_count} Flow Designer flows. Migration recommended."
+    recommended_nodes:
+      flow_designer: "modern automation"
+
+  - id: INT-LEG-002
+    name: Email-Based Integration
+    description: >
+      Instance uses inbound email actions for integration, which is fragile
+      and difficult to monitor compared to REST API or Import Sets.
+    source: integration
+    severity: low
+    category: integration_pattern
+    condition_description: >
+      Inbound email actions exist for processing external data
+    recommendation: >
+      Email-based integration is a fallback pattern. Replace with REST API
+      or Import Set integrations for reliable, structured data exchange.
+      Email is fragile, difficult to monitor, and lacks transactional guarantees.
+    tags: [email, fallback, legacy, reliability]
+    eval:
+      all:
+        - table_gt: {table: sysevent_email_action, value: 0}
+    message: "{sysevent_email_action_count} inbound email actions detected. Consider replacing with REST API or Import Set integrations."
+    recommended_nodes: {}
+
+
+# ---------------------------------------------------------------------------
+# Instance Health & Anti-Pattern Rules
+# ---------------------------------------------------------------------------
+
+health_rules:
+
+  - id: HEALTH-001
+    name: CMDB Not Populated by Automated Discovery
+    description: >
+      CMDB has records but no Discovery or Service Mapping activity detected.
+    source: best_practice
+    severity: high
+    category: health
+    condition_description: >
+      cmdb_ci has records but discovery_status table is empty or
+      Discovery plugin is inactive
+    recommendation: >
+      CMDB data maintained manually becomes stale quickly. Enable Discovery
+      and Service Mapping for automated population and ongoing maintenance.
+    tags: [cmdb, discovery, data_quality]
+    eval:
+      all:
+        - cmdb_gt: {field: total_cis, value: 0}
+        - node_absent: discovery
+    message: "CMDB has {total_cis} CIs but no automated Discovery. Data staleness risk."
+    recommended_nodes: {}
+
+  - id: HEALTH-002
+    name: Customer Portal Connected to ITSM Directly
+    description: >
+      Public-facing Customer Portal creates records in internal ITSM tables.
+    source: best_practice
+    severity: critical
+    category: health
+    condition_description: >
+      Customer Portal has catalog items or forms that create incident
+      or sc_request records directly instead of CSM cases
+    recommendation: >
+      Public/customer-facing requests should flow through CSM (Customer Service
+      Management), not directly into ITSM. ITSM is for internal IT operations.
+      CSM provides customer context, SLA management, and proper segregation.
+    tags: [segregation, csm, itsm, portal, anti_pattern]
+    eval:
+      all:
+        - node_active: csm
+        - table_gt: {table: incident, value: 0}
+        - table_lte: {table: sn_customerservice_case, value: 0}
+    message: "Customer Service plugin installed but no CSM cases — customers may be routed to ITSM directly."
+    recommended_nodes:
+      csm: "customer segregation"
+      case_mgmt: "customer cases"
+
+  - id: HEALTH-003
+    name: Domain Separation Not Enabled
+    description: >
+      Domain separation is not enabled. Multi-tenant or multi-BU instances
+      require domain separation to enforce data isolation.
+    source: best_practice
+    severity: high
+    category: health
+    condition_description: >
+      glide.sys.domain.enabled property is not set to true
+    recommendation: >
+      Enable domain separation for multi-tenant environments to enforce data
+      isolation between business units. Without it, data leakage across tenants
+      is a significant risk.
+    tags: [domain_separation, multi_tenant, security]
+    eval:
+      all:
+        - property_neq: {property: "glide.sys.domain.enabled", value: "true"}
+    message: "Domain separation is not enabled. Data isolation between business units is not enforced."
+    recommended_nodes: {}
+
+  - id: HEALTH-004
+    name: Excessive Custom Tables
+    description: >
+      Instance has a high number of custom tables (u_ or x_ prefix),
+      increasing upgrade complexity and maintenance burden.
+    source: best_practice
+    severity: medium
+    category: health
+    condition_description: >
+      More than 50 custom tables (u_ or x_ prefix) exist in the instance
+    recommendation: >
+      Review custom tables for consolidation opportunities. Many custom tables
+      may indicate that standard ServiceNow modules could replace custom solutions.
+      Custom tables increase upgrade complexity and maintenance burden.
+    tags: [custom_tables, technical_debt, upgrade]
+    eval:
+      all:
+        - table_gt: {table: _custom_tables, value: 50}
+    message: "{_custom_tables_count} custom tables (u_/x_ prefix) detected. Review for consolidation opportunities."
+    recommended_nodes: {}
+
+  - id: HEALTH-005
+    name: Audit Logging Not Active
+    description: >
+      sys_audit table has no records, indicating audit logging is not capturing
+      changes to sensitive tables.
+    source: best_practice
+    severity: critical
+    category: health
+    condition_description: >
+      sys_audit table has zero records — audit logging not generating data
+    recommendation: >
+      Ensure comprehensive audit logging is enabled on all sensitive tables.
+      Audit logs are essential for compliance (SOX, HIPAA, FedRAMP) and
+      security forensics. Configure via glide.audit.* properties.
+    tags: [compliance, audit, security, forensics]
+    eval:
+      all:
+        - table_lte: {table: sys_audit, value: 0}
+    message: "sys_audit table has no records. Audit logging is not capturing changes to sensitive tables."
+    recommended_nodes: {}
+
+  - id: HEALTH-006
+    name: No Agent Workspace Adoption
+    description: >
+      Instance uses legacy list/form UI instead of Agent Workspace for agents.
+    source: best_practice
+    severity: low
+    category: health
+    condition_description: >
+      Agent Workspace (com.sn_agent_workspace) is not installed or
+      agents primarily use classic UI based on login patterns
+    recommendation: >
+      Migrate agents to Agent Workspace for improved productivity. Workspace
+      provides contextual side panels, AI-assisted resolution, and is
+      ServiceNow's strategic direction for agent experience.
+    tags: [workspace, agent_experience, modernization]
+    eval:
+      all:
+        - node_absent: workspace
+    message: "No Agent Workspace adoption. Agents using classic UI miss productivity features."
+    recommended_nodes:
+      workspace: "agent experience"
+
+  - id: HEALTH-007
+    name: Legacy Workflow Engine Still Active
+    description: >
+      Legacy Workflow Engine has active workflows that should be on Flow Designer.
+    source: best_practice
+    severity: medium
+    category: health
+    condition_description: >
+      wf_workflow table has active workflows created in the last 12 months
+    recommendation: >
+      New automation should use Flow Designer, not Legacy Workflow. Plan migration
+      of active legacy workflows to Flow Designer for better maintainability
+      and access to Integration Hub capabilities.
+    tags: [workflow, flow_designer, modernization, technical_debt]
+    eval:
+      all:
+        - table_gt: {table: wf_workflow, value: 10}
+    message: "{wf_workflow_count} legacy workflows still active. Flow Designer is the strategic direction."
+    recommended_nodes: {}
+
+
+
+# ---------------------------------------------------------------------------
+# Product Adoption Maturity Rules
+# ---------------------------------------------------------------------------
+
+adoption_rules:
+
+  - id: ADOPT-001
+    name: Incident Without Problem Management
+    description: >
+      Incident Management is active but Problem Management is not used.
+      The D2C value stream requires a root cause analysis loop.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      Incident table has records but Problem plugin is inactive
+      or problem table has zero records
+    recommendation: >
+      Enable Problem Management to close the reactive-to-proactive loop.
+      Without root cause analysis, the same incidents recur. Problem Management
+      is included in the ITSM license at no additional cost.
+    tags: [D2C, itsm, incident, problem, maturity]
+    eval:
+      all:
+        - node_active: incident
+        - node_absent: problem
+    message: "Incident Management is active but Problem Management is not in use. No root cause analysis loop."
+    recommended_nodes:
+      problem: "D2C root cause analysis"
+
+  - id: ADOPT-002
+    name: ITSM Without Knowledge Management
+    description: >
+      ITSM is active but Knowledge Base has fewer than 10 articles.
+      Knowledge deflection is the highest-ROI self-service investment.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      ITSM plugins active and incident table has records, but
+      Knowledge plugin is inactive or kb_knowledge has < 10 articles
+    recommendation: >
+      Build a Knowledge Base from resolved incidents. ServiceNow's Knowledge
+      Management allows agents to create KB articles during incident resolution.
+      Even 50 well-written articles can deflect 15-20% of ticket volume.
+    tags: [R2F, D2C, knowledge, self_service, deflection]
+    eval:
+      all:
+        - node_active: itsm
+        - any:
+            - node_absent: knowledge_base
+            - table_between: {table: kb_knowledge, min: 0, below: 10}
+    message: "ITSM is active but Knowledge Base has only {kb_knowledge_count} articles. Self-service deflection opportunity missed."
+    recommended_nodes:
+      knowledge_base: "R2F self-resolution"
+
+  - id: ADOPT-003
+    name: Service Catalog Without Virtual Agent
+    description: >
+      Service Catalog is active but Virtual Agent is not installed.
+      VA provides conversational self-service for common requests.
+    source: best_practice
+    severity: low
+    category: adoption_maturity
+    condition_description: >
+      Service Catalog plugin is active and sc_cat_item has records,
+      but Virtual Agent (com.glide.cs.chatbot) is not installed
+    recommendation: >
+      Deploy Virtual Agent to guide users to the right catalog items
+      conversationally. VA integrates with Service Catalog and Knowledge Base
+      to deflect common requests before they become tickets.
+    tags: [R2F, virtual_agent, self_service, catalog]
+    eval:
+      all:
+        - node_active: service_catalog
+        - node_absent: virtual_agent
+    message: "Service Catalog is active but Virtual Agent is not installed. Conversational self-service not available."
+    recommended_nodes:
+      virtual_agent: "R2F conversational self-service"
+
+  - id: ADOPT-004
+    name: HRSD Without Employee Center
+    description: >
+      HR Service Delivery is installed but Employee Center is not.
+      Employees lack a unified portal for HR services.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      HRSD plugin (com.sn_hr_core) is installed but Employee Center
+      (com.sn_employee_center) is not installed
+    recommendation: >
+      Deploy Employee Center to give employees a single front door for HR
+      services, knowledge, and cases. Employee Center is ServiceNow's strategic
+      replacement for Service Portal in HR workflows and provides personalized,
+      department-specific content delivery.
+    tags: [R2F, hrsd, employee_center, portal, self_service]
+    eval:
+      all:
+        - node_active: hrsd
+        - node_absent: employee_center
+    message: "HRSD is installed but Employee Center is not. Employees lack a unified, personalized portal for HR services."
+    recommended_nodes:
+      employee_center: "R2F employee self-service"
+
+  - id: ADOPT-005
+    name: CSM Without Dedicated Customer Portal
+    description: >
+      Customer Service Management is installed but no portal is configured
+      for external customer self-service.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      CSM plugin (com.sn_customerservice) is installed but Service Portal
+      (com.glide.service-portal) is not installed
+    recommendation: >
+      Deploy a Customer Portal (via Service Portal) to provide external customers
+      with self-service case management, knowledge search, and request tracking.
+      Without a portal, CSM cases can only be created by agents, losing the
+      deflection benefits.
+    tags: [R2F, csm, customer_portal, self_service]
+    eval:
+      all:
+        - node_active: csm
+        - node_absent: customer_portal
+    message: "CSM is installed but no Customer Portal for customer self-service. Cases can only be created by agents."
+    recommended_nodes:
+      customer_portal: "R2F customer self-service"
+
+  - id: ADOPT-006
+    name: Discovery Without Service Mapping
+    description: >
+      Discovery is active but Service Mapping is not. Infrastructure CIs
+      are discovered but service context is missing.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      Discovery plugin (com.snc.discovery) is installed but
+      Service Mapping (com.snc.service_mapping) is not installed
+    recommendation: >
+      Add Service Mapping to Discovery to build application-level service maps.
+      Discovery finds individual CIs but Service Mapping connects them into
+      business services, enabling impact analysis during incidents and changes.
+    tags: [D2C, R2D, discovery, service_mapping, cmdb]
+    eval:
+      all:
+        - node_active: discovery
+        - node_absent: service_mapping
+    message: "Discovery is active but Service Mapping is not. Infrastructure CIs are discovered but service-level topology is missing."
+    recommended_nodes:
+      service_mapping: "D2C service topology"
+
+  - id: ADOPT-007
+    name: CMDB Without Asset Management
+    description: >
+      CMDB is populated but Asset Management is not active.
+      No lifecycle tracking for hardware and software assets.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      cmdb_ci has records but Asset Management plugin
+      (com.snc.asset_management) is not installed
+    recommendation: >
+      Enable IT Asset Management (ITAM) to track asset lifecycle — procurement,
+      deployment, maintenance, and retirement. CMDB tells you what you have;
+      ITAM tells you what it costs and when to replace it. HAM and SAM provide
+      hardware and software license compliance.
+    tags: [R2D, D2C, cmdb, asset, lifecycle]
+    eval:
+      all:
+        - cmdb_gt: {field: total_cis, value: 0}
+        - node_absent: asset
+    message: "CMDB has {total_cis} CIs but Asset Management is not active. No lifecycle tracking for hardware and software assets."
+    recommended_nodes:
+      asset: "R2D asset lifecycle"
+
+  - id: ADOPT-008
+    name: Security Incident Response Without Vulnerability Response
+    description: >
+      SIR is installed but Vulnerability Response is not. Reactive-only
+      security posture without proactive vulnerability management.
+    source: best_practice
+    severity: medium
+    category: adoption_maturity
+    condition_description: >
+      Security Incident Response plugin (com.snc.sec_inc_response)
+      is installed but Vulnerability Response (com.snc.vul_response) is not
+    recommendation: >
+      Add Vulnerability Response to shift from reactive (incident-only) to
+      proactive security operations. VR integrates with scanners (Qualys, Tenable,
+      Rapid7) to prioritize and track vulnerability remediation before exploitation.
+    tags: [D2C, secops, vulnerability, proactive]
+    eval:
+      all:
+        - node_active: sec_incident
+        - node_absent: vuln_response
+    message: "Security Incident Response is active but Vulnerability Response is not. Reactive-only security posture."
+    recommended_nodes:
+      vuln_response: "D2C proactive security"
+
+  - id: ADOPT-009
+    name: SPM Without GRC
+    description: >
+      Strategic Portfolio Management is active but GRC is not.
+      Portfolio decisions lack governance and risk oversight.
+    source: best_practice
+    severity: low
+    category: adoption_maturity
+    condition_description: >
+      SPM/ITBM plugin (com.snc.project_management) is installed
+      but GRC plugins (com.sn_compliance, com.sn_risk) are not installed
+    recommendation: >
+      Add Integrated Risk Management (GRC) alongside SPM to incorporate
+      risk assessments and compliance requirements into portfolio decisions.
+      This ensures investment priorities account for regulatory obligations.
+    tags: [S2P, spm, grc, governance]
+    eval:
+      all:
+        - node_active: spm
+        - node_absent: grc
+    message: "SPM is active but GRC is not. Portfolio decisions lack governance oversight."
+    recommended_nodes:
+      grc: "S2P governance"
+      policy_compliance: "S2P compliance"
+
+
+# ---------------------------------------------------------------------------
+# Security Posture Rules
+# ---------------------------------------------------------------------------
+
+security_rules:
+
+  - id: SEC-001
+    name: CSRF Protection Not Enabled
+    description: >
+      Cross-Site Request Forgery (CSRF) token validation is not enabled.
+      This is a critical security control for web applications.
+    source: best_practice
+    severity: critical
+    category: security
+    condition_description: >
+      glide.security.use_csrf_token property is not set to 'true'
+    recommendation: >
+      Enable CSRF protection by setting glide.security.use_csrf_token = true.
+      CSRF attacks can trick authenticated users into performing unintended actions.
+      This is a baseline security control recommended by OWASP and required for
+      FedRAMP compliance.
+    tags: [security, csrf, owasp, compliance]
+    eval:
+      all:
+        - property_neq: {property: "glide.security.use_csrf_token", value: "true"}
+    message: "CSRF token protection is not enabled. Instance is vulnerable to cross-site request forgery attacks."
+    recommended_nodes: {}
+
+  - id: SEC-002
+    name: No SecOps on Instance With Sensitive Data
+    description: >
+      Instance processes sensitive data (ITSM/CSM/HRSD) but has no Security
+      Operations capability for threat detection and response.
+    source: best_practice
+    severity: medium
+    category: security
+    condition_description: >
+      Instance has ITSM, CSM, or HRSD active (processing PII/sensitive data)
+      but neither Security Incident Response nor Vulnerability Response is installed
+    recommendation: >
+      Consider Security Operations (SecOps) to protect the ServiceNow instance
+      and its data. SIR provides security incident workflows, and VR enables
+      proactive vulnerability management. Both integrate with SIEM/SOAR tools.
+    tags: [security, secops, data_protection]
+    eval:
+      all:
+        - any:
+            - node_active: itsm
+            - node_active: csm
+            - node_active: hrsd
+        - node_absent: secops
+    message: "Instance processes sensitive data (ITSM/CSM/HRSD) but has no Security Operations capability."
+    recommended_nodes:
+      secops: "security operations"
+      sec_incident: "security incident response"
+
+  - id: SEC-003
+    name: Audit Logging Not Comprehensively Configured
+    description: >
+      Audit logging properties are not set, potentially leaving sensitive
+      table changes untracked.
+    source: best_practice
+    severity: high
+    category: security
+    condition_description: >
+      No glide.audit.* properties found in instance configuration
+    recommendation: >
+      Configure comprehensive audit logging via glide.audit.* properties.
+      At minimum, enable auditing on user tables, CMDB, and any tables
+      containing PII. Audit logs are essential for compliance (SOX, HIPAA,
+      FedRAMP) and security forensics.
+    tags: [security, audit, compliance, forensics]
+    eval:
+      all:
+        - property_prefix_absent: "glide.audit"
+    message: "No audit logging properties detected. Sensitive table changes may not be tracked."
+    recommended_nodes: {}
+
+
+# ---------------------------------------------------------------------------
+# Platform Efficiency Rules
+# ---------------------------------------------------------------------------
+
+efficiency_rules:
+
+  - id: EFF-001
+    name: "Potential Shelfware \u2014 HRSD Installed But No HR Cases"
+    description: >
+      HR Service Delivery plugin is installed but hr_core_case table
+      has zero records. License may be underutilized.
+    source: best_practice
+    severity: low
+    category: efficiency
+    condition_description: >
+      HRSD plugin (com.sn_hr_core) is installed but
+      sn_hr_core_case table has zero records
+    recommendation: >
+      HRSD is licensed but not producing HR cases. Either onboard HR
+      teams to use the platform, or evaluate whether the license is needed.
+      Unused licenses represent significant annual cost with zero ROI.
+    tags: [efficiency, shelfware, hrsd, roi]
+    eval:
+      all:
+        - node_active: hrsd
+        - table_eq: {table: sn_hr_core_case, value: 0}
+    message: "HRSD is active but sn_hr_core_case has zero records. License may be underutilized."
+    recommended_nodes: {}
+
+  - id: EFF-002
+    name: "Potential Shelfware \u2014 CSM Installed But No Cases"
+    description: >
+      Customer Service Management plugin is installed but case table
+      has zero records. License may be underutilized.
+    source: best_practice
+    severity: low
+    category: efficiency
+    condition_description: >
+      CSM plugin (com.sn_customerservice) is installed but
+      sn_customerservice_case table has zero records
+    recommendation: >
+      CSM is licensed but not producing customer cases. Either complete the
+      CSM implementation (portal, assignment rules, SLAs) or evaluate whether
+      the license is still needed.
+    tags: [efficiency, shelfware, csm, roi]
+    eval:
+      all:
+        - node_active: csm
+        - table_eq: {table: sn_customerservice_case, value: 0}
+    message: "CSM is active but sn_customerservice_case has zero records. License may be underutilized."
+    recommended_nodes: {}
+
+  - id: EFF-003
+    name: "Potential Shelfware \u2014 SecOps Installed But No Incidents"
+    description: >
+      Security Incident Response plugin is installed but SIR table
+      has zero records. Security automation not operational.
+    source: best_practice
+    severity: low
+    category: efficiency
+    condition_description: >
+      SIR plugin (com.snc.sec_inc_response) is installed but
+      sn_si_incident table has zero records
+    recommendation: >
+      Security Incident Response is licensed but not ingesting security
+      events. Connect SIR to your SIEM (Splunk, Sentinel, etc.) to automate
+      security incident creation and response workflows.
+    tags: [efficiency, shelfware, secops, siem]
+    eval:
+      all:
+        - node_active: sec_incident
+        - table_eq: {table: sn_si_incident, value: 0}
+    message: "Security Incident Response is active but sn_si_incident has zero records. SIEM integration not connected."
+    recommended_nodes: {}
+
+  - id: EFF-004
+    name: Flow Designer Underutilized
+    description: >
+      Flow Designer is installed but has fewer flows than legacy workflows.
+      Modern automation capabilities are underutilized.
+    source: best_practice
+    severity: low
+    category: efficiency
+    condition_description: >
+      Flow Designer plugin is active but sys_hub_flow count is less than
+      half of wf_workflow count
+    recommendation: >
+      Prioritize new automations in Flow Designer over Legacy Workflow.
+      Flow Designer supports Integration Hub actions, error policies, and
+      parallel execution. Plan a migration roadmap for legacy workflows
+      starting with the most frequently triggered ones.
+    tags: [efficiency, flow_designer, workflow, modernization]
+    eval:
+      all:
+        - node_active: flow_designer
+        - table_gt: {table: sys_hub_flow, value: 0}
+        - table_gt: {table: wf_workflow, value: 0}
+        - table_ratio_below: {table: sys_hub_flow, other: wf_workflow, ratio: 0.5}
+    message: "Flow Designer has {sys_hub_flow_count} flows vs {wf_workflow_count} legacy workflows. Modern automation underutilized."
+    recommended_nodes:
+      flow_designer: "modern automation"

@@ -118,6 +118,32 @@ class SNUtilsService:
             logger.warning(f"Count query failed for {table}: {e}")
         return 0
 
+    def get_table_data(self, table: str, query: str = None,
+                       fields: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Fetch records from a ServiceNow table with optional filtering.
+
+        Args:
+            table: Table name (e.g., 'sys_data_source')
+            query: Encoded query string (e.g., 'type=JDBC')
+            fields: Comma-separated field list
+            limit: Max records to return
+
+        Returns:
+            List of record dicts, or empty list on error
+        """
+        params: Dict[str, Any] = {"sysparm_limit": limit}
+        if query:
+            params["sysparm_query"] = query
+        if fields:
+            params["sysparm_fields"] = fields
+        cache_key = f"table_data_{table}_{query}_{fields}_{limit}"
+        data = self._make_request(f"/api/now/table/{table}",
+                                  params=params, cache_key=cache_key)
+        if data:
+            return data.get("result", [])
+        return []
+
     def get_installed_applications(self) -> List[Dict[str, Any]]:
         """
         Get list of installed applications in the instance

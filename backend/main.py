@@ -11,8 +11,11 @@ import threading
 import asyncio
 import logging
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Load root .env first (SN_*, ONELLM_*), then backend/.env for overrides
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv()  # backend/.env (overrides if same key exists)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,6 +48,20 @@ document_processor = DocumentProcessor()
 llm_service = LLMService()
 diagram_generator = DiagramGenerator()
 web_search_service = WebSearchService()
+
+
+def normalize_instance_url(raw: str) -> str:
+    """Normalize a ServiceNow instance URL to https://<host>.service-now.com"""
+    url = raw.strip().rstrip('/')
+    # Strip protocol for uniform handling
+    for prefix in ('https://', 'http://'):
+        if url.lower().startswith(prefix):
+            url = url[len(prefix):]
+            break
+    url = url.rstrip('/')
+    if not url.endswith('.service-now.com'):
+        url = f"{url}.service-now.com"
+    return f"https://{url}"
 
 class LLMConfig(BaseModel):
     provider: str
@@ -85,9 +102,9 @@ async def get_env_defaults():
             "api_url": os.getenv("ONELLM_BASE_URL", ""),
         },
         "servicenow": {
-            "instance": os.getenv("SN_INSTANCE", ""),
-            "username": os.getenv("SN_USER", ""),
-            "password": os.getenv("SN_PASSWORD", ""),
+            "instance": os.getenv("SN_INSTANCE") or settings.servicenow_instance or "",
+            "username": os.getenv("SN_USER") or settings.servicenow_username or "",
+            "password": os.getenv("SN_PASSWORD") or settings.servicenow_password or "",
         }
     }
 
@@ -130,9 +147,7 @@ async def connect_servicenow(config: ConnectionConfig):
         connection_mode = config.connection_mode
         
         # Build instance URL for REST API
-        instance_url = config.instance
-        if not instance_url.endswith('.service-now.com'):
-            instance_url = f"{instance_url}.service-now.com"
+        instance_url = normalize_instance_url(config.instance)
         
         if connection_mode == 'rest_only':
             # REST API only — no JDBC, no Java required
@@ -508,9 +523,40 @@ async def get_diagram(diagram_id: str):
         raise HTTPException(status_code=404, detail="Diagram not found")
     return FileResponse(diagram_path)
 
+@app.get("/api/debug/plugins")
+async def debug_plugins():
+    """Temporary diagnostic — dump all discovered plugin IDs from the live instance."""
+    if sn_utils_service_instance is None:
+        raise HTTPException(status_code=400, detail="Not connected")
+    sn = sn_utils_service_instance
+    result = {"sys_app": {}, "v_plugin": {}, "sys_store_app": {}}
+    # 1) sys_app
+    apps = sn.get_installed_applications() or []
+    for a in apps:
+        s = a.get("scope", "")
+        if s: result["sys_app"][s] = a.get("name", "")
+    # 2) v_plugin
+    data = sn._make_request("/api/now/table/v_plugin",
+        params={"sysparm_fields": "id,name,active", "sysparm_query": "active=true", "sysparm_limit": 2000},
+        cache_key="debug_v_plugin")
+    if data:
+        for p in data.get("result", []):
+            pid = p.get("id", "")
+            if pid: result["v_plugin"][pid] = p.get("name", "")
+    # 3) sys_store_app
+    sdata = sn._make_request("/api/now/table/sys_store_app",
+        params={"sysparm_fields": "scope,name", "sysparm_limit": 1000},
+        cache_key="debug_sys_store_app")
+    if sdata:
+        for sa in sdata.get("result", []):
+            s = sa.get("scope", "")
+            if s: result["sys_store_app"][s] = sa.get("name", "")
+    result["totals"] = {k: len(v) for k, v in result.items() if k != "totals"}
+    return result
+
 @app.post("/api/assess")
 async def assess_instance():
-    """Run Instance Assessment (Nirvana) — deterministic scan + rule evaluation."""
+    """Run Instance Assessment (Minos) — deterministic scan + rule evaluation."""
     from services.instance_scanner import InstanceScanner
     from services.instance_scanner_rules import ENABLED as RULES_ENABLED, RuleEngine
 
@@ -542,6 +588,158 @@ async def get_assessment_knowledge_base():
     engine = RuleEngine()
     return {"sources": engine.get_knowledge_base()}
 
+@app.get("/api/rules/yaml")
+async def get_rules_yaml():
+    """Return the full YAML data for the rule editor."""
+    from services.instance_scanner_rules import get_full_yaml
+    return get_full_yaml()
+
+@app.post("/api/rules/save")
+async def save_rules(payload: dict):
+    """Save modified rules back to rules.yaml and hot-reload the engine."""
+    from services.instance_scanner_rules import save_rules_yaml, RuleEngine
+    try:
+        total = save_rules_yaml(payload)
+        engine = RuleEngine()
+        return {
+            "status": "saved",
+            "total_rules": total,
+            "summary": engine.get_rule_summary(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to save rules: {str(e)}")
+
+# ---------------------------------------------------------------------------
+# Plutus — WDF Pricing & Credit Sizing
+# ---------------------------------------------------------------------------
+
+@app.post("/api/plutus/scan")
+async def plutus_scan():
+    """Run Plutus WDF credit sizing scan against the connected instance."""
+    from services.plutus_scanner import PlutusScanner
+
+    if sn_utils_service_instance is None:
+        raise HTTPException(status_code=400, detail="Not connected to a ServiceNow instance")
+
+    try:
+        # Reuse Minos scan data if available (active_node_ids, active_tables)
+        from services.instance_scanner import InstanceScanner
+        minos = InstanceScanner(sn_utils_service_instance)
+        minos_result = minos.scan()
+
+        # Extract active node IDs from the active_nodes list
+        active_node_ids = set(
+            n["id"] for n in minos_result.get("active_nodes", [])
+        )
+        # Extract table counts from instance_model
+        active_tables = minos_result.get("instance_model", {}).get("active_tables", {})
+
+        scanner = PlutusScanner(sn_utils_service_instance)
+        result = scanner.scan(
+            active_node_ids=active_node_ids,
+            active_tables=active_tables,
+        )
+        return scanner.result_to_dict(result)
+    except Exception as e:
+        logger.error(f"Plutus scan failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/plutus/recalculate")
+async def plutus_recalculate(payload: dict):
+    """Recalculate Plutus credits with user-supplied usage overrides (no instance scan)."""
+    from services.plutus_scanner import PlutusPricingConfig
+
+    try:
+        config = PlutusPricingConfig()
+        overrides = payload.get("overrides", {})
+        previous_usage = payload.get("previous_usage", [])
+
+        # Index previous scan results by capability_id for fast lookup
+        prev_by_id = {u["capability_id"]: u for u in previous_usage}
+
+        from services.plutus_scanner import PlutusResult, CapabilityUsage
+        result = PlutusResult()
+        result.pricing_config = config.raw
+        result.credits_per_pack = config.packs.get("credits_per_pack", 2_000_000)
+        result.price_per_pack = config.packs.get("price_per_pack_yearly", 100_000)
+
+        for cap in config.rate_card:
+            if cap.get("hidden", False):
+                continue
+            cap_id = cap["id"]
+            prev = prev_by_id.get(cap_id, {})
+
+            usage = CapabilityUsage(
+                capability_id=cap_id,
+                label=cap.get("label", cap_id),
+                meter_unit=cap.get("meter_unit", ""),
+                credits_per_unit=cap.get("credits", 0),
+                pro_only=cap.get("pro_only", False),
+                measurable=cap.get("measurable", True),
+                measurement_rule=(cap.get("measurement_rule", "") or "").strip(),
+            )
+
+            if cap_id in overrides:
+                # User explicitly changed this value
+                usage.user_override = overrides[cap_id]
+                usage.usage_value = overrides[cap_id]
+                usage.usage_per_year = overrides[cap_id]
+                usage.detected = overrides[cap_id] > 0
+                usage.scan_evidence = "User-provided value" if overrides[cap_id] > 0 else ""
+                usage.is_estimated = False
+                usage.data_days = 0
+            elif prev:
+                # Preserve original scan data including annualized fields
+                usage.usage_value = prev.get("usage_value", 0)
+                usage.detected = prev.get("detected", False)
+                usage.scan_evidence = prev.get("scan_evidence", "")
+                usage.data_days = prev.get("data_days", 0)
+                usage.is_estimated = prev.get("is_estimated", False)
+                usage.usage_per_year = prev.get("usage_per_year", 0)
+
+            usage.total_credits = usage.usage_per_year * usage.credits_per_unit
+            result.capability_usage.append(usage)
+            result.total_credits += usage.total_credits
+
+            if usage.pro_only and usage.usage_value > 0:
+                result.requires_pro = True
+                result.pro_reasons.append(f"{usage.label} requires Professional tier")
+
+        from services.plutus_scanner import PlutusScanner
+        scanner = PlutusScanner(None, pricing_config=config)
+        scanner._calculate_tier(result)
+        return scanner.result_to_dict(result)
+    except Exception as e:
+        logger.error(f"Plutus recalculation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/plutus/config")
+async def get_plutus_config():
+    """Return the full Plutus pricing YAML for the frontend editor."""
+    from services.plutus_scanner import PlutusPricingConfig
+    config = PlutusPricingConfig()
+    return config.raw
+
+
+@app.post("/api/plutus/config")
+async def save_plutus_config(payload: dict):
+    """Save modified Plutus pricing config back to YAML."""
+    from services.plutus_scanner import PlutusPricingConfig
+    try:
+        config = PlutusPricingConfig()
+        config.save(payload)
+        config.reload()
+        return {
+            "status": "saved",
+            "rate_card_count": len(config.rate_card),
+            "tiers": list(config.tiers.keys()),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to save pricing config: {str(e)}")
+
+
 @app.get("/api/health")
 async def health_check():
     return {
@@ -550,6 +748,50 @@ async def health_check():
         "llm_configured": llm_service.is_configured(),
         "timestamp": datetime.now().isoformat()
     }
+
+@app.on_event("startup")
+async def auto_connect_from_env():
+    """Auto-connect to ServiceNow on startup if .env credentials are present."""
+    global servicenow_connector, sn_utils_service_instance, connection_mode
+    # Skip if already connected (e.g. from a previous call)
+    if servicenow_connector is not None:
+        return
+    sn_inst = settings.servicenow_instance
+    sn_user = settings.servicenow_username
+    sn_pass = settings.servicenow_password
+    if not sn_inst or not sn_user or not sn_pass:
+        logger.info("No ServiceNow credentials in .env — skipping auto-connect")
+        return
+    try:
+        from services.sn_utils_service import SNUtilsService
+        instance_url = normalize_instance_url(sn_inst)
+        logger.info(f"Auto-connecting to ServiceNow from .env: {instance_url}")
+        sn_utils_service_instance = SNUtilsService(
+            instance=instance_url,
+            username=sn_user,
+            password=sn_pass,
+        )
+        test = sn_utils_service_instance.get_installed_applications()
+        if test is not None:
+            connection_mode = "rest_only"
+            servicenow_connector = type('RESTOnlyConnector', (), {
+                'instance': instance_url,
+                'username': sn_user,
+                'password': sn_pass,
+                'is_connected': lambda self: True,
+                '_connected': True,
+                'get_available_tables': lambda self: [],
+                'get_installed_applications': lambda self: [],
+                'get_components': lambda self: {},
+                'get_instance_metadata': lambda self: {},
+            })()
+            logger.info(f"Auto-connected to {instance_url} via REST API (from .env)")
+        else:
+            logger.warning("Auto-connect failed — REST API returned None. Connect manually.")
+            sn_utils_service_instance = None
+    except Exception as e:
+        logger.warning(f"Auto-connect from .env failed: {e}")
+        sn_utils_service_instance = None
 
 if __name__ == "__main__":
     import uvicorn

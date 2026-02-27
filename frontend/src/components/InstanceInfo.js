@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, Package, Workflow, Loader2, RefreshCw, Search, Lock, Shield, GitBranch, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, Info, Eye, Lightbulb, ClipboardList, BarChart3, BookOpen, ArrowRight, Download, FileText } from 'lucide-react';
+import { Database, Package, Workflow, Loader2, RefreshCw, Search, Lock, Shield, GitBranch, AlertTriangle, ChevronDown, ChevronRight, CheckCircle2, Info, Eye, Lightbulb, ClipboardList, BarChart3, BookOpen, ArrowRight, Download, FileText, Pencil, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import RuleEditor from './RuleEditor';
 import { downloadMermaid, exportToPDF } from '../utils/exportUtils';
 import axios from 'axios';
 import mermaid from 'mermaid';
@@ -20,9 +21,16 @@ function InstanceInfo() {
   const [assessTab, setAssessTab] = useState('gap-analysis');
   const [knowledgeBase, setKnowledgeBase] = useState(null);
   const [kbExpanded, setKbExpanded] = useState(null);
+  const [ruleExpanded, setRuleExpanded] = useState(null);
+  const [writeMode, setWriteMode] = useState(false);
   const diagramRef = useRef(null);
+  const diagramWrapRef = useRef(null);
   const assessContentRef = useRef(null);
   const [exporting, setExporting] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const isPanning = useRef(false);
+  const panStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     loadInstanceData();
@@ -46,10 +54,18 @@ function InstanceInfo() {
           : assessResult.as_is_diagram;
         if (!diagramCode) return;
         container.innerHTML = '';
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
         try {
-          const id = `nirvana-${Date.now()}`;
+          const id = `minos-${Date.now()}`;
           const { svg } = await mermaid.render(id, diagramCode);
           container.innerHTML = svg;
+          const svgEl = container.querySelector('svg');
+          if (svgEl) {
+            svgEl.style.maxWidth = 'none';
+            svgEl.style.width = '100%';
+            svgEl.style.height = 'auto';
+          }
         } catch (e) {
           container.innerHTML = `<pre class="text-xs text-red-500">${e.message}</pre>`;
         }
@@ -57,6 +73,38 @@ function InstanceInfo() {
       renderDiagram();
     }
   }, [assessResult, assessTab]);
+
+  const handleWheelRef = useRef(null);
+  handleWheelRef.current = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoom(z => Math.min(Math.max(0.2, z + delta), 5));
+  };
+
+  useEffect(() => {
+    const el = diagramWrapRef.current;
+    if (!el) return;
+    const handler = (e) => handleWheelRef.current(e);
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  });
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    isPanning.current = true;
+    panStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+    e.currentTarget.style.cursor = 'grabbing';
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isPanning.current) return;
+    setPan({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
+  };
+
+  const handleMouseUp = (e) => {
+    isPanning.current = false;
+    if (e.currentTarget) e.currentTarget.style.cursor = 'grab';
+  };
 
   const loadRuleSummary = async () => {
     try {
@@ -134,6 +182,72 @@ function InstanceInfo() {
       </div>
     </div>
   );
+
+  const describeCheck = (check) => {
+    if (check.plugin_absent) return <><span className="font-mono text-amber-600 dark:text-amber-400">plugin_absent</span> <span className="font-mono">{check.plugin_absent}</span></>;
+    if (check.plugin_present) return <><span className="font-mono text-emerald-600 dark:text-emerald-400">plugin_present</span> <span className="font-mono">{check.plugin_present}</span></>;
+    if (check.table_lte) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_lte.table}</span> ≤ {check.table_lte.value}</>;
+    if (check.table_eq) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_eq.table}</span> = {check.table_eq.value}</>;
+    if (check.table_gt) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_gt.table}</span> &gt; {check.table_gt.value}</>;
+    if (check.table_between) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_between.table}</span> in [{check.table_between.min}, {check.table_between.below})</>;
+    if (check.table_exceeds) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_exceeds.table}</span> &gt; <span className="font-mono">{check.table_exceeds.other}</span></>;
+    if (check.table_ratio_below) return <><span className="font-mono text-blue-600 dark:text-blue-400">table</span> <span className="font-mono">{check.table_ratio_below.table}</span> &lt; <span className="font-mono">{check.table_ratio_below.other}</span> × {check.table_ratio_below.ratio}</>;
+    if (check.cmdb_below) return <><span className="font-mono text-purple-600 dark:text-purple-400">cmdb</span> {check.cmdb_below.field} &lt; {check.cmdb_below.value}</>;
+    if (check.cmdb_gt) return <><span className="font-mono text-purple-600 dark:text-purple-400">cmdb</span> {check.cmdb_gt.field} &gt; {check.cmdb_gt.value}</>;
+    if (check.cmdb_flag_false) return <><span className="font-mono text-purple-600 dark:text-purple-400">cmdb</span> {check.cmdb_flag_false} = false</>;
+    if (check.property_neq) return <><span className="font-mono text-orange-600 dark:text-orange-400">property</span> <span className="font-mono">{check.property_neq.property}</span> ≠ {check.property_neq.value}</>;
+    if (check.property_prefix_absent) return <><span className="font-mono text-orange-600 dark:text-orange-400">property</span> no {check.property_prefix_absent}* found</>;
+    if (check.mid_server_eq !== undefined) return <><span className="font-mono text-cyan-600 dark:text-cyan-400">mid_servers</span> count = {check.mid_server_eq}</>;
+    if (check.flow_count_eq !== undefined) return <><span className="font-mono text-cyan-600 dark:text-cyan-400">flows</span> count = {check.flow_count_eq}</>;
+    if (check.all || check.any) return renderEvalBlock(check, 1);
+    return <span className="font-mono text-slate-500">{JSON.stringify(check)}</span>;
+  };
+
+  const renderEvalBlock = (block, depth = 0) => {
+    if (!block) return null;
+    const ml = depth > 0 ? `ml-${Math.min(depth * 3, 6)}` : '';
+    if (block.all) {
+      return (
+        <div className={ml}>
+          <span className="text-[9px] font-semibold text-slate-500 uppercase">all of:</span>
+          {block.all.map((check, i) => (
+            <div key={i} className="flex items-start space-x-1 ml-2">
+              <span className="text-indigo-400 text-[9px] mt-px">•</span>
+              <span className="text-[9px] text-slate-700 dark:text-slate-300">{describeCheck(check)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (block.any) {
+      return (
+        <div className={ml}>
+          <span className="text-[9px] font-semibold text-slate-500 uppercase">any of:</span>
+          {block.any.map((check, i) => (
+            <div key={i} className="flex items-start space-x-1 ml-2">
+              <span className="text-amber-400 text-[9px] mt-px">•</span>
+              <span className="text-[9px] text-slate-700 dark:text-slate-300">{describeCheck(check)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    if (block.streams_covered_below) {
+      const info = block.streams_covered_below;
+      return (
+        <div className={ml}>
+          <span className="text-[9px] font-semibold text-slate-500 uppercase">value streams covered &lt; {info.threshold}:</span>
+          {Object.entries(info.streams).map(([name, streamBlock]) => (
+            <div key={name} className="ml-2">
+              <span className="text-[9px] font-mono font-semibold text-slate-600 dark:text-slate-400">{name}:</span>
+              {renderEvalBlock(streamBlock, depth + 1)}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return <span className="text-[9px] font-mono text-slate-500">{JSON.stringify(block)}</span>;
+  };
 
   return (
     <div className="space-y-6">
@@ -252,7 +366,7 @@ function InstanceInfo() {
           </div>
 
           {/* ============================================================ */}
-          {/* Instance Assessment (Nirvana) */}
+          {/* Instance Assessment (Minos) */}
           {/* ============================================================ */}
           <div className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-800">
@@ -264,7 +378,7 @@ function InstanceInfo() {
                   <div>
                     <h4 className="font-semibold text-slate-900 dark:text-white flex items-center space-x-2">
                       <span>Instance Assessment</span>
-                      <span className="text-[10px] font-medium text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">Nirvana</span>
+                      <span className="text-[10px] font-medium text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded">Minos</span>
                     </h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Deterministic analysis against {ruleSummary?.total_rules || 33} rules. No LLM required.
@@ -702,20 +816,64 @@ function InstanceInfo() {
                           </span>
                         )}
                       </div>
-                      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 overflow-x-auto border border-slate-200 dark:border-slate-700 relative group">
-                        <button
-                          onClick={() => {
-                            const code = assessTab === 'recommended' && assessResult.recommended_diagram
-                              ? assessResult.recommended_diagram
-                              : assessResult.as_is_diagram;
-                            if (code) downloadMermaid(code, `assessment_${assessTab}_diagram`);
-                          }}
-                          className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 dark:bg-slate-700/80 border border-slate-200 dark:border-slate-600 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-700 transition-all opacity-0 group-hover:opacity-100 z-10"
-                          title="Download Mermaid syntax"
+                      <div className="bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 relative group">
+                        {/* Toolbar */}
+                        <div className="absolute top-2 right-2 z-20 flex items-center space-x-1">
+                          <button
+                            onClick={() => setZoom(z => Math.min(z + 0.25, 5))}
+                            className="p-1.5 rounded-md bg-white/90 dark:bg-slate-700/90 border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                            title="Zoom in"
+                          >
+                            <ZoomIn className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setZoom(z => Math.max(z - 0.25, 0.2))}
+                            className="p-1.5 rounded-md bg-white/90 dark:bg-slate-700/90 border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                            title="Zoom out"
+                          >
+                            <ZoomOut className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
+                            className="p-1.5 rounded-md bg-white/90 dark:bg-slate-700/90 border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                            title="Reset view"
+                          >
+                            <Maximize2 className="h-3.5 w-3.5" />
+                          </button>
+                          <span className="text-[9px] font-mono text-slate-400 px-1">{Math.round(zoom * 100)}%</span>
+                          <button
+                            onClick={() => {
+                              const code = assessTab === 'recommended' && assessResult.recommended_diagram
+                                ? assessResult.recommended_diagram
+                                : assessResult.as_is_diagram;
+                              if (code) downloadMermaid(code, `assessment_${assessTab}_diagram`);
+                            }}
+                            className="p-1.5 rounded-md bg-white/90 dark:bg-slate-700/90 border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                            title="Download Mermaid syntax"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        {/* Pannable / zoomable viewport */}
+                        <div
+                          ref={diagramWrapRef}
+                          className="overflow-hidden p-4"
+                          style={{ cursor: 'grab', minHeight: 600 }}
+                          onMouseDown={handleMouseDown}
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUp}
+                          onMouseLeave={handleMouseUp}
                         >
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
-                        <div ref={diagramRef} className="flex justify-center" />
+                          <div
+                            ref={diagramRef}
+                            className="flex justify-center origin-center"
+                            style={{
+                              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                              transformOrigin: 'center center',
+                              transition: isPanning.current ? 'none' : 'transform 0.15s ease-out',
+                            }}
+                          />
+                        </div>
                       </div>
                       {assessTab === 'as-is' && assessResult.active_nodes?.length > 0 && (
                         <div className="mt-3">
@@ -809,15 +967,38 @@ function InstanceInfo() {
               {/* Knowledge Base */}
               {knowledgeBase && (
                 <div className="mt-1 pt-3 border-t border-slate-100 dark:border-slate-700">
-                  <button
-                    onClick={() => setRulesExpanded(!rulesExpanded)}
-                    className="flex items-center space-x-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                  >
-                    <BookOpen className="h-3.5 w-3.5" />
-                    {rulesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                    <span>Rule Knowledge Base ({ruleSummary?.total_rules || 33} rules from {knowledgeBase.length} sources)</span>
-                  </button>
-                  {rulesExpanded && (
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setRulesExpanded(!rulesExpanded)}
+                      className="flex items-center space-x-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                      {rulesExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      <span>Rule Knowledge Base ({ruleSummary?.total_rules || 33} rules from {knowledgeBase.length} sources)</span>
+                    </button>
+                    {rulesExpanded && (
+                      <button
+                        onClick={() => setWriteMode(!writeMode)}
+                        className={`flex items-center space-x-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${
+                          writeMode
+                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600'
+                        }`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                        <span>{writeMode ? 'Exit Editor' : 'Edit Rules'}</span>
+                      </button>
+                    )}
+                  </div>
+                  {rulesExpanded && writeMode && (
+                    <div className="mt-3">
+                      <RuleEditor
+                        onClose={() => setWriteMode(false)}
+                        onSaved={() => { loadRuleSummary(); loadKnowledgeBase(); }}
+                      />
+                    </div>
+                  )}
+                  {rulesExpanded && !writeMode && (
                     <div className="mt-3 space-y-3">
                       {knowledgeBase.map((source) => (
                         <div key={source.id} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
@@ -868,6 +1049,52 @@ function InstanceInfo() {
                                     <div key={i} className="flex items-start space-x-1.5">
                                       <span className="text-indigo-500 mt-0.5 text-[10px]">•</span>
                                       <p className="text-[10px] text-slate-600 dark:text-slate-400">{p}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* Individual Rules with Execution Details */}
+                              <div>
+                                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5">Rules ({source.rules.length})</p>
+                                <div className="space-y-1">
+                                  {source.rules.map((rule) => (
+                                    <div key={rule.id} className="border border-slate-200 dark:border-slate-600 rounded overflow-hidden">
+                                      <button
+                                        onClick={() => setRuleExpanded(ruleExpanded === rule.id ? null : rule.id)}
+                                        className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                            rule.severity === 'critical' ? 'bg-red-500' :
+                                            rule.severity === 'high' ? 'bg-orange-500' :
+                                            rule.severity === 'medium' ? 'bg-yellow-500' : 'bg-slate-400'
+                                          }`} />
+                                          <span className="text-[10px] font-mono text-slate-400">{rule.id}</span>
+                                          <span className="text-[10px] font-medium text-slate-700 dark:text-slate-300">{rule.name}</span>
+                                        </div>
+                                        {ruleExpanded === rule.id
+                                          ? <ChevronDown className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                          : <ChevronRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
+                                        }
+                                      </button>
+                                      {ruleExpanded === rule.id && (
+                                        <div className="px-3 py-2 bg-slate-50 dark:bg-slate-700/30 border-t border-slate-200 dark:border-slate-600 space-y-2">
+                                          <p className="text-[10px] text-slate-600 dark:text-slate-400">{rule.description}</p>
+                                          {rule.eval && (
+                                            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded p-2 space-y-1.5">
+                                              <p className="text-[9px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Execution Logic</p>
+                                              <div className="space-y-0.5">
+                                                {renderEvalBlock(rule.eval, 0)}
+                                              </div>
+                                            </div>
+                                          )}
+                                          <div className="flex flex-wrap gap-1">
+                                            {rule.tags.map((tag) => (
+                                              <span key={tag} className="text-[8px] bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded">{tag}</span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>

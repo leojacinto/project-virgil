@@ -4,6 +4,67 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.7.0 (Backend + Frontend) - February 2026
+
+**Plutus WDF Credit Sizing - Major Refinements:**
+
+*Auto-Detection & Usage Estimation:*
+- Auto-detection of Stream Connect via single-source high-frequency outbound HTTP pattern (grouped by hostname, threshold >1000 calls from one host)
+- Auto-detection of AI Data Explorer via report/dashboard count (sys_report + pa_dashboards)
+- Auto-detection of Zero Copy Connectors (SQL) via JDBC data sources, REST messages, and outbound HTTP logs matching supported DB patterns
+- Usage value estimation for all auto-detected capabilities (not just detection flags)
+- Credits calculated from annualized `usage_per_year` instead of raw observed counts
+
+*Annualized Usage (Usage/Year vs Usage/Year Est.):*
+- Data span detection: queries oldest record from key execution tables (sys_outbound_http_log, sys_import_set_run, sn_rpa_execution)
+- If data spans >= 365 days: Usage/Year column (actual)
+- If data spans < 365 days: Usage/Year (Est.) column, extrapolated via average daily rate x 365
+- Data days shown in parentheses, e.g. `(90d)`, with hover tooltip
+- Scan evidence appends extrapolation methodology when estimated
+- "How Usage is Measured" tab includes info box explaining both columns
+
+*Rate Card Management:*
+- Removed Orchestration, Automation Center, and Now Assist for Spokes (included/0-credit noise) from rate card entirely
+- Rate card editing: editable capability labels, clickable STD/PRO tier toggle
+- Add Capability: inserts new row with defaults (manual, 1 credit)
+- Remove Capability: trash icon per row in edit mode
+- Save & Re-scan persists to YAML and triggers fresh scan
+
+*Exclude & Restore Capabilities:*
+- Dismiss detected capabilities from credit estimate (trash icon in edit mode)
+- Excluded section shows dismissed items with restore button
+- Restore returns item to Detected section with original scan evidence preserved
+- Restore triggers automatic recalculate without the dismissed override
+- Original scan results stored separately (`originalUsage`) so recalculate never loses initial evidence
+
+*Recalculation Fixes:*
+- Backend `/api/plutus/recalculate` accepts `previous_usage` from frontend
+- Only user-touched capabilities sent as overrides; untouched items preserved from original scan
+- Prevents "all detected items disappear" bug when deleting/recalculating
+- Evidence only changes to "User-provided value" when user explicitly changes the number
+
+*UI Improvements:*
+- Removed Candidates tab (redundant with auto-detection)
+- Evidence text wraps instead of truncating (removed CSS truncate class)
+- "How Usage is Measured" tab sorted: name A-Z, STD before PRO, Auto before Manual
+- Export to Excel: 3-sheet workbook (Usage Breakdown, Rate Card, How Usage is Measured) with pre-widened columns via SheetJS (`xlsx`)
+- Tier summary cards updated to reflect current rate card
+
+*Frontend Dependencies:*
+- Added `xlsx` (SheetJS) for client-side Excel export
+
+**Minos (Instance Assessment) - Clarification:**
+- Minos is purely deterministic (no LLM): REST scan -> InstanceModel -> 49-rule YAML engine -> findings + recommended nodes -> Mermaid diagrams
+- Rule engine enabled (`ENABLED = True`, approved by Ian Leu and Jochen Geist)
+- Each finding includes evidence dict with actual instance values, severity, and condition-specific recommendation
+- Separate from LLM-based architecture chat analyzer which optionally uses Minos findings as enrichment
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.0`
+
+---
+
 ## v1.6.2 (Backend + Frontend) - February 2026
 
 **Environment & Setup:**

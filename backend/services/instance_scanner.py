@@ -62,6 +62,9 @@ class InstanceScanner:
         )
         active_ids = mapping["active_node_ids"]
 
+        # Inject ontology-resolved nodes into the model so rules can use node_active/node_absent
+        model.active_node_ids = active_ids
+
         # Layer 3: Evaluate rules against the model
         evaluation = self.engine.evaluate(model)
 
@@ -272,6 +275,17 @@ class InstanceScanner:
         # --- Active tables with record counts ---
         model.active_tables = self._scan_key_tables()
 
+        # --- Custom table count (u_* and x_* prefixed tables) ---
+        try:
+            custom_count = self.sn.get_record_count(
+                'sys_db_object',
+                query='nameSTARTSWITHu_^ORnameSTARTSWITHx_'
+            )
+            model.active_tables['_custom_tables'] = custom_count
+            logger.info(f"Custom tables (u_/x_ prefix): {custom_count}")
+        except Exception:
+            model.active_tables['_custom_tables'] = -1
+
         # --- Integration Hub flows ---
         model.integration_flows = self._scan_integration_flows()
 
@@ -294,10 +308,10 @@ class InstanceScanner:
     # ------------------------------------------------------------------
 
     def _scan_plugins(self) -> Dict[str, Dict]:
-        """Scan installed plugins and store apps."""
+        """Scan installed plugins, store apps, and sys_store_app."""
         plugins = {}
         try:
-            # Get store apps
+            # 1) sys_app — custom & scoped apps
             apps = self.sn.get_installed_applications()
             for app in apps:
                 scope = app.get("scope", "")
@@ -308,13 +322,13 @@ class InstanceScanner:
                         "active": True,
                     }
 
-            # Also try v_plugin for platform plugins
+            # 2) v_plugin — platform plugins (increased limit for large instances)
             data = self.sn._make_request(
                 "/api/now/table/v_plugin",
                 params={
                     "sysparm_fields": "id,name,active",
                     "sysparm_query": "active=true",
-                    "sysparm_limit": 500,
+                    "sysparm_limit": 2000,
                 },
                 cache_key="v_plugin_active",
             )
@@ -327,6 +341,25 @@ class InstanceScanner:
                             "version": "",
                             "active": p.get("active", "") == "true",
                         }
+
+            # 3) sys_store_app — store-installed apps (scope may differ from sys_app)
+            store_data = self.sn._make_request(
+                "/api/now/table/sys_store_app",
+                params={
+                    "sysparm_fields": "scope,name,version",
+                    "sysparm_limit": 1000,
+                },
+                cache_key="sys_store_app",
+            )
+            if store_data:
+                for sa in store_data.get("result", []):
+                    scope = sa.get("scope", "")
+                    if scope and scope not in plugins:
+                        plugins[scope] = {
+                            "name": sa.get("name", ""),
+                            "version": sa.get("version", ""),
+                            "active": True,
+                        }
         except Exception as e:
             logger.warning(f"Plugin scan partial failure: {e}")
 
@@ -334,15 +367,20 @@ class InstanceScanner:
         return plugins
 
     def _scan_key_tables(self) -> Dict[str, int]:
-        """Check record counts for key architectural tables."""
-        key_tables = [
-            "incident", "problem", "change_request", "sc_request",
-            "sn_customerservice_case", "sn_hr_core_case", "cmdb_ci",
-            "kb_knowledge", "sn_si_incident", "sn_vul_vulnerability",
-            "sys_hub_flow", "wf_workflow", "em_event",
-        ]
+        """Check record counts for ontology-referenced + integration/health tables."""
+        # Start with all tables the ontology cares about (ensures detection works)
+        key_tables = set(self.ontology.get_all_referenced_tables())
+        # Add integration pattern detection tables
+        key_tables.update([
+            "sys_data_source", "sys_soap_message", "sys_rest_message",
+            "sys_import_set", "sys_transform_map", "sysauto_script",
+            "sysevent_email_action",
+        ])
+        # Add health detection tables (may already be in ontology set)
+        key_tables.update(["sys_audit", "sc_cat_item"])
+
         counts = {}
-        for table in key_tables:
+        for table in sorted(key_tables):
             try:
                 data = self.sn._make_request(
                     f"/api/now/stats/{table}",
