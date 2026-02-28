@@ -4,6 +4,29 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.7.1 (Backend + Frontend) - February 2026
+
+**Plutus Access Control:**
+- Password-protected access: PBKDF2-HMAC-SHA256 hashed password stored in `backend/.plutus_key` (gitignored)
+- Password prompt modal on launch: "Internal ServiceNow tool, work in progress, enter password:"
+- Setup script: `python3 backend/set_plutus_password.py` to create or reset the password
+- Backend `/api/plutus/verify-password` endpoint for verification
+
+**Plutus Disclaimer:**
+- "Directional sizing, not a commercial quote" banner displayed at top of Plutus results
+- Guidance to consult ServiceNow account team for official quote
+
+**README:**
+- Updated to Three Engines format (Virgil Chat, Minos, Plutus)
+- Full documentation for Minos and Plutus features, pipelines, and APIs
+- Architecture tree updated with all engine-specific files
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.1`
+
+---
+
 ## v1.7.0 (Backend + Frontend) - February 2026
 
 **Plutus WDF Credit Sizing - Major Refinements:**

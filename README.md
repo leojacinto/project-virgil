@@ -125,19 +125,17 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.7.0 (February 2026)
+## 📦 Latest Release: v1.7.1 (February 2026)
 
-### v1.7.0 | Plutus WDF Credit Sizing + Annualized Usage + Excel Export
+### v1.7.1 | Plutus Password Protection + Directional Sizing Disclaimer
 
-- ✅ **Plutus**: Auto-detect WDF capabilities (Integration Hub, Stream Connect, ZCC SQL, AI Data Explorer, RPA), annualize usage from execution logs, calculate credits, export to Excel
-- ✅ **Annualized Usage**: Usage/Year (actual, >= 365 days of data) vs Usage/Year Est. (extrapolated via avg daily rate x 365)
-- ✅ **Rate Card Management**: Add/remove capabilities, editable labels, STD/PRO tier toggle, persist to YAML
-- ✅ **Excel Export**: 3-sheet workbook (Usage Breakdown, Rate Card, How Usage is Measured) via SheetJS
-- ✅ **Minos**: Rule engine enabled (ENABLED = True), 49 deterministic rules across 6 categories
+- ✅ **Plutus Access Control**: Password-protected launch with PBKDF2-HMAC-SHA256 hashed `.plutus_key` (gitignored)
+- ✅ **Disclaimer**: "Directional sizing, not a commercial quote" banner in Plutus UI
+- ✅ **README**: Three Engines documentation (Virgil Chat, Minos, Plutus)
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.7.0`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.0`
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.1`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.1`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -206,6 +204,12 @@ Plutus scans execution logs to auto-detect which Workflow Data Fabric capabiliti
 - Persists to YAML and triggers re-scan
 
 **Exclude/restore:** Dismiss detected capabilities from the estimate with one click; restore with original scan evidence preserved.
+
+**Password protection:** Plutus requires a password on launch. The hashed password is stored in `backend/.plutus_key` (gitignored — never committed). To set or reset:
+```bash
+python3 backend/set_plutus_password.py
+```
+Anyone who clones the repo can read all code, but must create their own `.plutus_key` to execute Plutus.
 
 **API:** `POST /api/plutus/scan`, `POST /api/plutus/recalculate`
 
