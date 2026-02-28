@@ -484,6 +484,14 @@ function PlutusPricing() {
         </div>
       </div>
 
+      {/* ===== Disclaimer ===== */}
+      <div className="flex items-start space-x-2 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
+        <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-amber-700 dark:text-amber-300">
+          <span className="font-semibold">Directional sizing, not a commercial quote.</span> Estimates are derived from instance execution logs and may not reflect final pricing. Consult your ServiceNow account team for an official quote.
+        </p>
+      </div>
+
       {/* ===== Summary cards ===== */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">

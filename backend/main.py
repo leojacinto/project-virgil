@@ -613,6 +613,25 @@ async def save_rules(payload: dict):
 # Plutus — WDF Pricing & Credit Sizing
 # ---------------------------------------------------------------------------
 
+_PLUTUS_KEY_PATH = Path(__file__).resolve().parent / ".plutus_key"
+
+def _plutus_hash(password: str, salt: bytes) -> bytes:
+    import hashlib
+    return hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 200_000)
+
+@app.post("/api/plutus/verify-password")
+async def plutus_verify_password(payload: dict):
+    """Verify Plutus access password against the stored hash."""
+    import hashlib, base64
+    password = payload.get("password", "")
+    if not _PLUTUS_KEY_PATH.exists():
+        raise HTTPException(status_code=503, detail="Plutus password not configured. Run: python set_plutus_password.py")
+    raw = _PLUTUS_KEY_PATH.read_bytes()
+    salt, stored_hash = raw[:32], raw[32:]
+    if _plutus_hash(password, salt) == stored_hash:
+        return {"status": "ok"}
+    raise HTTPException(status_code=401, detail="Incorrect password")
+
 @app.post("/api/plutus/scan")
 async def plutus_scan():
     """Run Plutus WDF credit sizing scan against the connected instance."""

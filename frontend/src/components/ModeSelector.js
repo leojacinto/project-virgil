@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Brain, ShieldCheck, Calculator, ArrowRight, Wifi, WifiOff, Sparkles, Settings, CheckCircle } from 'lucide-react';
+import { Brain, ShieldCheck, Calculator, ArrowRight, Wifi, WifiOff, Sparkles, Settings, CheckCircle, Lock, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 
 const modes = [
   {
@@ -83,6 +84,10 @@ const colorMap = {
  */
 function ModeSelector({ onSelectMode, onOpenSettings, llmConfigured, instanceConnected, instanceName }) {
   const [hoveredMode, setHoveredMode] = useState(null);
+  const [showPwModal, setShowPwModal] = useState(false);
+  const [pwInput, setPwInput] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   const handleCardClick = (mode) => {
     if (!mode.ready) return;
@@ -95,8 +100,29 @@ function ModeSelector({ onSelectMode, onOpenSettings, llmConfigured, instanceCon
       onOpenSettings('llm');
     } else if (needsInstance) {
       onOpenSettings('instance');
+    } else if (mode.id === 'plutus') {
+      setShowPwModal(true);
+      setPwInput('');
+      setPwError('');
     } else {
       onSelectMode(mode.id);
+    }
+  };
+
+  const verifyPlutusPw = async () => {
+    setPwLoading(true);
+    setPwError('');
+    try {
+      await axios.post('/api/plutus/verify-password', { password: pwInput });
+      setShowPwModal(false);
+      onSelectMode('plutus');
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401) setPwError('Incorrect password.');
+      else if (status === 503) setPwError('Password not configured on server.');
+      else setPwError('Verification failed.');
+    } finally {
+      setPwLoading(false);
     }
   };
 
@@ -260,6 +286,50 @@ function ModeSelector({ onSelectMode, onOpenSettings, llmConfigured, instanceCon
       <p className="mt-8 text-xs text-slate-400 dark:text-slate-500">
         You can switch modes at any time using the back button.
       </p>
+
+      {/* Plutus password modal */}
+      {showPwModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                <Lock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Plutus Access</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Internal ServiceNow tool, work in progress</p>
+              </div>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); verifyPlutusPw(); }}>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Enter password:</label>
+              <input
+                type="password"
+                autoFocus
+                value={pwInput}
+                onChange={(e) => setPwInput(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:border-transparent text-sm"
+                placeholder="Password"
+              />
+              {pwError && (
+                <div className="flex items-center space-x-1.5 mt-2 text-xs text-red-600 dark:text-red-400">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{pwError}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-end space-x-2 mt-4">
+                <button type="button" onClick={() => setShowPwModal(false)}
+                  className="px-4 py-2 text-sm rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={pwLoading || !pwInput}
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 transition-colors">
+                  {pwLoading ? 'Verifying...' : 'Continue'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

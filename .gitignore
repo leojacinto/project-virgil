@@ -13,6 +13,9 @@ ENV/
 .env
 .env.local
 
+# Plutus encrypted password
+backend/.plutus_key
+
 # Uploads and generated files
 backend/uploads/
 backend/diagrams/
