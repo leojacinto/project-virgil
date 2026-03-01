@@ -503,7 +503,7 @@ function PlutusPricing() {
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Detected Capabilities</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{detected.length} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">of {usage.length}</span></p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">WDF capabilities found on this instance</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">WDF capabilities found/relevant on this instance</p>
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Est. Annual Credits</p>

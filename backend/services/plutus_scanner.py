@@ -551,8 +551,8 @@ class PlutusScanner:
 
                 usage.usage_value = max(estimated_mb, 0)
                 usage.scan_evidence = (
-                    f"Connections to {len(matched_dbs)} ZCC-supported DB(s): {db_str} "
-                    f"({jdbc_count} JDBC source(s)). "
+                    f"Proposed — connections to {len(matched_dbs)} ZCC-supported DB(s) detected: {db_str} "
+                    f"({jdbc_count} JDBC source(s)). Usage patterns suggest this instance may benefit from Zero Copy Connectors. "
                     f"Est. {usage.usage_value:,.1f} MB from ~{estimated_total_calls:,} DB-bound calls."
                 )
 
@@ -613,7 +613,8 @@ class PlutusScanner:
                 usage.detected = True
                 usage.usage_value = max(top_mb_estimated, 0)
                 usage.scan_evidence = (
-                    f"Stream Connect single-source indicators: {'; '.join(indicators)}. "
+                    f"Proposed — usage patterns suggest this instance may benefit from Stream Connect. "
+                    f"Single-source indicators: {'; '.join(indicators)}. "
                     f"Est. {usage.usage_value:,.1f} MB throughput from top source."
                 )
 
@@ -627,7 +628,7 @@ class PlutusScanner:
                 estimated_explorations = max(1, int(report_count * 0.10))
                 usage.usage_value = estimated_explorations
                 usage.scan_evidence = (
-                    f"{report_count:,} reports/dashboards on instance. "
+                    f"Proposed — {report_count:,} reports/dashboards on instance suggest this instance may benefit from AI Data Explorer. "
                     f"Est. {estimated_explorations:,} explorations (~10% of reports)."
                 )
 
