@@ -488,12 +488,18 @@ function PlutusPricing() {
       <div className="flex items-start space-x-2 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
         <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-amber-700 dark:text-amber-300">
-          <span className="font-semibold">Directional sizing, not a commercial quote.</span> Estimates are derived from instance execution logs and may not reflect final pricing. Consult your ServiceNow account team for an official quote.
+          Use the data here as additional inputs in the{' '}
+          <a href="https://wdf-credits-estimator.figma.site/" target="_blank" rel="noopener noreferrer"
+            className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-200 transition-colors">
+            official WDF calculator
+          </a>.
         </p>
       </div>
 
       {/* ===== Summary cards ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+        {/* Hidden: Recommended Tier, Packs Required, Est. Annual Cost — use official WDF calculator instead */}
+        {false && <>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Recommended Tier</p>
           <div className="mb-1">{tierBadge(result?.recommended_tier)}</div>
@@ -501,11 +507,12 @@ function PlutusPricing() {
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{result.pro_reasons[0]}</p>
           )}
         </div>
+        </>}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Est. Annual Credits</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtNum(result?.total_credits)}</p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">of {fmtNum((result?.min_packs || 1) * (result?.credits_per_pack || 2000000))} available</p>
         </div>
+        {false && <>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Packs Required</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{result?.min_packs || 1}</p>
@@ -516,6 +523,7 @@ function PlutusPricing() {
           <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{fmtCurrency(result?.annual_cost)}</p>
           <p className="text-xs text-slate-500 dark:text-slate-400">minimum list price</p>
         </div>
+        </>}
       </div>
 
       {/* ===== Tab nav ===== */}
@@ -524,7 +532,7 @@ function PlutusPricing() {
           <nav className="flex space-x-4 px-6 overflow-x-auto" aria-label="Tabs">
             {[
               { key: 'summary', label: 'Usage Breakdown', icon: Layers },
-              { key: 'rate-card', label: 'Rate Card', icon: DollarSign },
+              /* { key: 'rate-card', label: 'Rate Card', icon: DollarSign }, — hidden to avoid conflict with official WDF calculator */
               { key: 'measurement', label: 'How Usage is Measured', icon: BookOpen },
             ].map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
