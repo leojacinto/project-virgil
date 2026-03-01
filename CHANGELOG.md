@@ -4,6 +4,22 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.7.2 (Backend + Frontend) - March 2026
+
+**Plutus UI Repositioning:**
+- Renamed from "Credit Estimator" to "Usage Scanner" in the mode selector
+- Wizard description updated: scan for WDF utilization as input to the official calculator
+- Disclaimer banner: "Directional sizing, not a commercial quote" with link to [official WDF calculator](https://wdf-credits-estimator.figma.site/)
+- Password modal subtitle: "directional sizing, not a commercial quote"
+- New summary card: Detected Capabilities (X of Y) alongside Est. Annual Credits
+- Hidden (code preserved): Recommended Tier, Packs Required, Est. Annual Cost cards; Rate Card tab
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.2`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.2`
+
+---
+
 ## v1.7.1 (Backend + Frontend) - February 2026
 
 **Plutus Access Control:**

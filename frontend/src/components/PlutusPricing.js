@@ -488,16 +488,28 @@ function PlutusPricing() {
       <div className="flex items-start space-x-2 px-4 py-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50">
         <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
         <p className="text-xs text-amber-700 dark:text-amber-300">
+          <span className="font-semibold">Directional sizing, not a commercial quote.</span>{' '}
           Use the data here as additional inputs in the{' '}
           <a href="https://wdf-credits-estimator.figma.site/" target="_blank" rel="noopener noreferrer"
             className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-200 transition-colors">
             official WDF calculator
           </a>.
+          {' '}Estimates are derived from instance execution logs and may not reflect final pricing.
         </p>
       </div>
 
       {/* ===== Summary cards ===== */}
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Detected Capabilities</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{detected.length} <span className="text-sm font-normal text-slate-500 dark:text-slate-400">of {usage.length}</span></p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">WDF capabilities found on this instance</p>
+        </div>
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Est. Annual Credits</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtNum(result?.total_credits)}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">based on annualized usage</p>
+        </div>
         {/* Hidden: Recommended Tier, Packs Required, Est. Annual Cost — use official WDF calculator instead */}
         {false && <>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
@@ -507,12 +519,6 @@ function PlutusPricing() {
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">{result.pro_reasons[0]}</p>
           )}
         </div>
-        </>}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Est. Annual Credits</p>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{fmtNum(result?.total_credits)}</p>
-        </div>
-        {false && <>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 p-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Packs Required</p>
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{result?.min_packs || 1}</p>

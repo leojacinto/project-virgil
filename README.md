@@ -125,17 +125,18 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.7.1 (February 2026)
+## 📦 Latest Release: v1.7.2 (March 2026)
 
-### v1.7.1 | Plutus Password Protection + Directional Sizing Disclaimer
+### v1.7.2 | Plutus Usage Scanner Repositioning
 
-- ✅ **Plutus Access Control**: Password-protected launch with PBKDF2-HMAC-SHA256 hashed `.plutus_key` (gitignored)
-- ✅ **Disclaimer**: "Directional sizing, not a commercial quote" banner in Plutus UI
-- ✅ **README**: Three Engines documentation (Virgil Chat, Minos, Plutus)
+- ✅ **Plutus → Usage Scanner**: Repositioned as a utilization scanner feeding the [official WDF calculator](https://wdf-credits-estimator.figma.site/)
+- ✅ **Detected Capabilities card**: Shows X of Y WDF capabilities found on the instance
+- ✅ **Disclaimer**: "Directional sizing, not a commercial quote" with link to official calculator
+- ✅ **Hidden**: Rate card, tier, packs, and cost displays (code preserved)
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.7.1`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.1`
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.2`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.2`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 

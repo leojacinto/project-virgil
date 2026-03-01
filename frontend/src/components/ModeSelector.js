@@ -32,11 +32,11 @@ const modes = [
   {
     id: 'plutus',
     name: 'Plutus',
-    subtitle: 'Credit Estimator',
+    subtitle: 'Usage Scanner',
     icon: Calculator,
     color: 'amber',
-    description: 'Estimate Workflow Data Fabric credit consumption based on Integration Hub, Zero Copy, and Kafka usage.',
-    features: ['WDF credit sizing from live instance', 'ZCC & Stream Connect candidate detection', 'Editable rate card & tier comparison', 'Manual override with instant recalculation'],
+    description: 'Scan your instance for Workflow Data Fabric utilization — Integration Hub, Zero Copy, Stream Connect, RPA, and more. Use the results as additional inputs in the official WDF calculator.',
+    features: ['Auto-detect WDF capability usage from execution logs', 'Annualized usage estimation (actual or extrapolated)', 'ZCC, Stream Connect & AI Data Explorer detection', 'Export to Excel for offline analysis'],
     requiresLLM: false,
     requiresInstance: true,
     instanceNote: 'Requires active ServiceNow connection',
@@ -297,7 +297,7 @@ function ModeSelector({ onSelectMode, onOpenSettings, llmConfigured, instanceCon
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white">Plutus Access</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Internal ServiceNow tool, work in progress</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Internal ServiceNow tool — directional sizing, not a commercial quote</p>
               </div>
             </div>
             <form onSubmit={(e) => { e.preventDefault(); verifyPlutusPw(); }}>
