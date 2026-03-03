@@ -220,7 +220,7 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 ## v1.5.0 (Backend + Frontend) - February 2026
 
 **Instance Assessment (Nirvana):**
-- ✅ Deterministic rule engine with 53 rules across 6 categories (no LLM required)
+- ✅ Deterministic rule engine with 48 rules across 6 categories (no LLM required)
 - ✅ IT4IT v3 Coverage rules (Ian Leu): S2P, R2D, R2F, D2C value stream gap detection
 - ✅ Integration Pattern rules (Jochen Geist): REST vs SOAP, MID Server, Flow Designer vs legacy Workflow
 - ✅ Architectural Health rules: CMDB without Discovery, customer portal anti-pattern, custom table sprawl, Agent Workspace, legacy workflows, domain separation, FedRAMP
@@ -237,7 +237,7 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 **Backend API:**
 - ✅ `POST /api/assess` - run full instance assessment
-- ✅ `GET /api/assess/rules` - rule catalog and summary (53 rules, 6 categories, 3 severity levels)
+- ✅ `GET /api/assess/rules` - rule catalog and summary (48 rules, 6 categories, 3 severity levels)
 - ✅ `GET /api/assess/knowledge-base` - structured knowledge base for all rule sources
 - ✅ `GET /api/servicenow/tables` - now returns true record count via `X-Total-Count` header
 - ✅ `GET /api/servicenow/components` - now returns true counts per component type

@@ -131,7 +131,7 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 - ✅ **8 new Tier 2 integration rules**: SOAP-only stack, integration sprawl, JDBC→ZCC, polling→event-driven, direct table writes, custom scripting, API proliferation, IHub underutilization
 - ✅ **Evidence-based IT4IT**: SPM, GRC, Problem Mgmt, Event Mgmt rules now require data-backed conditions (not just checkbox)
-- ✅ **53 rules total** (was 49) — 17 integration rules (was 9)
+- ✅ **48 rules total** (was 49) — 17 integration rules (was 9)
 - ✅ **Jochen Geist Integration Design v3.0** knowledge base integrated
 
 **Docker Hub Images:**
@@ -148,9 +148,9 @@ Project Virgil is a presales intelligence platform with three distinct engines, 
 
 ### Minos - Instance Assessment (No LLM)
 
-Minos scans a live ServiceNow instance via REST API and evaluates it against 53 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
+Minos scans a live ServiceNow instance via REST API and evaluates it against 48 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
 
-**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (53 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
+**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (48 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
 
 **What it produces:**
 - **IT4IT Coverage**: Gap analysis across 4 value streams (S2P, R2D, R2F, D2C) with per-stream health status
@@ -158,9 +158,9 @@ Minos scans a live ServiceNow instance via REST API and evaluates it against 53 
 - **Architecture Diagrams**: As-is (what you have) and Recommended (what you should add) — both generated deterministically from the ontology graph
 - **Integration Analysis**: REST vs SOAP patterns, MID Server presence, Flow Designer utilization
 - **Health Checks**: CMDB without Discovery, customer portal anti-patterns, custom table sprawl, shelfware detection
-- **Security Posture**: CSRF protection, audit logging, SecOps coverage
+- **Security Posture**: SecOps coverage for sensitive data instances
 
-**Rule categories (53 rules across 6 categories):**
+**Rule categories (48 rules across 6 categories):**
 
 | Category | Rules | Source |
 |----------|-------|--------|
@@ -168,7 +168,7 @@ Minos scans a live ServiceNow instance via REST API and evaluates it against 53 
 | Integration Patterns | REST/SOAP, MID Server, Flow Designer | Jochen Geist |
 | Architectural Health | CMDB, Discovery, portals, legacy workflows | Best practices |
 | Product Adoption Maturity | 9 module-pairing checks (e.g. ITSM+KB, CSM+Portal) | Best practices |
-| Security Posture | CSRF, audit logging, SecOps for sensitive data | Best practices |
+| Security Architecture | SecOps coverage for sensitive data instances | Best practices |
 | Platform Efficiency | Shelfware detection, Flow Designer underutilization | Best practices |
 
 **Key design principle:** Every finding says *"you should have X because your instance has ABC conditions"* — not *"you should have X because a document says so."*
@@ -419,7 +419,7 @@ ChatGPT:
 ## Features
 
 **Deterministic Engines (No LLM):**
-- Minos Instance Assessment: 53-rule YAML-driven engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
+- Minos Instance Assessment: 48-rule YAML-driven engine covering IT4IT coverage, integration patterns (Tier 1 + Tier 2), architectural health, adoption maturity, security architecture, and platform efficiency
 - Plutus WDF Credit Sizing: Auto-detect 7 WDF capabilities from execution logs, annualize usage, calculate credits, recommend tier, export to Excel
 - Plutus Rate Card Editor: Add/remove capabilities, editable labels and credits, STD/PRO tier toggle, persist to YAML
 - ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
@@ -448,7 +448,7 @@ project-virgil/
 ├── backend/                 # FastAPI Python backend
 │   ├── services/
 │   │   ├── instance_scanner.py        # Minos: REST scan → InstanceModel → rule evaluation → diagrams
-│   │   ├── instance_scanner_rules.py  # Minos: 53 deterministic rules + RuleEngine
+│   │   ├── instance_scanner_rules.py  # Minos: 48 deterministic rules + RuleEngine
 │   │   ├── rules.yaml                 # Minos: rule definitions (IT4IT, integration, health, adoption, security, efficiency)
 │   │   ├── plutus_scanner.py          # Plutus: WDF capability detection, annualization, credit calc
 │   │   ├── plutus_pricing.yaml        # Plutus: rate card, tiers, pack definitions
@@ -631,7 +631,7 @@ The frontend will be available at `http://localhost:3000`
 - `DELETE /api/documents/{file_id}` - Delete document
 
 ### Minos (Instance Assessment)
-- `POST /api/assess` - Run deterministic instance assessment (53 rules, no LLM)
+- `POST /api/assess` - Run deterministic instance assessment (48 rules, no LLM)
 - `GET /api/assess/rules` - Get rule catalog and summary
 - `GET /api/assess/knowledge-base` - Get structured knowledge base for all rule sources
 - `GET /api/rules/yaml` - Get full YAML rule data for the editor

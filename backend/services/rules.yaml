@@ -900,31 +900,6 @@ integration_rules:
     message: "{sys_rest_message_count} REST messages but only {sys_import_set_count} import sets / {sys_transform_map_count} transform maps. Inbound writes may bypass Import Set data quality controls."
     recommended_nodes: {}
 
-  - id: INT-T2-006
-    name: Heavy Custom Scripting — Platform Underutilization
-    description: >
-      Instance has a very high number of business rules (sys_script), suggesting
-      heavy reliance on custom code. Per Jochen Geist's OOTB-first principle,
-      platform capabilities should be leveraged before custom development.
-    source: integration
-    severity: medium
-    category: integration_pattern
-    condition_description: >
-      200+ business rules — significant custom scripting volume indicating
-      potential platform underutilization
-    recommendation: >
-      Review high-volume business rules for replacement with Flow Designer,
-      Integration Hub actions, or platform features. Custom scripts increase
-      upgrade complexity, require specialized skills, and lack the governance
-      visibility of platform-native solutions. Per OOTB-first: "Don't build
-      what already exists."
-    tags: [custom_script, ootb_first, technical_debt, modernization]
-    eval:
-      all:
-        - table_gt: {table: sys_script, value: 200}
-    message: "{sys_script_count} business rules detected. Heavy custom scripting — review for Flow Designer or platform-native replacements."
-    recommended_nodes: {}
-
   - id: INT-T2-007
     name: Scripted REST API Proliferation — Governance Risk
     description: >
@@ -1050,48 +1025,6 @@ health_rules:
       all:
         - property_neq: {property: "glide.sys.domain.enabled", value: "true"}
     message: "Domain separation is not enabled. Data isolation between business units is not enforced."
-    recommended_nodes: {}
-
-  - id: HEALTH-004
-    name: Excessive Custom Tables
-    description: >
-      Instance has a high number of custom tables (u_ or x_ prefix),
-      increasing upgrade complexity and maintenance burden.
-    source: best_practice
-    severity: medium
-    category: health
-    condition_description: >
-      More than 50 custom tables (u_ or x_ prefix) exist in the instance
-    recommendation: >
-      Review custom tables for consolidation opportunities. Many custom tables
-      may indicate that standard ServiceNow modules could replace custom solutions.
-      Custom tables increase upgrade complexity and maintenance burden.
-    tags: [custom_tables, technical_debt, upgrade]
-    eval:
-      all:
-        - table_gt: {table: _custom_tables, value: 50}
-    message: "{_custom_tables_count} custom tables (u_/x_ prefix) detected. Review for consolidation opportunities."
-    recommended_nodes: {}
-
-  - id: HEALTH-005
-    name: Audit Logging Not Active
-    description: >
-      sys_audit table has no records, indicating audit logging is not capturing
-      changes to sensitive tables.
-    source: best_practice
-    severity: critical
-    category: health
-    condition_description: >
-      sys_audit table has zero records — audit logging not generating data
-    recommendation: >
-      Ensure comprehensive audit logging is enabled on all sensitive tables.
-      Audit logs are essential for compliance (SOX, HIPAA, FedRAMP) and
-      security forensics. Configure via glide.audit.* properties.
-    tags: [compliance, audit, security, forensics]
-    eval:
-      all:
-        - table_lte: {table: sys_audit, value: 0}
-    message: "sys_audit table has no records. Audit logging is not capturing changes to sensitive tables."
     recommended_nodes: {}
 
   - id: HEALTH-006
@@ -1373,28 +1306,6 @@ adoption_rules:
 
 security_rules:
 
-  - id: SEC-001
-    name: CSRF Protection Not Enabled
-    description: >
-      Cross-Site Request Forgery (CSRF) token validation is not enabled.
-      This is a critical security control for web applications.
-    source: best_practice
-    severity: critical
-    category: security
-    condition_description: >
-      glide.security.use_csrf_token property is not set to 'true'
-    recommendation: >
-      Enable CSRF protection by setting glide.security.use_csrf_token = true.
-      CSRF attacks can trick authenticated users into performing unintended actions.
-      This is a baseline security control recommended by OWASP and required for
-      FedRAMP compliance.
-    tags: [security, csrf, owasp, compliance]
-    eval:
-      all:
-        - property_neq: {property: "glide.security.use_csrf_token", value: "true"}
-    message: "CSRF token protection is not enabled. Instance is vulnerable to cross-site request forgery attacks."
-    recommended_nodes: {}
-
   - id: SEC-002
     name: No SecOps on Instance With Sensitive Data
     description: >
@@ -1422,28 +1333,6 @@ security_rules:
     recommended_nodes:
       secops: "security operations"
       sec_incident: "security incident response"
-
-  - id: SEC-003
-    name: Audit Logging Not Comprehensively Configured
-    description: >
-      Audit logging properties are not set, potentially leaving sensitive
-      table changes untracked.
-    source: best_practice
-    severity: high
-    category: security
-    condition_description: >
-      No glide.audit.* properties found in instance configuration
-    recommendation: >
-      Configure comprehensive audit logging via glide.audit.* properties.
-      At minimum, enable auditing on user tables, CMDB, and any tables
-      containing PII. Audit logs are essential for compliance (SOX, HIPAA,
-      FedRAMP) and security forensics.
-    tags: [security, audit, compliance, forensics]
-    eval:
-      all:
-        - property_prefix_absent: "glide.audit"
-    message: "No audit logging properties detected. Sensitive table changes may not be tracked."
-    recommended_nodes: {}
 
 
 # ---------------------------------------------------------------------------
