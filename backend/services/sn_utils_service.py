@@ -83,6 +83,10 @@ class SNUtilsService:
             elif response.status_code == 403:
                 logger.warning(f"No permission to access {endpoint}")
                 return None
+            elif response.status_code == 400 and "Invalid table" in response.text:
+                # Expected: table doesn't exist on this instance (plugin not installed)
+                logger.debug(f"Table not available on instance: {response.text[:100]}")
+                return None
             else:
                 logger.error(f"API request failed: {response.status_code} - {response.text[:200]}")
                 return None
