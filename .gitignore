@@ -22,6 +22,9 @@ backend/diagrams/
 backend/vectordb/
 backend/jdbc/*.jar
 
+# Reference documents (not for distribution)
+backend/documents/
+
 # Node
 node_modules/
 npm-debug.log*
