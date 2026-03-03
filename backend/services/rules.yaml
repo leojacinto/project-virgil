@@ -77,34 +77,51 @@ knowledge_base:
 
   - id: jochen_geist
     author: Jochen Geist
-    title: Integration Pattern Decision Tree
+    title: Integration Pattern Decision Tree v3.0
     rules_key: integration_rules
     description: >
-      Rules based on Jochen Geist's integration pattern decision tree methodology.
-      Evaluates integration patterns found in the instance and recommends approaches
-      based on data flow direction, volume, timing, and error handling requirements.
+      Rules based on Jochen Geist's Integration Pattern Decision Tree v3.0 (April 2025)
+      and Integration Design methodology. Evaluates integration patterns found in the
+      instance across six pattern categories: Web Services, Zero Copy Access,
+      Event-Driven Architecture (Stream Connect), AI Agents, UI-Level Integrations,
+      and Fallback Solutions. Tier 1 rules detect pattern presence; Tier 2 rules
+      combine multiple signals for evidence-based integration guidance.
     focus_areas:
       - key: web_service
         label: Web Service Patterns
-        description: REST vs SOAP vs JDBC pattern selection for real-time integrations.
-      - key: data_persistence
-        label: Data Persistence Patterns
-        description: Import sets, transform maps, batch processing for bulk data operations.
+        description: "REST > GraphQL > SOAP > ODBC. Read: Process API > Table API > Scripted REST. Write: Import Set API > Scripted REST > Direct Table API (Avoid)."
+      - key: zero_copy
+        label: Zero Copy & Data Residency
+        description: Zero Copy Connectors for high-volume or compliance-constrained data. Remote Tables as fallback.
       - key: event_driven
-        label: Event-Driven Patterns
-        description: Webhooks, business rules, and Flow Designer triggers vs polling.
-      - key: error_handling
-        label: Error Handling & Reliability
-        description: MID Servers, error policies, retry logic, and connection management.
-      - key: legacy
-        label: Legacy & Anti-Patterns
-        description: Workflow Engine migration, email-based integrations, UI-level fallbacks.
+        label: Event-Driven Architecture
+        description: Stream Connect (Kafka) for real-time event streaming. Log Export Service for log tables.
+      - key: ai_agents
+        label: AI Agent Patterns
+        description: MCP (dynamic tool discovery), A2A (multi-agent coordination), Agentic Spokes, REST/Web Services for predictable workflows.
+      - key: governance
+        label: Integration Governance
+        description: Strategic alignment, security/compliance, performance/scalability, EA alignment, platform governance, and operations.
+      - key: ootb_first
+        label: OOTB-First Strategy
+        description: "Onboard first, integrate second. Leverage IHub spokes, turn-key solutions, and partner integrations before custom development."
+      - key: fallback
+        label: Fallback & Anti-Patterns
+        description: File-based, RPA, email, MID Server scripts, JDBC as last resort. Legacy Workflow → Flow Designer.
     key_principles:
+      - "Onboard first, integrate second — maximize ServiceNow capabilities before adding integrations."
+      - "OOTB first, always — check native integrations, spokes, and frameworks before custom development."
       - "Choose the integration pattern based on data volume, timing, and direction — not convenience."
+      - "Protocol preference: REST > GraphQL > SOAP > ODBC. Data format: JSON > XML."
+      - "Write operations: Import Set API > Scripted REST API > Direct Table API writes (Avoid)."
       - Integration Hub spokes are preferred over custom scripted integrations for maintainability.
       - "MID Server is required for any on-premise integration — never expose internal endpoints directly."
       - "Legacy Workflow Engine is in maintenance mode — new automations should use Flow Designer."
-      - "UI-level integration (iFrame) is a fallback, not a primary integration pattern."
+      - "Zero Copy Connectors for data residency, compliance (GDPR, HIPAA, PCI DSS), or high-volume data."
+      - "Stream Connect for real-time event streaming with Apache Kafka — bidirectional."
+      - "Avoid multi-instance architecture when single-instance strategy achieves goals."
+      - "Establish platform-wide integration standards to prevent technical debt."
+      - "Reserve a refactor budget — review suboptimal patterns for modernization opportunities."
 
   - id: best_practices
     author: ServiceNow
@@ -214,44 +231,59 @@ knowledge_base:
 it4it_rules:
 
   - id: IT4IT-S2P-001
-    name: No Strategic Portfolio Management
+    name: No Strategic Portfolio Management — High Operational Volume
     description: >
-      Instance has no SPM/ITBM capability for Strategy to Portfolio value stream.
+      Instance has no SPM/ITBM but has significant change and incident volume,
+      indicating operational complexity that would benefit from portfolio governance.
     source: it4it
-    severity: medium
+    severity: high
     category: it4it_coverage
     condition_description: >
-      SPM plugin (com.snc.project_management) is not installed or inactive
+      SPM absent AND (500+ change requests OR 2000+ incidents) — operational
+      complexity without portfolio oversight
     recommendation: >
-      Consider enabling Strategic Portfolio Management (SPM) to cover the
-      Strategy to Portfolio (S2P) value stream. This enables demand management,
-      portfolio prioritization, and investment planning.
+      Enable Strategic Portfolio Management (SPM) to cover the Strategy to
+      Portfolio (S2P) value stream. With {change_request_count} changes and
+      {incident_count} incidents, this instance has significant operational
+      complexity that needs demand management, portfolio prioritization, and
+      investment planning to align IT delivery with business strategy.
     tags: [S2P, spm, itbm, portfolio]
     eval:
       all:
         - node_absent: spm
-    message: "No Strategic Portfolio Management detected. S2P value stream uncovered."
+        - any:
+            - table_gt: {table: change_request, value: 500}
+            - table_gt: {table: incident, value: 2000}
+    message: "No SPM but {change_request_count} changes + {incident_count} incidents. Operational complexity without portfolio governance."
     recommended_nodes:
       spm: "S2P coverage"
       ppm: "S2P coverage"
 
   - id: IT4IT-S2P-002
-    name: No Governance Risk Compliance
+    name: No GRC — Multi-Product Instance Without Governance
     description: >
-      Instance has no GRC capability. Strategy to Portfolio requires governance oversight.
+      Instance runs multiple ServiceNow products but has no GRC capability.
+      Multi-product footprints require governance and risk oversight.
     source: it4it
     severity: medium
     category: it4it_coverage
     condition_description: >
-      GRC plugins (com.sn_compliance, com.sn_risk) are not installed or inactive
+      GRC absent AND 2+ products active (ITSM, CSM, HRSD, SecOps) —
+      multi-product footprint without governance
     recommendation: >
-      Enable GRC (Integrated Risk Management) to provide governance, risk assessment,
-      and compliance monitoring as part of the S2P value stream.
+      Enable GRC (Integrated Risk Management) to provide governance, risk
+      assessment, and compliance monitoring. With multiple active products,
+      this instance needs centralized risk and compliance oversight to ensure
+      regulatory alignment across all workflows.
     tags: [S2P, grc, compliance, risk]
     eval:
       all:
         - node_absent: grc
-    message: "No GRC capability detected. Governance oversight missing from S2P."
+        - any:
+            - node_active: csm
+            - node_active: hrsd
+            - node_active: secops
+    message: "No GRC but multiple products active (ITSM + CSM/HRSD/SecOps). Multi-product footprint without governance oversight."
     recommended_nodes:
       grc: "S2P governance"
 
@@ -385,44 +417,53 @@ it4it_rules:
       itsm: "D2C foundation"
 
   - id: IT4IT-D2C-002
-    name: No Problem Management
+    name: No Problem Management — High Incident Volume
     description: >
-      Instance has no Problem Management. D2C requires root cause analysis capability.
+      Instance has significant incident volume but no Problem Management.
+      Without root cause analysis, the same incidents recur.
     source: it4it
-    severity: medium
+    severity: high
     category: it4it_coverage
     condition_description: >
-      Problem Management plugin (com.snc.problem) is not installed
-      or problem table has zero records
+      Problem Management absent AND 1000+ incidents — high ticket volume
+      without root cause analysis loop
     recommendation: >
       Enable Problem Management to perform root cause analysis and prevent
-      recurring incidents as part of the D2C value stream.
+      recurring incidents. With {incident_count} incidents and no problem
+      management, this instance lacks the reactive-to-proactive loop that
+      the D2C value stream requires.
     tags: [D2C, problem, root-cause]
     eval:
       all:
         - node_absent: problem
-    message: "No Problem Management activity. Root cause analysis not being performed."
+        - table_gt: {table: incident, value: 1000}
+    message: "No Problem Management but {incident_count} incidents. High ticket volume without root cause analysis."
     recommended_nodes:
       problem: "D2C root cause"
 
   - id: IT4IT-D2C-003
-    name: No Event Management or Monitoring
+    name: No Event Management — Reactive Operations at Scale
     description: >
-      Instance has no proactive detection. D2C is reactive without event correlation.
+      Instance has high incident volume but no Event Management or monitoring
+      integration, indicating purely reactive operations at significant scale.
     source: it4it
-    severity: medium
+    severity: high
     category: it4it_coverage
     condition_description: >
-      Event Management plugin (com.glide.itom.em) is not installed
-      and no active monitoring integrations detected
+      Event Management absent AND 5000+ incidents — reactive operations
+      at scale without proactive monitoring
     recommendation: >
-      Enable ITOM Event Management or integrate with external monitoring tools
-      to shift from reactive incident handling to proactive detection.
-    tags: [D2C, event, monitoring, itom, proactive]
+      Enable ITOM Event Management or integrate with external monitoring tools.
+      With {incident_count} incidents and no event correlation, this instance
+      discovers problems only when users report them. Event-driven detection
+      (per Jochen Geist's decision tree) provides real-time alerting and
+      correlation to reduce MTTR and prevent incidents.
+    tags: [D2C, event, monitoring, itom, proactive, event_driven]
     eval:
       all:
         - node_absent: event_mgmt
-    message: "No Event Management or monitoring integration. D2C is purely reactive."
+        - table_gt: {table: incident, value: 5000}
+    message: "No Event Management but {incident_count} incidents. Reactive operations at scale — consider event-driven monitoring."
     recommended_nodes:
       event_mgmt: "D2C proactive detection"
       itom: "D2C operations"
@@ -514,23 +555,26 @@ it4it_rules:
 integration_rules:
 
   - id: INT-PAT-001
-    name: Direct JDBC Instead of REST API
+    name: Heavy JDBC Usage — REST API Preferred
     description: >
-      Instance uses JDBC connections where REST API would be more appropriate.
+      Instance has multiple JDBC data sources. Per Jochen Geist's decision tree,
+      Web Services (REST) are the preferred default for 80% of integrations.
+      JDBC is a fallback pattern for legacy systems or bulk operations only.
     source: integration
     severity: high
     category: integration_pattern
     condition_description: >
-      Active JDBC data sources found — consider REST API where feasible
+      3+ JDBC data sources found — significant reliance on JDBC fallback pattern
     recommendation: >
       Prefer REST API (Scripted REST or Standard REST) over JDBC for real-time
       integrations. JDBC should only be used for bulk data operations where
-      REST is not feasible. REST is the preferred Web Service pattern.
-    tags: [web_service, jdbc, rest, pattern_selection]
+      REST is not feasible. Per the Integration Pattern Decision Tree: REST is
+      the default Web Service pattern; JDBC is a fallback solution.
+    tags: [web_service, jdbc, rest, pattern_selection, fallback]
     eval:
       all:
-        - table_gt: {table: sys_data_source, value: 0}
-    message: "{sys_data_source_count} JDBC data sources detected. Review whether REST API would be more appropriate."
+        - table_gt: {table: sys_data_source, value: 3}
+    message: "{sys_data_source_count} JDBC data sources detected. Heavy reliance on JDBC fallback pattern — review for REST API migration."
     recommended_nodes: {}
 
   - id: INT-PAT-002
@@ -554,25 +598,28 @@ integration_rules:
     recommended_nodes: {}
 
   - id: INT-PAT-003
-    name: No Integration Hub for External Connections
+    name: Custom Integrations Without Integration Hub
     description: >
-      Instance connects to external systems via custom scripts instead of Integration Hub.
+      Instance has significant custom REST message configurations but no Integration Hub.
+      Per Jochen Geist: "OOTB first, always — check native integrations, spokes, and
+      frameworks before custom development."
     source: integration
     severity: high
     category: integration_pattern
     condition_description: >
-      Custom REST messages or scripted integrations exist but Integration Hub
-      spokes are available for the same target systems
+      5+ custom REST messages configured but Integration Hub is not installed — OOTB-first
+      principle violated
     recommendation: >
       Use Integration Hub spokes instead of custom scripted integrations.
       Spokes provide built-in error handling, retry logic, connection management,
-      and are maintained by ServiceNow or spoke vendors.
-    tags: [integration_hub, spokes, custom_script, best_practice]
+      and are maintained by ServiceNow or spoke vendors. Per the Integration Design
+      methodology: "Don't build what already exists."
+    tags: [integration_hub, spokes, custom_script, ootb_first]
     eval:
       all:
         - node_absent: integration_hub
-        - flow_count_eq: 0
-    message: "No Integration Hub spokes detected. External integrations likely use custom scripts."
+        - table_gt: {table: sys_rest_message, value: 5}
+    message: "{sys_rest_message_count} custom REST messages but no Integration Hub. OOTB-first principle violated — check available spokes."
     recommended_nodes:
       integration_hub: "managed integrations"
 
@@ -708,6 +755,227 @@ integration_rules:
       all:
         - table_gt: {table: sysevent_email_action, value: 0}
     message: "{sysevent_email_action_count} inbound email actions detected. Consider replacing with REST API or Import Set integrations."
+    recommended_nodes: {}
+
+
+# ---------------------------------------------------------------------------
+# Tier 2 Integration Rules — Evidence-Based (Source: Jochen Geist)
+# ---------------------------------------------------------------------------
+# These rules combine multiple signals to provide integration guidance
+# backed by actual instance data, not just presence/absence checks.
+
+  - id: INT-T2-001
+    name: SOAP-Only Integration Stack — No REST Adoption
+    description: >
+      Instance has SOAP integrations but zero REST message configurations.
+      Per Jochen Geist's protocol hierarchy (REST > GraphQL > SOAP > ODBC),
+      this represents a severely outdated integration stack.
+    source: integration
+    severity: critical
+    category: integration_pattern
+    condition_description: >
+      SOAP messages present but no REST messages at all — entire integration
+      stack is on a deprecated protocol
+    recommendation: >
+      Prioritize REST API adoption. Per the Integration Pattern Decision Tree,
+      REST is the default protocol for 80% of integrations. SOAP should only
+      remain for systems that offer no REST alternative. Establish a migration
+      roadmap starting with the highest-traffic SOAP endpoints.
+    tags: [web_service, soap, rest, modernization, protocol]
+    eval:
+      all:
+        - table_gt: {table: sys_soap_message, value: 0}
+        - table_lte: {table: sys_rest_message, value: 0}
+    message: "{sys_soap_message_count} SOAP integrations but zero REST messages. Entire integration stack bypasses the preferred REST protocol."
+    recommended_nodes: {}
+
+  - id: INT-T2-002
+    name: Integration Sprawl Without Centralized Orchestration
+    description: >
+      Instance has multiple active integration types (REST, SOAP, JDBC, import sets)
+      but no Integration Hub for centralized governance. Per Jochen Geist's
+      governance framework, this creates an unmanaged integration labyrinth.
+    source: integration
+    severity: critical
+    category: integration_pattern
+    condition_description: >
+      3+ distinct integration pattern types active without Integration Hub —
+      integration sprawl with no central governance
+    recommendation: >
+      Deploy Integration Hub to centralize integration orchestration, monitoring,
+      and error handling. Per Integration Governance principles: standardize
+      integration intake, visualize dependencies, and align with enterprise
+      architecture. Without centralized governance, each integration becomes
+      an isolated technical debt item.
+    tags: [governance, integration_hub, sprawl, orchestration]
+    eval:
+      all:
+        - node_absent: integration_hub
+        - table_gt: {table: sys_rest_message, value: 0}
+        - table_gt: {table: sys_import_set, value: 0}
+        - any:
+            - table_gt: {table: sys_soap_message, value: 0}
+            - table_gt: {table: sys_data_source, value: 0}
+    message: "Integration sprawl: REST + import sets + SOAP/JDBC all active without Integration Hub. No centralized orchestration or governance."
+    recommended_nodes:
+      integration_hub: "integration governance"
+
+  - id: INT-T2-003
+    name: JDBC Consolidation Opportunity — Zero Copy Candidate
+    description: >
+      Instance has 5+ JDBC data sources, suggesting heavy reliance on direct
+      database connectivity. Per Jochen Geist's decision tree, Zero Copy
+      Connectors should be considered for data residency and high-volume access
+      without duplicating data into ServiceNow.
+    source: integration
+    severity: high
+    category: integration_pattern
+    condition_description: >
+      5+ JDBC data sources — significant external database dependency that
+      may benefit from Zero Copy Connectors
+    recommendation: >
+      Evaluate Zero Copy Connectors (ZCC) for supported databases (SQL Server,
+      Oracle, MySQL, PostgreSQL, Snowflake, SAP HANA, Redshift, BigQuery,
+      Databricks). ZCC provides read access to external data without replication,
+      reducing data staleness and platform load. Per the decision tree: Zero Copy
+      is preferred when data residency, compliance, or volume constraints apply.
+    tags: [zero_copy, jdbc, data_residency, consolidation, fallback]
+    eval:
+      all:
+        - table_gt: {table: sys_data_source, value: 5}
+    message: "{sys_data_source_count} JDBC data sources. Heavy external DB dependency — evaluate Zero Copy Connectors to reduce replication overhead."
+    recommended_nodes: {}
+
+  - id: INT-T2-004
+    name: Polling Pattern Detected — Event-Driven Architecture Opportunity
+    description: >
+      Instance has very high scheduled script count combined with high import set
+      volume, suggesting batch/polling integration patterns. Per Jochen Geist's
+      decision tree, event-driven architecture (Stream Connect, webhooks, Flow
+      Designer triggers) should replace polling for real-time requirements.
+    source: integration
+    severity: high
+    category: integration_pattern
+    condition_description: >
+      100+ scheduled scripts AND 100+ import sets — strong signal of batch/polling
+      integration architecture
+    recommendation: >
+      Replace polling-based integrations with event-driven patterns. Use Stream
+      Connect (Apache Kafka) for high-volume real-time event streaming, or Flow
+      Designer triggers and webhooks for lower-volume event processing. Per the
+      decision tree: event-driven architecture provides decoupled, scalable
+      communication that eliminates polling overhead and latency.
+    tags: [event_driven, stream_connect, polling, batch, modernization]
+    eval:
+      all:
+        - table_gt: {table: sysauto_script, value: 100}
+        - table_gt: {table: sys_import_set, value: 100}
+    message: "{sysauto_script_count} scheduled scripts + {sys_import_set_count} import sets. Polling/batch architecture — evaluate Stream Connect or event-driven patterns."
+    recommended_nodes: {}
+
+  - id: INT-T2-005
+    name: Potential Direct Table API Writes — Import Set API Preferred
+    description: >
+      Instance has many REST message configurations but very few import sets or
+      transform maps, suggesting inbound data may use direct Table API writes.
+      Per Jochen Geist: Write operations preference is Import Set API > Scripted
+      REST API > Direct Table API writes (Avoid).
+    source: integration
+    severity: high
+    category: integration_pattern
+    condition_description: >
+      10+ REST messages but <= 3 import sets and <= 3 transform maps — inbound
+      data likely bypasses Import Set API data quality controls
+    recommendation: >
+      Use Import Set API with transform maps for all inbound data writes.
+      Import Sets provide staging, validation, coalescing, and rollback capabilities.
+      Direct Table API writes bypass these controls and risk data corruption.
+      Per the Integration Design methodology: "Import Set API > Direct Table API writes."
+    tags: [data_persistence, import_set, table_api, data_quality, anti_pattern]
+    eval:
+      all:
+        - table_gt: {table: sys_rest_message, value: 10}
+        - table_lte: {table: sys_import_set, value: 3}
+        - table_lte: {table: sys_transform_map, value: 3}
+    message: "{sys_rest_message_count} REST messages but only {sys_import_set_count} import sets / {sys_transform_map_count} transform maps. Inbound writes may bypass Import Set data quality controls."
+    recommended_nodes: {}
+
+  - id: INT-T2-006
+    name: Heavy Custom Scripting — Platform Underutilization
+    description: >
+      Instance has a very high number of business rules (sys_script), suggesting
+      heavy reliance on custom code. Per Jochen Geist's OOTB-first principle,
+      platform capabilities should be leveraged before custom development.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      200+ business rules — significant custom scripting volume indicating
+      potential platform underutilization
+    recommendation: >
+      Review high-volume business rules for replacement with Flow Designer,
+      Integration Hub actions, or platform features. Custom scripts increase
+      upgrade complexity, require specialized skills, and lack the governance
+      visibility of platform-native solutions. Per OOTB-first: "Don't build
+      what already exists."
+    tags: [custom_script, ootb_first, technical_debt, modernization]
+    eval:
+      all:
+        - table_gt: {table: sys_script, value: 200}
+    message: "{sys_script_count} business rules detected. Heavy custom scripting — review for Flow Designer or platform-native replacements."
+    recommended_nodes: {}
+
+  - id: INT-T2-007
+    name: Scripted REST API Proliferation — Governance Risk
+    description: >
+      Instance has many custom Scripted REST API operations, expanding the API
+      surface area without standardized governance. Per Jochen Geist's governance
+      framework: establish platform-wide standards and document integrations.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      10+ scripted REST API operations — significant custom API surface area
+      requiring governance
+    recommendation: >
+      Audit custom Scripted REST APIs for consolidation and governance. Each
+      custom API operation adds to the maintenance burden, security surface,
+      and upgrade risk. Consider whether Integration Hub or standard Table/Import
+      Set APIs could replace custom endpoints. Document all custom APIs and
+      establish an integration intake process.
+    tags: [governance, custom_api, scripted_rest, security, documentation]
+    eval:
+      all:
+        - table_gt: {table: sys_ws_operation, value: 10}
+    message: "{sys_ws_operation_count} custom Scripted REST API operations. Significant API surface area — establish governance and consolidation roadmap."
+    recommended_nodes: {}
+
+  - id: INT-T2-008
+    name: Integration Hub Present But Custom Scripts Dominate
+    description: >
+      Integration Hub is installed but custom REST messages significantly outnumber
+      IHub flows, indicating the OOTB-first investment is underutilized. Per Jochen
+      Geist: "Reduced development time, lower maintenance burden, automatic updates,
+      proven reliability" are the benefits of leveraging IHub spokes.
+    source: integration
+    severity: medium
+    category: integration_pattern
+    condition_description: >
+      Integration Hub active but custom REST messages > 2x IHub flows —
+      IHub investment underutilized
+    recommendation: >
+      Review custom REST integrations for IHub spoke replacements. ServiceNow
+      maintains hundreds of pre-built spokes with automatic updates, built-in
+      error handling, and connection management. Migrating custom integrations
+      to spokes reduces maintenance burden and unlocks Integration Hub governance
+      capabilities (monitoring, retry policies, execution history).
+    tags: [integration_hub, ootb_first, spokes, modernization, roi]
+    eval:
+      all:
+        - node_active: integration_hub
+        - table_gt: {table: sys_rest_message, value: 10}
+        - table_ratio_below: {table: sys_hub_flow, other: sys_rest_message, ratio: 0.5}
+    message: "Integration Hub active but {sys_rest_message_count} custom REST messages vs {sys_hub_flow_count} IHub flows. Custom scripts dominate — check available spokes."
     recommended_nodes: {}
 
 

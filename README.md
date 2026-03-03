@@ -3,7 +3,7 @@
 A presales intelligence platform for ServiceNow with three engines:
 
 - **Virgil** (Architecture Chat) - LLM-powered architecture analysis, diagram generation, and solution recommendations from instance data, uploaded documents, and ontology constraints
-- **Minos** (Instance Assessment) - Deterministic 49-rule engine that scans a live instance and produces IT4IT gap analysis, findings, and architecture diagrams with zero LLM dependency
+- **Minos** (Instance Assessment) - Deterministic 53-rule engine that scans a live instance and produces IT4IT gap analysis, findings, and architecture diagrams with zero LLM dependency
 - **Plutus** (WDF Credit Sizing) - Auto-detects Workflow Data Fabric capability usage, annualizes from execution logs, calculates credit consumption, and exports to Excel
 
 ---
@@ -125,18 +125,18 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.7.2 (March 2026)
+## 📦 Latest Release: v1.7.3 (March 2026)
 
-### v1.7.2 | Plutus Usage Scanner Repositioning
+### v1.7.3 | Tier 2 Evidence-Based Integration Rules (Jochen Geist)
 
-- ✅ **Plutus → Usage Scanner**: Repositioned as a utilization scanner feeding the [official WDF calculator](https://wdf-credits-estimator.figma.site/)
-- ✅ **Detected Capabilities card**: Shows X of Y WDF capabilities found on the instance
-- ✅ **Disclaimer**: "Directional sizing, not a commercial quote" with link to official calculator
-- ✅ **Hidden**: Rate card, tier, packs, and cost displays (code preserved)
+- ✅ **8 new Tier 2 integration rules**: SOAP-only stack, integration sprawl, JDBC→ZCC, polling→event-driven, direct table writes, custom scripting, API proliferation, IHub underutilization
+- ✅ **Evidence-based IT4IT**: SPM, GRC, Problem Mgmt, Event Mgmt rules now require data-backed conditions (not just checkbox)
+- ✅ **53 rules total** (was 49) — 17 integration rules (was 9)
+- ✅ **Jochen Geist Integration Design v3.0** knowledge base integrated
 
 **Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.7.2`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.2`
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.3`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.3`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -148,9 +148,9 @@ Project Virgil is a presales intelligence platform with three distinct engines, 
 
 ### Minos - Instance Assessment (No LLM)
 
-Minos scans a live ServiceNow instance via REST API and evaluates it against 49 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
+Minos scans a live ServiceNow instance via REST API and evaluates it against 53 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
 
-**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (49 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
+**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (53 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
 
 **What it produces:**
 - **IT4IT Coverage**: Gap analysis across 4 value streams (S2P, R2D, R2F, D2C) with per-stream health status
@@ -160,7 +160,7 @@ Minos scans a live ServiceNow instance via REST API and evaluates it against 49 
 - **Health Checks**: CMDB without Discovery, customer portal anti-patterns, custom table sprawl, shelfware detection
 - **Security Posture**: CSRF protection, audit logging, SecOps coverage
 
-**Rule categories (49 rules across 6 categories):**
+**Rule categories (53 rules across 6 categories):**
 
 | Category | Rules | Source |
 |----------|-------|--------|
@@ -419,7 +419,7 @@ ChatGPT:
 ## Features
 
 **Deterministic Engines (No LLM):**
-- Minos Instance Assessment: 49-rule YAML-driven engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
+- Minos Instance Assessment: 53-rule YAML-driven engine covering IT4IT coverage, integration patterns, health, adoption maturity, security posture, and platform efficiency
 - Plutus WDF Credit Sizing: Auto-detect 7 WDF capabilities from execution logs, annualize usage, calculate credits, recommend tier, export to Excel
 - Plutus Rate Card Editor: Add/remove capabilities, editable labels and credits, STD/PRO tier toggle, persist to YAML
 - ServiceNow Ontology: Graph-based knowledge model (40 nodes, 65 edges) with table hierarchy, plugin mappings, and architecture layers
@@ -448,7 +448,7 @@ project-virgil/
 ├── backend/                 # FastAPI Python backend
 │   ├── services/
 │   │   ├── instance_scanner.py        # Minos: REST scan → InstanceModel → rule evaluation → diagrams
-│   │   ├── instance_scanner_rules.py  # Minos: 49 deterministic rules + RuleEngine
+│   │   ├── instance_scanner_rules.py  # Minos: 53 deterministic rules + RuleEngine
 │   │   ├── rules.yaml                 # Minos: rule definitions (IT4IT, integration, health, adoption, security, efficiency)
 │   │   ├── plutus_scanner.py          # Plutus: WDF capability detection, annualization, credit calc
 │   │   ├── plutus_pricing.yaml        # Plutus: rate card, tiers, pack definitions
@@ -631,7 +631,7 @@ The frontend will be available at `http://localhost:3000`
 - `DELETE /api/documents/{file_id}` - Delete document
 
 ### Minos (Instance Assessment)
-- `POST /api/assess` - Run deterministic instance assessment (49 rules, no LLM)
+- `POST /api/assess` - Run deterministic instance assessment (53 rules, no LLM)
 - `GET /api/assess/rules` - Get rule catalog and summary
 - `GET /api/assess/knowledge-base` - Get structured knowledge base for all rule sources
 - `GET /api/rules/yaml` - Get full YAML rule data for the editor

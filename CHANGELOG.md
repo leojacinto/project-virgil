@@ -4,6 +4,34 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.7.3 (Backend) - March 2026
+
+**Tier 2 Evidence-Based Rules (Jochen Geist Integration Design):**
+- 8 new Tier 2 integration rules combining multiple signals for evidence-based guidance:
+  - INT-T2-001: SOAP-Only Stack (no REST adoption)
+  - INT-T2-002: Integration Sprawl (REST + SOAP + JDBC + import sets without IHub)
+  - INT-T2-003: JDBC Consolidation → Zero Copy Candidate
+  - INT-T2-004: Polling Pattern → Event-Driven Architecture Opportunity
+  - INT-T2-005: Direct Table API Writes (Import Set API preferred)
+  - INT-T2-006: Heavy Custom Scripting (OOTB-first violated)
+  - INT-T2-007: Scripted REST API Proliferation (governance risk)
+  - INT-T2-008: Integration Hub Present But Custom Scripts Dominate
+- Upgraded existing integration rules with evidence thresholds (INT-PAT-001: JDBC >3, INT-PAT-003: REST >5)
+- Upgraded IT4IT rules with data-backed conditions:
+  - IT4IT-S2P-001: SPM now requires 500+ changes OR 2000+ incidents
+  - IT4IT-S2P-002: GRC now requires multi-product footprint (CSM/HRSD/SecOps)
+  - IT4IT-D2C-002: Problem Mgmt now requires 1000+ incidents
+  - IT4IT-D2C-003: Event Mgmt now requires 5000+ incidents
+- Knowledge base updated with Jochen Geist Integration Design v3.0 (April 2025)
+- Scanner: added sys_script, sys_ws_operation, sys_remote_table for Tier 2 evidence
+- Total rules: 53 (was 49) — 17 integration rules (was 9)
+
+**Docker Hub Images:**
+- Backend: `leofrancia08489/project-virgil-backend:v1.7.3`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.3`
+
+---
+
 ## v1.7.2 (Backend + Frontend) - March 2026
 
 **Plutus UI Repositioning:**
@@ -192,7 +220,7 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 ## v1.5.0 (Backend + Frontend) - February 2026
 
 **Instance Assessment (Nirvana):**
-- ✅ Deterministic rule engine with 49 rules across 6 categories (no LLM required)
+- ✅ Deterministic rule engine with 53 rules across 6 categories (no LLM required)
 - ✅ IT4IT v3 Coverage rules (Ian Leu): S2P, R2D, R2F, D2C value stream gap detection
 - ✅ Integration Pattern rules (Jochen Geist): REST vs SOAP, MID Server, Flow Designer vs legacy Workflow
 - ✅ Architectural Health rules: CMDB without Discovery, customer portal anti-pattern, custom table sprawl, Agent Workspace, legacy workflows, domain separation, FedRAMP
@@ -209,7 +237,7 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 **Backend API:**
 - ✅ `POST /api/assess` - run full instance assessment
-- ✅ `GET /api/assess/rules` - rule catalog and summary (49 rules, 6 categories, 3 severity levels)
+- ✅ `GET /api/assess/rules` - rule catalog and summary (53 rules, 6 categories, 3 severity levels)
 - ✅ `GET /api/assess/knowledge-base` - structured knowledge base for all rule sources
 - ✅ `GET /api/servicenow/tables` - now returns true record count via `X-Total-Count` header
 - ✅ `GET /api/servicenow/components` - now returns true counts per component type

@@ -375,6 +375,10 @@ class InstanceScanner:
             "sys_data_source", "sys_soap_message", "sys_rest_message",
             "sys_import_set", "sys_transform_map", "sysauto_script",
             "sysevent_email_action",
+            # Tier 2 integration evidence (Jochen Geist decision tree)
+            "sys_script",          # business rules — custom scripting volume
+            "sys_ws_operation",    # scripted REST API definitions — custom API surface
+            "sys_remote_table",    # remote tables — Zero Copy / data residency pattern
         ])
         # Add health detection tables (may already be in ontology set)
         key_tables.update(["sys_audit", "sc_cat_item"])
