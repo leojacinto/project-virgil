@@ -405,7 +405,7 @@ it4it_rules:
     recommended_nodes:
       knowledge_base: "R2F self-resolution"
 
-  - id: IT4IT-D2C-002
+  - id: IT4IT-D2C-001
     name: No Problem Management — High Incident Volume
     description: >
       Instance has significant incident volume but no Problem Management.
@@ -430,7 +430,7 @@ it4it_rules:
     recommended_nodes:
       problem: "D2C root cause"
 
-  - id: IT4IT-D2C-003
+  - id: IT4IT-D2C-002
     name: No Event Management — Reactive Operations at Scale
     description: >
       Instance has high incident volume but no Event Management or monitoring
@@ -615,7 +615,7 @@ integration_rules:
     message: "{sys_import_set_count} import sets found but no transform maps. Inbound data bypasses quality controls."
     recommended_nodes: {}
 
-  - id: INT-VOL-002
+  - id: INT-VOL-001
     name: Heavy Scheduled Job Usage (Potential Polling)
     description: >
       Instance has a high number of scheduled script executions, suggesting
@@ -636,7 +636,7 @@ integration_rules:
     message: "{sysauto_script_count} scheduled scripts detected. Review for polling patterns that could be replaced with event-driven triggers."
     recommended_nodes: {}
 
-  - id: INT-ERR-002
+  - id: INT-ERR-001
     name: No MID Server for On-Premise Integration
     description: >
       Instance integrates with on-premise systems without a MID Server.
@@ -846,7 +846,7 @@ integration_rules:
     message: "{sys_rest_message_count} REST messages but only {sys_import_set_count} import sets / {sys_transform_map_count} transform maps. Inbound writes may bypass Import Set data quality controls."
     recommended_nodes: {}
 
-  - id: INT-T2-007
+  - id: INT-T2-006
     name: Scripted REST API Proliferation — Governance Risk
     description: >
       Instance has many custom Scripted REST API operations, expanding the API
@@ -871,7 +871,7 @@ integration_rules:
     message: "{sys_ws_operation_count} custom Scripted REST API operations. Significant API surface area — establish governance and consolidation roadmap."
     recommended_nodes: {}
 
-  - id: INT-T2-008
+  - id: INT-T2-007
     name: Integration Hub Present But Custom Scripts Dominate
     description: >
       Integration Hub is installed but custom REST messages significantly outnumber
@@ -973,7 +973,7 @@ health_rules:
     message: "Domain separation is not enabled. Data isolation between business units is not enforced."
     recommended_nodes: {}
 
-  - id: HEALTH-006
+  - id: HEALTH-004
     name: No Agent Workspace — ITSM Agents on Classic UI
     description: >
       Instance has active ITSM with significant ticket volume but agents
@@ -999,7 +999,7 @@ health_rules:
     recommended_nodes:
       workspace: "agent experience"
 
-  - id: HEALTH-007
+  - id: HEALTH-005
     name: Legacy Workflow Engine Still Active
     description: >
       Legacy Workflow Engine has active workflows that should be on Flow Designer.
@@ -1256,7 +1256,7 @@ adoption_rules:
 
 security_rules:
 
-  - id: SEC-002
+  - id: SEC-001
     name: No SecOps on Instance With Sensitive Data
     description: >
       Instance processes sensitive data (ITSM/CSM/HRSD) but has no Security
