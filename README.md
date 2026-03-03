@@ -131,7 +131,7 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 - ✅ **8 new Tier 2 integration rules**: SOAP-only stack, integration sprawl, JDBC→ZCC, polling→event-driven, direct table writes, custom scripting, API proliferation, IHub underutilization
 - ✅ **Evidence-based IT4IT**: SPM, GRC, Problem Mgmt, Event Mgmt rules now require data-backed conditions (not just checkbox)
-- ✅ **48 rules total** (was 49) — 17 integration rules (was 9)
+- ✅ **45 rules total** (was 49) — 17 integration rules (was 9)
 - ✅ **Jochen Geist Integration Design v3.0** knowledge base integrated
 
 **Docker Hub Images:**
@@ -148,9 +148,9 @@ Project Virgil is a presales intelligence platform with three distinct engines, 
 
 ### Minos - Instance Assessment (No LLM)
 
-Minos scans a live ServiceNow instance via REST API and evaluates it against 48 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
+Minos scans a live ServiceNow instance via REST API and evaluates it against 45 deterministic rules. Every recommendation cites specific instance conditions — not generic best practice.
 
-**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (48 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
+**Pipeline:** REST API Scan → InstanceModel → Ontology Mapping → Rule Engine (45 rules) → Findings + Recommended Nodes → Mermaid Diagrams → Gap Analysis
 
 **What it produces:**
 - **IT4IT Coverage**: Gap analysis across 4 value streams (S2P, R2D, R2F, D2C) with per-stream health status
@@ -160,7 +160,7 @@ Minos scans a live ServiceNow instance via REST API and evaluates it against 48 
 - **Health Checks**: CMDB without Discovery, customer portal anti-patterns, custom table sprawl, shelfware detection
 - **Security Posture**: SecOps coverage for sensitive data instances
 
-**Rule categories (48 rules across 6 categories):**
+**Rule categories (45 rules across 6 categories):**
 
 | Category | Rules | Source |
 |----------|-------|--------|
@@ -631,7 +631,7 @@ The frontend will be available at `http://localhost:3000`
 - `DELETE /api/documents/{file_id}` - Delete document
 
 ### Minos (Instance Assessment)
-- `POST /api/assess` - Run deterministic instance assessment (48 rules, no LLM)
+- `POST /api/assess` - Run deterministic instance assessment (45 rules, no LLM)
 - `GET /api/assess/rules` - Get rule catalog and summary
 - `GET /api/assess/knowledge-base` - Get structured knowledge base for all rule sources
 - `GET /api/rules/yaml` - Get full YAML rule data for the editor

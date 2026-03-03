@@ -288,23 +288,26 @@ it4it_rules:
       grc: "S2P governance"
 
   - id: IT4IT-R2D-001
-    name: No Change Management Process
+    name: No Change Management — Active Operations Without Deployment Control
     description: >
-      Instance has no active Change Management. R2D requires controlled deployment.
+      Instance has significant incident volume but no Change Management,
+      indicating active operations without controlled deployment processes.
     source: it4it
     severity: high
     category: it4it_coverage
     condition_description: >
-      Change Management plugin (com.snc.change_management) is not installed or
-      change_request table has zero records
+      Change Management absent AND 500+ incidents — active operations
+      without deployment control
     recommendation: >
       Enable Change Management to provide controlled release and deployment
-      processes as required by the Requirement to Deploy (R2D) value stream.
+      processes. With {incident_count} incidents, this instance has active
+      operations that need deployment governance as part of the R2D value stream.
     tags: [R2D, change, deployment]
     eval:
       all:
         - node_absent: change
-    message: "No Change Management process detected. R2D value stream at risk."
+        - table_gt: {table: incident, value: 500}
+    message: "No Change Management but {incident_count} incidents. Active operations without deployment control."
     recommended_nodes:
       change: "R2D deployment control"
 
@@ -331,45 +334,52 @@ it4it_rules:
       service_mapping: "R2D service topology"
 
   - id: IT4IT-R2F-001
-    name: No Service Catalog
+    name: No Service Catalog — ITSM Active Without Structured Request Intake
     description: >
-      Instance has no Service Catalog. R2F requires a request intake mechanism.
+      Instance has active ITSM operations but no Service Catalog, meaning
+      requests arrive through unstructured channels (email, walk-ups, direct tickets).
     source: it4it
     severity: high
     category: it4it_coverage
     condition_description: >
-      Service Catalog plugin (com.glideapp.servicecatalog) is not installed
-      or sc_cat_item table has zero active items
+      Service Catalog absent AND ITSM active with 200+ incidents —
+      request volume without structured intake
     recommendation: >
-      Enable Service Catalog to provide a structured request intake and fulfillment
-      mechanism as required by the Request to Fulfill (R2F) value stream.
+      Enable Service Catalog to provide structured request intake. With {incident_count}
+      incidents, this instance has significant ticket volume that would benefit from
+      categorized request forms, approval workflows, and fulfillment automation.
     tags: [R2F, catalog, request, fulfillment]
     eval:
       all:
         - node_absent: service_catalog
-    message: "No Service Catalog detected. R2F has no structured request intake."
+        - node_active: itsm
+        - table_gt: {table: incident, value: 200}
+    message: "ITSM active with {incident_count} incidents but no Service Catalog. Requests lack structured intake."
     recommended_nodes:
       service_catalog: "R2F request intake"
 
   - id: IT4IT-R2F-002
-    name: No Self-Service Portal
+    name: No Self-Service Portal — Service Catalog Without User Channel
     description: >
-      Instance has no portal for self-service. R2F requires user-facing request channel.
+      Instance has Service Catalog but no portal for end-users to access it.
+      Catalog items exist but users have no self-service front door.
     source: it4it
     severity: medium
     category: it4it_coverage
     condition_description: >
-      Service Portal plugin (com.glide.service-portal) is not installed
-      and Employee Center (com.sn_employee_center) is not installed
+      Service Catalog active but neither Service Portal nor Employee Center
+      installed — catalog items exist without a user-facing channel
     recommendation: >
       Deploy Service Portal or Employee Center to provide end-users with a
-      self-service channel for submitting and tracking requests.
+      self-service channel. Your Service Catalog has items but no front door
+      for users to browse and submit requests.
     tags: [R2F, portal, self-service]
     eval:
       all:
+        - node_active: service_catalog
         - node_absent: service_portal
         - node_absent: employee_center
-    message: "No self-service portal detected. R2F lacks user-facing request channel."
+    message: "Service Catalog active but no self-service portal. Users cannot browse or submit catalog requests."
     recommended_nodes:
       service_portal: "R2F self-service"
 
@@ -394,27 +404,6 @@ it4it_rules:
     message: "Knowledge Base has {kb_knowledge_count} articles. Self-resolution limited."
     recommended_nodes:
       knowledge_base: "R2F self-resolution"
-
-  - id: IT4IT-D2C-001
-    name: No Incident Management
-    description: >
-      Instance has no Incident Management. D2C requires issue detection and resolution.
-    source: it4it
-    severity: critical
-    category: it4it_coverage
-    condition_description: >
-      Incident Management plugin (com.snc.incident) is not installed
-    recommendation: >
-      Incident Management is foundational to the Detect to Correct (D2C) value stream.
-      Enable it to track, prioritize, and resolve service disruptions.
-    tags: [D2C, incident, detection, resolution]
-    eval:
-      all:
-        - node_absent: incident
-    message: "No Incident Management detected. D2C has no issue resolution capability."
-    recommended_nodes:
-      incident: "D2C issue resolution"
-      itsm: "D2C foundation"
 
   - id: IT4IT-D2C-002
     name: No Problem Management — High Incident Volume
@@ -468,29 +457,6 @@ it4it_rules:
       event_mgmt: "D2C proactive detection"
       itom: "D2C operations"
 
-  - id: IT4IT-D2C-004
-    name: No Discovery or Service Mapping
-    description: >
-      CMDB is not automatically populated. D2C requires accurate infrastructure data.
-    source: it4it
-    severity: high
-    category: it4it_coverage
-    condition_description: >
-      Discovery (com.snc.discovery) and Service Mapping (com.snc.service_mapping)
-      are both not installed or inactive
-    recommendation: >
-      Enable Discovery and/or Service Mapping to automatically populate and maintain
-      the CMDB. Manual CMDB maintenance leads to stale data and poor D2C outcomes.
-    tags: [D2C, discovery, service_mapping, cmdb]
-    eval:
-      all:
-        - node_absent: discovery
-        - node_absent: service_mapping
-    message: "No Discovery or Service Mapping. CMDB relies on manual maintenance."
-    recommended_nodes:
-      discovery: "D2C auto-discovery"
-      service_mapping: "D2C service topology"
-
   - id: IT4IT-XS-001
     name: Single Value Stream Coverage
     description: >
@@ -526,26 +492,6 @@ it4it_rules:
               - node_active: event_mgmt
     message: "Only {covered_count} IT4IT value stream(s) covered: {covered_streams}."
     recommended_nodes: {}
-
-  - id: IT4IT-XS-002
-    name: No Integration Hub for Cross-Stream Orchestration
-    description: >
-      Integration Hub is not active. Cross-stream automation requires orchestration capability.
-    source: it4it
-    severity: medium
-    category: it4it_coverage
-    condition_description: >
-      Integration Hub plugin (com.glide.hub.integration_hub) is not installed
-    recommendation: >
-      Enable Integration Hub to orchestrate workflows across value streams and
-      integrate with external systems without custom scripting.
-    tags: [R2D, R2F, D2C, integration, orchestration]
-    eval:
-      all:
-        - node_absent: integration_hub
-    message: "No Integration Hub detected. Cross-stream orchestration relies on custom scripts."
-    recommended_nodes:
-      integration_hub: "cross-stream orchestration"
 
 
 # ---------------------------------------------------------------------------
@@ -1028,24 +974,28 @@ health_rules:
     recommended_nodes: {}
 
   - id: HEALTH-006
-    name: No Agent Workspace Adoption
+    name: No Agent Workspace — ITSM Agents on Classic UI
     description: >
-      Instance uses legacy list/form UI instead of Agent Workspace for agents.
+      Instance has active ITSM with significant ticket volume but agents
+      use legacy list/form UI instead of Agent Workspace.
     source: best_practice
     severity: low
     category: health
     condition_description: >
-      Agent Workspace (com.sn_agent_workspace) is not installed or
-      agents primarily use classic UI based on login patterns
+      ITSM active with 500+ incidents but Agent Workspace not installed —
+      agents processing significant volume without modern workspace
     recommendation: >
-      Migrate agents to Agent Workspace for improved productivity. Workspace
-      provides contextual side panels, AI-assisted resolution, and is
-      ServiceNow's strategic direction for agent experience.
+      Migrate agents to Agent Workspace for improved productivity. With
+      {incident_count} incidents processed through classic UI, agents miss
+      contextual side panels, AI-assisted resolution, and multi-tab workflows.
+      Workspace is ServiceNow's strategic direction for agent experience.
     tags: [workspace, agent_experience, modernization]
     eval:
       all:
+        - node_active: itsm
         - node_absent: workspace
-    message: "No Agent Workspace adoption. Agents using classic UI miss productivity features."
+        - table_gt: {table: incident, value: 500}
+    message: "ITSM active with {incident_count} incidents but no Agent Workspace. Agents on classic UI."
     recommended_nodes:
       workspace: "agent experience"
 
