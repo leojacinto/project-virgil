@@ -4,6 +4,62 @@ All notable changes to Project Virgil are documented here. Only the latest relea
 
 ---
 
+## v1.8.0 (ServiceNow Native App + Frontend) - March 2026
+
+**ServiceNow Native App (servicenow-app/):**
+
+The entire Virgil backend — Minos architecture scanner, Plutus WDF credit sizing, ontology graph, and rule engine — has been ported from Python/FastAPI to native ServiceNow Script Includes running inside a scoped application (`x_snc_virgil`). No external server, no Docker, no Python required. Everything runs on the Now Platform.
+
+*Deployed Script Includes:*
+- `MinosScanner` — full instance scan: plugins → tables → ontology mapping → 49-rule engine → findings + Mermaid diagrams + IT4IT coverage. Persists results to `x_snc_virgil_minos_scan` and `x_snc_virgil_minos_finding` tables
+- `PlutusScanner` — WDF credit scan: rate card → instance data gathering → capability auto-detection → annualization → credit calculation. Persists to `x_snc_virgil_wdf_scan` and `x_snc_virgil_wdf_scan_line` tables
+- `MinosOntology` — 37-node ontology graph with IT4IT value stream mapping and Mermaid diagram generation
+- `MinosRuleEngine` — 49 deterministic rules with evidence-based evaluation
+- `VirgilUtils` — platform utility functions (record counts, table existence, plugin checks, CMDB stats)
+- `VirgilAjax` — client-callable GlideAjax wrapper (`AbstractAjaxProcessor`) for triggering scans from workspace UI
+- `PlutusRateCard` — rate card loader (9 WDF capabilities)
+
+*Scripted REST API:*
+- `POST /api/x_snc_virgil/virgil_api/minos/scan` — trigger Minos scan
+- `GET /api/x_snc_virgil/virgil_api/minos/scans` — scan history
+- `POST /api/x_snc_virgil/virgil_api/plutus/scan` — trigger Plutus scan (supports `user_overrides`)
+- `GET /api/x_snc_virgil/virgil_api/plutus/scans` — scan history with line items
+
+*Custom Tables (8):*
+- `x_snc_virgil_minos_scan`, `x_snc_virgil_minos_finding` — scan results and findings
+- `x_snc_virgil_wdf_scan`, `x_snc_virgil_wdf_scan_line` — credit scan results
+- `x_snc_virgil_wdf_rate_card` — 9 WDF capabilities with credit rates
+- `x_snc_virgil_minos_rule` — 49 architecture rules
+- `x_snc_virgil_ontology_node` — 37 architecture component nodes
+- `x_snc_virgil_ontology_edge` — 65 relationships between nodes
+
+*Deployment Automation:*
+- `deploy.py` — single-command deployment via REST API: creates tables, fields, script includes, REST API, seed data, and navigation menu
+- Handles upsert logic (create or update), field type mapping, cache flush, and retry for seed data timing
+- `VirgilAjax` auto-deployed with `client_callable=true`
+
+*Build Agent Prompt:*
+- `BUILD_AGENT_PROMPT.md` — complete specification for ServiceNow Build Agent to generate workspace UI pages (Home, Minos, Plutus) using GlideAjax + GlideRecord against the deployed backend
+
+**Lessons Learned — Porting to ServiceNow:**
+
+1. **Scope creation must be done manually via App Engine Studio** — REST API and Background Script cannot create working scoped app workspaces. Only App Engine Studio properly registers the workspace URL with the Next Experience router.
+2. **Admin must have scope picker set to x_snc_virgil** when running `deploy.py` — without this, all artifacts land in global scope instead of the app scope.
+3. **`e.getMessage()` is blocked in scoped apps** — caught exceptions must use `e` (toString) instead. `GlidePluginManager.isActive()` can also throw scope access errors and needs try-catch.
+4. **ACLs cannot be created via REST API** — requires `security_admin` role and manual configuration.
+5. **`sys_app_module` DIRECT links use the `query` field, NOT `uri`** — the `uri` field is silently stripped by ServiceNow on PATCH.
+6. **UI Builder event handlers cannot execute arbitrary client scripts** — the "EXECUTE" option is limited to "Save User Preference". GlideAjax, fetch(), and alert() all fail to fire from button click handlers in workspace pages. This is the reason we pivoted to Build Agent for the workspace UI.
+7. **Demo instances have no execution log data** — Plutus auto-detection returns 0 findings on fresh instances because `sys_outbound_http_log`, `sn_rpa_execution`, and other execution tables are empty. Use `user_overrides` to test with injected values.
+8. **Seed data requires a cache flush + retry** — newly created tables may not be queryable immediately after creation. `deploy.py` includes `cache.do` flush and exponential backoff retry for seed data insertion.
+9. **Boolean fields must be set as strings** — `gr.setValue('detected', 'true')` not `gr.setValue('detected', true)`.
+
+**Frontend:**
+- Added `favicon.svg` (indigo "V" icon) to `frontend/public/`
+- Added `<link rel="icon">` to `index.html`
+- Added `/favicon.ico` route in FastAPI `main.py` to serve the favicon and eliminate 404 log noise
+
+---
+
 ## v1.7.3 (Backend) - March 2026
 
 **Tier 2 Evidence-Based Rules (Jochen Geist Integration Design):**

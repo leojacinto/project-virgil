@@ -1,0 +1,14 @@
+{
+  "name": "x_snc_virgil_ontology_edge",
+  "label": "Ontology Edge",
+  "plural": "Ontology Edges",
+  "extends": "",
+  "fields": [
+    {"name": "source_node",  "label": "Source Node ID",  "type": "string",  "max_length": 40, "mandatory": true},
+    {"name": "target_node",  "label": "Target Node ID",  "type": "string",  "max_length": 40, "mandatory": true},
+    {"name": "rel_type",     "label": "Relationship Type","type": "choice",  "max_length": 40,
+      "choices": ["extends", "depends_on", "runs_on", "references", "resolves_using", "consumes", "creates", "authenticates_via", "segregated_from"]},
+    {"name": "constraint",   "label": "Constraint",       "type": "string",  "max_length": 500},
+    {"name": "active",       "label": "Active",           "type": "boolean", "default_value": "true"}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "x_snc_virgil_minos_scan",
+  "label": "Minos Scan",
+  "plural": "Minos Scans",
+  "extends": "",
+  "fields": [
+    {"name": "scan_date",        "label": "Scan Date",         "type": "glide_date_time"},
+    {"name": "instance_url",     "label": "Instance URL",      "type": "string",  "max_length": 200},
+    {"name": "status",           "label": "Status",            "type": "choice",  "max_length": 20,
+      "choices": ["running", "completed", "failed"]},
+    {"name": "duration_seconds", "label": "Duration (seconds)","type": "decimal"},
+    {"name": "plugins_scanned",  "label": "Plugins Scanned",   "type": "integer"},
+    {"name": "tables_scanned",   "label": "Tables Scanned",    "type": "integer"},
+    {"name": "active_nodes",     "label": "Active Nodes",      "type": "integer"},
+    {"name": "total_findings",   "label": "Total Findings",    "type": "integer"},
+    {"name": "recommended_additions", "label": "Recommended Additions", "type": "integer"},
+    {"name": "it4it_coverage",   "label": "IT4IT Coverage (JSON)",  "type": "string", "max_length": 8000},
+    {"name": "active_node_ids",  "label": "Active Node IDs (JSON)", "type": "string", "max_length": 4000},
+    {"name": "as_is_diagram",    "label": "As-Is Diagram (Mermaid)", "type": "string", "max_length": 16000},
+    {"name": "recommended_diagram","label": "Recommended Diagram (Mermaid)", "type": "string", "max_length": 16000},
+    {"name": "instance_model",   "label": "Instance Model (JSON)",  "type": "string", "max_length": 16000}
+  ]
+}

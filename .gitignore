@@ -62,6 +62,10 @@ htmlcov/
 
 # Scratch / test scripts
 test_onellm_models.py
+backend/scripts/
+
+# ServiceNow deploy state (instance-specific)
+servicenow-app/.deploy_ids.json
 
 # Distribution
 dist/

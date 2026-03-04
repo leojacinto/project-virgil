@@ -1,0 +1,457 @@
+[
+  {
+    "source_node": "incident",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "problem",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "change",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "case_mgmt",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "hr_case",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "sec_incident",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "service_catalog",
+    "target_node": "task",
+    "rel_type": "extends",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itsm",
+    "target_node": "incident",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itsm",
+    "target_node": "problem",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itsm",
+    "target_node": "change",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itsm",
+    "target_node": "service_catalog",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "csm",
+    "target_node": "case_mgmt",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "csm",
+    "target_node": "customer_accounts",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "hrsd",
+    "target_node": "hr_case",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itom",
+    "target_node": "discovery",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itom",
+    "target_node": "service_mapping",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itom",
+    "target_node": "event_mgmt",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "secops",
+    "target_node": "sec_incident",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "secops",
+    "target_node": "vuln_response",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "grc",
+    "target_node": "policy_compliance",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "grc",
+    "target_node": "risk_mgmt",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "spm",
+    "target_node": "ppm",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itsm",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "csm",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "hrsd",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "itom",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "secops",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "grc",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "spm",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "customer_portal",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "employee_center",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "incident",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "problem",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "change",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "case_mgmt",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "asset",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "discovery",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "service_mapping",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "event_mgmt",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "sec_incident",
+    "target_node": "cmdb",
+    "rel_type": "references",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "incident",
+    "target_node": "knowledge_base",
+    "rel_type": "resolves_using",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "problem",
+    "target_node": "knowledge_base",
+    "rel_type": "resolves_using",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "case_mgmt",
+    "target_node": "knowledge_base",
+    "rel_type": "resolves_using",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "hr_case",
+    "target_node": "knowledge_base",
+    "rel_type": "resolves_using",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "knowledge_base",
+    "rel_type": "consumes",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "customer_portal",
+    "target_node": "knowledge_base",
+    "rel_type": "consumes",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "employee_center",
+    "target_node": "knowledge_base",
+    "rel_type": "consumes",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "customer_portal",
+    "target_node": "csm",
+    "rel_type": "creates",
+    "constraint": "Portal creates cases in CSM",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "itsm",
+    "rel_type": "creates",
+    "constraint": "Portal creates tickets in ITSM",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "service_catalog",
+    "rel_type": "creates",
+    "constraint": "Portal creates catalog requests",
+    "active": true
+  },
+  {
+    "source_node": "employee_center",
+    "target_node": "hrsd",
+    "rel_type": "creates",
+    "constraint": "Employee Center creates HR cases",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "user_mgmt",
+    "rel_type": "authenticates_via",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "customer_portal",
+    "target_node": "user_mgmt",
+    "rel_type": "authenticates_via",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "employee_center",
+    "target_node": "user_mgmt",
+    "rel_type": "authenticates_via",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "now_mobile",
+    "target_node": "user_mgmt",
+    "rel_type": "authenticates_via",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "flow_designer",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "integration_hub",
+    "target_node": "platform",
+    "rel_type": "runs_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "flow_designer",
+    "target_node": "integration_hub",
+    "rel_type": "depends_on",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "integration_hub",
+    "target_node": "external",
+    "rel_type": "creates",
+    "constraint": "Connects to external systems",
+    "active": true
+  },
+  {
+    "source_node": "virtual_agent",
+    "target_node": "knowledge_base",
+    "rel_type": "consumes",
+    "constraint": "",
+    "active": true
+  },
+  {
+    "source_node": "discovery",
+    "target_node": "cmdb",
+    "rel_type": "creates",
+    "constraint": "Discovery populates CMDB",
+    "active": true
+  },
+  {
+    "source_node": "service_mapping",
+    "target_node": "cmdb",
+    "rel_type": "creates",
+    "constraint": "Service Mapping maps services in CMDB",
+    "active": true
+  },
+  {
+    "source_node": "customer_portal",
+    "target_node": "itsm",
+    "rel_type": "segregated_from",
+    "constraint": "Public portal must not connect to internal ITSM",
+    "active": true
+  },
+  {
+    "source_node": "service_portal",
+    "target_node": "csm",
+    "rel_type": "segregated_from",
+    "constraint": "Internal portal must not connect to external CSM",
+    "active": true
+  }
+]

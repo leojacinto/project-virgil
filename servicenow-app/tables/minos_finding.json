@@ -1,0 +1,20 @@
+{
+  "name": "x_snc_virgil_minos_finding",
+  "label": "Minos Finding",
+  "plural": "Minos Findings",
+  "extends": "",
+  "fields": [
+    {"name": "scan",            "label": "Scan",              "type": "reference", "reference": "x_snc_virgil_minos_scan", "mandatory": true},
+    {"name": "rule",            "label": "Rule",              "type": "reference", "reference": "x_snc_virgil_minos_rule"},
+    {"name": "rule_id",         "label": "Rule ID",           "type": "string",   "max_length": 40},
+    {"name": "rule_name",       "label": "Rule Name",         "type": "string",   "max_length": 200},
+    {"name": "severity",        "label": "Severity",          "type": "choice",   "max_length": 20,
+      "choices": ["critical", "high", "medium", "low"]},
+    {"name": "source",          "label": "Source",            "type": "string",   "max_length": 40},
+    {"name": "category",        "label": "Category",          "type": "string",   "max_length": 40},
+    {"name": "message",         "label": "Message",           "type": "string",   "max_length": 4000},
+    {"name": "recommendation",  "label": "Recommendation",    "type": "string",   "max_length": 4000},
+    {"name": "evidence_json",   "label": "Evidence (JSON)",   "type": "string",   "max_length": 4000},
+    {"name": "tags",            "label": "Tags (JSON)",       "type": "string",   "max_length": 1000}
+  ]
+}

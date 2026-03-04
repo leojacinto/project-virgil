@@ -50,6 +50,14 @@ diagram_generator = DiagramGenerator()
 web_search_service = WebSearchService()
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = Path(__file__).resolve().parent.parent / "frontend" / "public" / "favicon.svg"
+    if favicon_path.exists():
+        return FileResponse(favicon_path, media_type="image/svg+xml")
+    return JSONResponse(status_code=204, content=None)
+
+
 def normalize_instance_url(raw: str) -> str:
     """Normalize a ServiceNow instance URL to https://<host>.service-now.com"""
     url = raw.strip().rstrip('/')

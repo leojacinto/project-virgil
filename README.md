@@ -109,8 +109,8 @@ You need at least one LLM API key:
    ```
    
    This will automatically pull the images from Docker Hub:
-   - `leofrancia08489/project-virgil-backend:v1.7.0`
-   - `leofrancia08489/project-virgil-frontend:v1.7.0`
+   - `leofrancia08489/project-virgil-backend:v1.8.0`
+   - `leofrancia08489/project-virgil-frontend:v1.8.0`
 
 6. **Open your browser:**
    - Frontend: http://localhost:3000
@@ -125,18 +125,22 @@ That's it! No Python, Node.js, or Java installation required. Docker handles eve
 
 ---
 
-## 📦 Latest Release: v1.7.3 (March 2026)
+## 📦 Latest Release: v1.8.0 (March 2026)
 
-### v1.7.3 | Tier 2 Evidence-Based Integration Rules (Jochen Geist)
+### v1.8.0 | ServiceNow Native App
 
-- ✅ **8 new Tier 2 integration rules**: SOAP-only stack, integration sprawl, JDBC→ZCC, polling→event-driven, direct table writes, custom scripting, API proliferation, IHub underutilization
-- ✅ **Evidence-based IT4IT**: SPM, GRC, Problem Mgmt, Event Mgmt rules now require data-backed conditions (not just checkbox)
-- ✅ **45 rules total** (was 49) — 17 integration rules (was 9)
-- ✅ **Jochen Geist Integration Design v3.0** knowledge base integrated
+The entire Virgil backend — Minos scanner, Plutus credit sizing, ontology graph, and rule engine — has been ported to native ServiceNow Script Includes running inside a scoped application (`x_snc_virgil`). No external server, no Docker, no Python required.
 
-**Docker Hub Images:**
-- Backend: `leofrancia08489/project-virgil-backend:v1.7.3`
-- Frontend: `leofrancia08489/project-virgil-frontend:v1.7.3`
+- ✅ **7 Script Includes** deployed: MinosScanner, PlutusScanner, MinosOntology, MinosRuleEngine, VirgilUtils, VirgilAjax, PlutusRateCard
+- ✅ **4 Scripted REST API endpoints**: Minos scan/history, Plutus scan/history
+- ✅ **8 custom tables** with seed data: scans, findings, rate card, rules, ontology nodes/edges
+- ✅ **`deploy.py`**: single-command deployment via REST API (tables, fields, scripts, seed data, menu)
+- ✅ **Build Agent prompt** (`BUILD_AGENT_PROMPT.md`): full spec for generating workspace UI pages
+- ✅ **9 lessons learned** from porting to ServiceNow (see [CHANGELOG.md](CHANGELOG.md))
+
+**Docker Hub Images (React/FastAPI version):**
+- Backend: `leofrancia08489/project-virgil-backend:v1.8.0`
+- Frontend: `leofrancia08489/project-virgil-frontend:v1.8.0`
 
 > 📋 **Full changelog**: [CHANGELOG.md](CHANGELOG.md)
 
@@ -474,8 +478,74 @@ project-virgil/
 │   │   ├── utils/         # Shared utilities (exportUtils.js: PDF export, Mermaid download)
 │   │   └── App.js         # Main application
 │   └── package.json       # Node dependencies (includes xlsx for Excel export)
+├── servicenow-app/          # ServiceNow native scoped app (x_snc_virgil)
+│   ├── script_includes/
+│   │   ├── MinosScanner.js          # Minos: instance scan → ontology → rules → findings → diagrams
+│   │   ├── PlutusScanner.js         # Plutus: rate card → detection → annualization → credits
+│   │   ├── MinosOntology.js         # 37-node ontology graph + Mermaid generation
+│   │   ├── MinosRuleEngine.js       # 49 deterministic architecture rules
+│   │   ├── VirgilUtils.js           # Platform utilities (record counts, table checks, CMDB)
+│   │   ├── VirgilAjax.js            # Client-callable GlideAjax wrapper
+│   │   └── PlutusRateCard.js        # WDF rate card loader
+│   ├── rest_api/
+│   │   └── operations/              # Scripted REST API handlers (minos/plutus scan + history)
+│   ├── tables/                      # JSON table schema definitions (8 tables)
+│   ├── data/                        # Seed data (rules, ontology, rate card)
+│   ├── deploy.py                    # Single-command REST API deployment script
+│   └── BUILD_AGENT_PROMPT.md        # Build Agent prompt for workspace UI generation
 └── README.md
 ```
+
+## ServiceNow Native App Deployment
+
+The `servicenow-app/` directory contains a complete port of Virgil's Minos and Plutus engines as a ServiceNow scoped application. No external server required — everything runs natively on the Now Platform.
+
+### Prerequisites
+
+1. A ServiceNow instance (demo, developer, or production)
+2. Admin access with `admin` role
+3. Python 3.9+ (for running `deploy.py` only — not needed at runtime)
+
+### Deployment Steps
+
+1. **Create the scoped app via App Engine Studio** (cannot be automated):
+   - Navigate to App Engine Studio on your instance
+   - Create a new app with scope name `x_snc_virgil`
+   - Create a blank workspace (this registers the `/now/virgil/` URL)
+
+2. **Set your scope picker** to `x_snc_virgil` (Virgil) in the ServiceNow UI — this ensures all deployed artifacts land in the correct scope.
+
+3. **Run the deployment script:**
+   ```bash
+   cd servicenow-app
+   python deploy.py --instance your-instance.service-now.com --user admin --password your_password
+   ```
+   This creates all 8 tables, deploys 7 Script Includes, sets up the REST API, inserts seed data (rules, ontology, rate card), and creates navigation menu items.
+
+4. **Test the scan endpoints:**
+   ```bash
+   # Minos architecture scan
+   curl -u admin:password -X POST https://your-instance.service-now.com/api/x_snc_virgil/virgil_api/minos/scan
+
+   # Plutus credit scan
+   curl -u admin:password -X POST https://your-instance.service-now.com/api/x_snc_virgil/virgil_api/plutus/scan
+   ```
+
+### Lessons Learned (Porting to ServiceNow)
+
+These are hard-won discoveries from porting a Python/FastAPI application to native ServiceNow Script Includes:
+
+1. **Scope creation must be done manually via App Engine Studio** — REST API and Background Script cannot create working scoped app workspaces. Only App Engine Studio properly registers the workspace URL with the Next Experience router.
+2. **Admin must have scope picker set to `x_snc_virgil`** when running `deploy.py` — without this, all artifacts land in global scope.
+3. **`e.getMessage()` is blocked in scoped apps** — caught exceptions must use `e` (toString) instead. `GlidePluginManager.isActive()` can also throw scope access errors and needs try-catch.
+4. **ACLs cannot be created via REST API** — requires `security_admin` role and manual configuration.
+5. **`sys_app_module` DIRECT links use the `query` field, NOT `uri`** — the `uri` field is silently stripped by ServiceNow on PATCH.
+6. **UI Builder event handlers cannot execute arbitrary client scripts** — the "EXECUTE" option is limited to "Save User Preference". GlideAjax, fetch(), and alert() all fail to fire from button click handlers in workspace pages.
+7. **Demo instances have no execution log data** — Plutus auto-detection returns 0 findings on fresh instances. Use `user_overrides` in the POST body to test with injected values.
+8. **Seed data requires a cache flush + retry** — newly created tables may not be queryable immediately. `deploy.py` includes `cache.do` flush and exponential backoff retry.
+9. **Boolean fields must be set as strings** — `gr.setValue('detected', 'true')` not `gr.setValue('detected', true)`.
+
+---
 
 ## Manual Installation (Alternative to Docker)
 

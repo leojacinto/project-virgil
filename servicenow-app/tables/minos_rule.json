@@ -1,0 +1,29 @@
+{
+  "name": "x_snc_virgil_minos_rule",
+  "label": "Minos Rule",
+  "plural": "Minos Rules",
+  "extends": "",
+  "fields": [
+    {"name": "rule_id",          "label": "Rule ID",          "type": "string",   "max_length": 40,   "unique": true, "mandatory": true},
+    {"name": "name",             "label": "Name",             "type": "string",   "max_length": 200,  "mandatory": true},
+    {"name": "description",      "label": "Description",      "type": "string",   "max_length": 4000},
+    {"name": "source",           "label": "Source",           "type": "choice",   "max_length": 40,
+      "choices": ["it4it", "integration", "best_practice"]},
+    {"name": "severity",         "label": "Severity",         "type": "choice",   "max_length": 20,
+      "choices": ["critical", "high", "medium", "low"]},
+    {"name": "category",         "label": "Category",         "type": "choice",   "max_length": 40,
+      "choices": ["it4it_coverage", "integration_pattern", "health", "adoption", "security", "efficiency"]},
+    {"name": "condition_desc",   "label": "Condition Description", "type": "string", "max_length": 4000},
+    {"name": "eval_json",        "label": "Evaluation Logic (JSON)", "type": "string", "max_length": 8000,
+      "comment": "JSON defining the eval block: {all:[...]} or {any:[...]} with primitives like node_absent, table_gt, etc."},
+    {"name": "message_template", "label": "Message Template", "type": "string",   "max_length": 4000,
+      "comment": "Supports {variable} placeholders replaced with evidence values at runtime"},
+    {"name": "recommendation",   "label": "Recommendation",   "type": "string",   "max_length": 4000},
+    {"name": "tags",             "label": "Tags (JSON)",      "type": "string",   "max_length": 1000,
+      "comment": "JSON array of tags, e.g. [\"R2D\",\"change\"]"},
+    {"name": "recommended_nodes","label": "Recommended Nodes (JSON)", "type": "string", "max_length": 2000,
+      "comment": "JSON object: {node_id: \"reason\"}, e.g. {\"change\": \"R2D deployment control\"}"},
+    {"name": "active",           "label": "Active",           "type": "boolean",  "default_value": "true"},
+    {"name": "order",            "label": "Order",            "type": "integer",  "default_value": "100"}
+  ]
+}

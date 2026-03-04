@@ -1,0 +1,7 @@
+{
+  "name": "Minos Scan History",
+  "description": "Retrieve past Minos scan results",
+  "http_method": "GET",
+  "relative_path": "/minos/scans",
+  "script_file": "minos_history.js"
+}

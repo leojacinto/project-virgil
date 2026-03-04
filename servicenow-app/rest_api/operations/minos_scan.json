@@ -1,0 +1,7 @@
+{
+  "name": "Minos Scan",
+  "description": "Run a full Minos architecture & design scan against this instance",
+  "http_method": "POST",
+  "relative_path": "/minos/scan",
+  "script_file": "minos_scan.js"
+}
