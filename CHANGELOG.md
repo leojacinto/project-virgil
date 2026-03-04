@@ -52,6 +52,7 @@ The entire Virgil backend — Minos architecture scanner, Plutus WDF credit sizi
 7. **Demo instances have no execution log data** — Plutus auto-detection returns 0 findings on fresh instances because `sys_outbound_http_log`, `sn_rpa_execution`, and other execution tables are empty. Use `user_overrides` to test with injected values.
 8. **Seed data requires a cache flush + retry** — newly created tables may not be queryable immediately after creation. `deploy.py` includes `cache.do` flush and exponential backoff retry for seed data insertion.
 9. **Boolean fields must be set as strings** — `gr.setValue('detected', 'true')` not `gr.setValue('detected', true)`.
+10. **Deploy backend first, then use Build Agent for the UI** — the most effective pattern is: deploy all Script Includes, REST API, tables, and seed data via `deploy.py` first, then use ServiceNow Build Agent to generate workspace pages (macroponents, data brokers, event handlers) on top of the already-working backend. Build Agent can reference the deployed tables and GlideAjax endpoints directly. Trying to build the UI manually in UI Builder before the backend is solid leads to wasted effort.
 
 **Frontend:**
 - Added `favicon.svg` (indigo "V" icon) to `frontend/public/`

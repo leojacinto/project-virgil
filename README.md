@@ -544,6 +544,7 @@ These are hard-won discoveries from porting a Python/FastAPI application to nati
 7. **Demo instances have no execution log data** — Plutus auto-detection returns 0 findings on fresh instances. Use `user_overrides` in the POST body to test with injected values.
 8. **Seed data requires a cache flush + retry** — newly created tables may not be queryable immediately. `deploy.py` includes `cache.do` flush and exponential backoff retry.
 9. **Boolean fields must be set as strings** — `gr.setValue('detected', 'true')` not `gr.setValue('detected', true)`.
+10. **Deploy backend first, then use Build Agent for the UI** — deploy all Script Includes, REST API, tables, and seed data via `deploy.py` first, then use ServiceNow Build Agent to generate workspace pages on top of the already-working backend. Build Agent can reference the deployed tables and GlideAjax endpoints directly. Trying to build the UI manually in UI Builder before the backend is solid leads to wasted effort.
 
 ---
 
