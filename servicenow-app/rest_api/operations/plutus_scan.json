@@ -1,7 +1,0 @@
-{
-  "name": "Plutus Scan",
-  "description": "Run a WDF credit sizing scan against this instance",
-  "http_method": "POST",
-  "relative_path": "/plutus/scan",
-  "script_file": "plutus_scan.js"
-}

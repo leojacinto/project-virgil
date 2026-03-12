@@ -1,7 +1,0 @@
-{
-  "name": "Plutus Scan History",
-  "description": "Retrieve past WDF scan results",
-  "http_method": "GET",
-  "relative_path": "/plutus/scans",
-  "script_file": "plutus_history.js"
-}
