@@ -1,0 +1,10 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "../../build/server",
+        "rootDir": "..",
+        "declaration": true,
+        "declarationDir": "../../@types/servicenow/fluent/server"
+    },
+    "include": ["../server/**/*.server.ts", "../server/**/*.server.js"]
+}

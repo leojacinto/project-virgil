@@ -79,6 +79,9 @@ backend/scripts/
 
 # ServiceNow deploy state (instance-specific)
 servicenow-app/.deploy_ids.json
+servicenow-app/package.json
+servicenow-app/package-lock.json
+servicenow-app/node_modules/
 
 # Distribution
 dist/

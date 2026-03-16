@@ -1,0 +1,21 @@
+{
+    "name": "virgil",
+    "version": "1.8.0",
+    "description": "Presales intelligence — Architecture Scan (Minos), WDF Credit Sizing (Plutus), AI Advisor",
+    "license": "UNLICENSED",
+    "imports": {
+        "#now:*": "./@types/servicenow/fluent/*/index.js"
+    },
+    "scripts": {
+        "build": "now-sdk build",
+        "deploy": "now-sdk install",
+        "transform": "now-sdk transform",
+        "types": "now-sdk dependencies"
+    },
+    "devDependencies": {
+        "@servicenow/sdk": "4.4.0",
+        "@servicenow/glide": "27.0.4",
+        "eslint": "8.50.0",
+        "@servicenow/eslint-plugin-sdk-app-plugin": "4.4.0"
+    }
+}

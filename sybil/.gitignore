@@ -1,0 +1,7 @@
+node_modules/
+build/
+@types/
+package-lock.json
+
+# Plutus (confidential)
+src/server/PlutusScanner.server.js
