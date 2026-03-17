@@ -73,8 +73,11 @@ logs/
 htmlcov/
 .pytest_cache/
 
-# Scratch / test scripts
+# Scratch / test scripts (may contain credentials)
 test_onellm_models.py
+backend/test_direct_connection.py
+backend/test_working_script.py
+servicenow-app/cleanup.py
 backend/scripts/
 
 # ServiceNow deploy state (instance-specific)
